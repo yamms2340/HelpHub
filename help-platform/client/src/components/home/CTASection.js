@@ -1,17 +1,17 @@
 import React from 'react';
 import { Box, Typography, Button, Container } from '@mui/material';
-import { Favorite } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { Favorite } from '@mui/icons-material'; // Add this import
+import { useNavigate } from 'react-router-dom';
 
 const CTASection = () => {
-  const navigate = useNavigate(); // Add this hook
+  const navigate = useNavigate();
 
   return (
     <Box sx={{ py: 10 }}>
       <Container maxWidth="lg">
         <Box
           sx={{
-            background: 'linear-gradient(135deg, #ff6b6b 0%, #f06595 100%)',
+            background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', 
             borderRadius: 6,
             p: 8,
             textAlign: 'center',
@@ -47,32 +47,32 @@ const CTASection = () => {
             change. Your help can transform lives.
           </Typography>
 
-          {/* Start Helping Today Button - ADD NAVIGATION */}
           <Button
-            variant="contained"
-            size="large"
-            onClick={() => navigate('/login')} // Add this onClick handler
-            sx={{
-              background: 'white',
-              color: '#f06595',
-              textTransform: 'none',
-              fontWeight: 700,
-              borderRadius: '30px',
-              px: 5,
-              py: 2,
-              fontSize: '1.1rem',
-              boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
-              '&:hover': {
-                background: '#f8fafc',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
-                transition: 'all 0.3s ease'
-              }
-            }}
-            startIcon={<Favorite />}
-          >
-            Start Helping Today
-          </Button>
+  variant="contained"
+  size="large"
+  onClick={() => navigate('/login')}
+  sx={{
+    background: 'white', // White button
+    color: '#2196F3', // Blue text instead of orange
+    textTransform: 'none',
+    fontWeight: 700,
+    borderRadius: '30px',
+    px: 5,
+    py: 2,
+    fontSize: '1.1rem',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.2)',
+    '&:hover': {
+      background: '#f8fafc',
+      transform: 'translateY(-2px)',
+      boxShadow: '0 6px 20px rgba(0, 0, 0, 0.3)',
+      transition: 'all 0.3s ease'
+    }
+  }}
+  startIcon={<Favorite />}
+>
+  Start Helping Today
+</Button>
+
         </Box>
       </Container>
     </Box>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Container } from '@mui/material';
-import { Favorite } from '@mui/icons-material';
+import { Home } from '@mui/icons-material'; // Changed from Favorite to Home
 
 const Footer = () => {
   return (
@@ -14,22 +14,22 @@ const Footer = () => {
                 width: 32,
                 height: 32,
                 borderRadius: '8px',
-                background: 'linear-gradient(135deg, #ff6b6b 0%, #f06595 100%)',
+                background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', // Blue gradient instead of pink
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Favorite sx={{ color: 'white', fontSize: 20 }} />
+              <Home sx={{ color: 'white', fontSize: 20 }} /> {/* Changed icon */}
             </Box>
             <Typography variant="h6" fontWeight={700}>
-              CommunityHelp
+              HelpHub {/* Changed from CommunityHelp to HelpHub */}
             </Typography>
           </Box>
 
           {/* Copyright */}
           <Typography variant="body2" sx={{ opacity: 0.7 }}>
-            © 2024 CommunityHelp. Building communities, changing lives.
+            © 2024 HelpHub. Building communities, changing lives.
           </Typography>
         </Box>
       </Container>

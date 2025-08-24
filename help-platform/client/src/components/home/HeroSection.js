@@ -1,9 +1,9 @@
 import React from 'react';
 import { Box, Typography, Button, Container } from '@mui/material';
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { useNavigate } from 'react-router-dom';
 
 const HeroSection = () => {
-  const navigate = useNavigate(); // Add this hook
+  const navigate = useNavigate();
 
   return (
     <Container maxWidth="lg" sx={{ py: 10 }}>
@@ -25,7 +25,7 @@ const HeroSection = () => {
           <Box 
             component="span" 
             sx={{
-              background: 'linear-gradient(135deg, #ff6b6b 0%, #f06595 100%)',
+              background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', // Blue gradient
               backgroundClip: 'text',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
@@ -48,61 +48,65 @@ const HeroSection = () => {
             lineHeight: 1.6
           }}
         >
-          Connect with compassionate individuals, raise requests for help, and create
-          positive impact in your community through our platform.
+          Connect with your community and make a meaningful difference. Browse help requests, 
+          offer assistance, and create positive impact through our platform.
         </Typography>
 
-        {/* Call-to-Action Buttons - ADD NAVIGATION */}
-        <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Button 
-            variant="contained" 
-            size="large"
-            onClick={() => navigate('/register')} // Navigate to register
-            sx={{
-              background: 'linear-gradient(135deg, #ff6b6b 0%, #f06595 100%)',
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: '30px',
-              px: 4,
-              py: 1.5,
-              fontSize: '1.1rem',
-              boxShadow: '0 4px 15px rgba(240, 101, 149, 0.4)',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #f06595 0%, #ff6b6b 100%)',
-                boxShadow: '0 6px 20px rgba(240, 101, 149, 0.6)',
-                transform: 'translateY(-2px)',
-                transition: 'all 0.3s ease'
-              }
-            }}
-          >
-            Join the Community →
-          </Button>
+        {/* Call-to-Action Buttons - SAME STRUCTURE AS FIRST IMAGE */}
+       {/* Call-to-Action Buttons - RECTANGULAR */}
+<Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
+  {/* Primary Button - Blue rectangular */}
+  <Button 
+    variant="contained" 
+    size="large"
+    onClick={() => navigate('/register')}
+    sx={{
+      background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', // Blue gradient
+      textTransform: 'none',
+      fontWeight: 600,
+      borderRadius: '8px', // RECTANGULAR - not rounded
+      px: 4,
+      py: 1.5,
+      fontSize: '1.1rem',
+      boxShadow: '0 4px 15px rgba(33, 150, 243, 0.4)',
+      '&:hover': {
+        background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
+        boxShadow: '0 6px 20px rgba(33, 150, 243, 0.6)',
+        transform: 'translateY(-2px)',
+        transition: 'all 0.3s ease'
+      }
+    }}
+  >
+    Join the Community →
+  </Button>
 
-          <Button 
-            variant="outlined" 
-            size="large"
-            onClick={() => navigate('/login')} // Navigate to login
-            sx={{
-              textTransform: 'none',
-              fontWeight: 600,
-              borderRadius: '30px',
-              px: 4,
-              py: 1.5,
-              fontSize: '1.1rem',
-              border: '2px solid #e2e8f0',
-              color: '#64748b',
-              '&:hover': {
-                border: '2px solid #ff6b6b',
-                color: '#ff6b6b',
-                backgroundColor: 'rgba(255, 107, 107, 0.05)',
-                transform: 'translateY(-2px)',
-                transition: 'all 0.3s ease'
-              }
-            }}
-          >
-            Learn More
-          </Button>
-        </Box>
+  {/* Secondary Button - Rectangular outline */}
+  <Button 
+    variant="outlined" 
+    size="large"
+    onClick={() => navigate('/login')}
+    sx={{
+      textTransform: 'none',
+      fontWeight: 600,
+      borderRadius: '8px', // RECTANGULAR - not rounded
+      px: 4,
+      py: 1.5,
+      fontSize: '1.1rem',
+      border: '2px solid #e2e8f0',
+      color: '#64748b',
+      '&:hover': {
+        border: '2px solid #2196F3', // Blue border on hover
+        color: '#2196F3', // Blue text on hover
+        backgroundColor: 'rgba(33, 150, 243, 0.05)',
+        transform: 'translateY(-2px)',
+        transition: 'all 0.3s ease'
+      }
+    }}
+  >
+    Learn More
+  </Button>
+</Box>
+
       </Box>
     </Container>
   );

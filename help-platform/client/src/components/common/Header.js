@@ -121,7 +121,7 @@ function Header() {
             }}>
               <Button 
                 color="inherit" 
-                onClick={() => handleNavigation('/')}
+                onClick={() => handleNavigation('/dashboard')}
                 startIcon={<Groups sx={{ fontSize: '20px', color: '#1976d2' }} />}
                 sx={{ 
                   borderRadius: '12px',

@@ -39,10 +39,12 @@ function Header() {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/login', { replace: true });
-    handleMenuClose();
-  };
+   logout(); // Clear auth state (your existing function)
+     window.location.href = '/home'; // Force redirect
+    
+    navigate('/home', { replace: true }); // Redirect to home
+};
+
 
   const handleNavigation = (path) => {
     navigate(path);

@@ -61,17 +61,18 @@ function Login() {
       return;
     }
 
-    const result = await login(formData.email, formData.password);
-    
-    if (result.success) {
-      const from = location.state?.from?.pathname || '/';
-      navigate(from, { replace: true });
-    } else {
-      setError(result.error);
-    }
-    
-    setLoading(false);
-  };
+  const result = await login(formData.email, formData.password);
+  
+  if (result.success) {
+    // Get the location they were trying to visit before login
+    const from ='/dashboard'|| location.state?.from?.pathname;
+    navigate(from, { replace: true });
+  } else {
+    setError(result.error);
+  }
+  
+  setLoading(false);
+};
 
   return (
     <Box

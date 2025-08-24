@@ -14,6 +14,7 @@ import Register from './components/auth/Register';
 import RequestList from './components/requests/RequestList';
 import CreateRequest from './components/requests/CreateRequest';
 import HallOfFame from './components/hallOfFame/HallOfFame';
+import HomePage from './components/home/HomePage'; // Add this import
 
 // Enhanced theme with modern design
 const theme = createTheme({
@@ -162,56 +163,108 @@ const theme = createTheme({
   },
 });
 
+// ... your existing theme code ...
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
         <Router>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: '100vh',
-            background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-          }}>
-            <Header />
-            <Box component="main" sx={{ flexGrow: 1 }}>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                
-                {/* Protected routes */}
-                <Route 
-                  path="/" 
-                  element={
-                    <ProtectedRoute>
+          <Routes>
+            {/* Public home page - NO header, NO background wrapper */}
+                      <Route path="/" element={<Navigate to="/home" replace />} />
+
+            <Route path="/home" element={<HomePage />} />
+            
+            {/* Public auth routes - NO header, simple wrapper */}
+            <Route 
+              path="/login" 
+              element={
+                <Box sx={{ 
+                  minHeight: '100vh',
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                }}>
+                  <Login />
+                </Box>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <Box sx={{ 
+                  minHeight: '100vh',
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                }}>
+                  <Register />
+                </Box>
+              } 
+            />
+            
+            {/* Protected routes - WITH header and background */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    minHeight: '100vh',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                  }}>
+                    <Header />
+                    <Box component="main" sx={{ flexGrow: 1 }}>
                       <RequestList />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/hall-of-fame" 
-                  element={
-                    <ProtectedRoute>
+                    </Box>
+                  </Box>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/hall-of-fame" 
+              element={
+                <ProtectedRoute>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    minHeight: '100vh',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                  }}>
+                    <Header />
+                    <Box component="main" sx={{ flexGrow: 1 }}>
                       <HallOfFame />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/create-request" 
-                  element={
-                    <ProtectedRoute>
+                    </Box>
+                  </Box>
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/create-request" 
+              element={
+                <ProtectedRoute>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    minHeight: '100vh',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                  }}>
+                    <Header />
+                    <Box component="main" sx={{ flexGrow: 1 }}>
                       <CreateRequest />
-                    </ProtectedRoute>
-                  } 
-                />
-                
-                {/* Redirect any unknown routes to home */}
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </Box>
-          </Box>
+                    </Box>
+                  </Box>
+                </ProtectedRoute>
+              } 
+            />
+
+
+
+            
+            {/* Redirect unknown routes to home */}
+
+            
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
         </Router>
       </AuthProvider>
     </ThemeProvider>

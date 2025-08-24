@@ -10,11 +10,17 @@ import {
   MenuItem,
   Avatar,
   Chip,
+  Badge,
+  Container,
 } from '@mui/material';
 import { 
-  Help,
   PersonOutline,
-  Add
+  VolunteerActivism,
+  EmojiEvents,
+  Security,
+  Verified,
+  Groups,
+  Favorite,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -33,250 +39,361 @@ function Header() {
   };
 
   const handleLogout = () => {
-  logout(); // This clears the auth state
-  navigate('/login', { replace: true }); // Force redirect to login
-  handleMenuClose();
-};
-
+    logout();
+    navigate('/login', { replace: true });
+    handleMenuClose();
+  };
 
   const handleNavigation = (path) => {
     navigate(path);
   };
 
   return (
-    <Box sx={{ p: 2 }}>
-      <AppBar 
-        position="static" 
-        elevation={0}
-        sx={{
-          background: 'white',
-          borderRadius: '20px',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-        }}
-      >
-        <Toolbar sx={{ py: 1.5, px: 3 }}>
-          {/* Logo Section */}
-          <Box 
-            display="flex" 
-            alignItems="center" 
-            sx={{ cursor: 'pointer' }}
-            onClick={() => handleNavigation('/')}
-          >
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: '50%',
-                background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 2,
-              }}
-            >
-              <Help sx={{ color: 'white', fontSize: 24 }} />
-            </Box>
-            <Typography 
-              variant="h6" 
-              component="div" 
+    <Box 
+      sx={{ 
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        borderBottom: '1px solid rgba(25, 118, 210, 0.08)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 1100,
+        boxShadow: '0 2px 20px rgba(25, 118, 210, 0.04)',
+      }}
+    >
+      <Container maxWidth="xl">
+        <AppBar 
+          position="static" 
+          elevation={0}
+          sx={{
+            background: 'transparent',
+            boxShadow: 'none',
+          }}
+        >
+          <Toolbar sx={{ py: 2, px: 0, justifyContent: 'space-between' }}>
+            {/* Logo Section - Blue Theme */}
+            <Box 
+              display="flex" 
+              alignItems="center" 
               sx={{ 
-                fontWeight: 700,
-                color: '#1e293b',
-                fontSize: '1.3rem',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                flex: '0 0 auto', // Don't grow/shrink
+                '&:hover': { 
+                  transform: 'translateY(-2px)',
+                  '& .logo-text': { color: '#1976d2' }
+                }
               }}
-            >
-              HelpHub
-            </Typography>
-          </Box>
-
-          {/* Spacer */}
-          <Box sx={{ flexGrow: 1 }} />
-
-          {/* Navigation Buttons */}
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mr: 2 }}>
-            <Button 
-              color="inherit" 
               onClick={() => handleNavigation('/')}
-              sx={{ 
-                borderRadius: 3,
-                px: 3,
-                py: 1,
-                color: '#64748b',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-                textTransform: 'none',
-                '&:hover': { 
-                  bgcolor: '#f1f5f9',
-                  color: '#1e293b'
-                }
-              }}
             >
-              Requests
-            </Button>
-            <Button 
-              color="inherit" 
-              onClick={() => handleNavigation('/hall-of-fame')}
-              sx={{ 
-                borderRadius: 3,
-                px: 3,
-                py: 1,
-                color: '#64748b',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-                textTransform: 'none',
-                '&:hover': { 
-                  bgcolor: '#f1f5f9',
-                  color: '#1e293b'
-                }
-              }}
-            >
-              Hall of Fame
-            </Button>
-          </Box>
-
-          {/* Right Section */}
-          {isAuthenticated ? (
-            <Box display="flex" alignItems="center" gap={2}>
-              {/* Create Request Button */}
-              <Button
-                variant="contained"
-                onClick={() => handleNavigation('/create-request')}
-                sx={{
-                  borderRadius: 4,
-                  px: 4,
-                  py: 1.2,
-                  background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
-                  color: 'white',
-                  fontWeight: 600,
-                  fontSize: '0.95rem',
-                  textTransform: 'none',
-                  boxShadow: '0 4px 15px rgba(79, 134, 255, 0.3)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(79, 134, 255, 0.4)',
-                  }
-                }}
-              >
-                Create Request
-              </Button>
-
-              {/* User Avatar */}
-              <IconButton
-                onClick={handleMenuOpen}
+              <Typography 
+                className="logo-text"
+                variant="h4" 
+                component="div" 
                 sx={{ 
-                  p: 0,
-                  '&:hover': { transform: 'scale(1.05)' }
+                  fontWeight: 800,
+                  color: '#1e293b',
+                  fontSize: '1.8rem',
+                  lineHeight: 1.2,
+                  letterSpacing: '-0.025em',
+                  transition: 'color 0.3s ease',
+                  fontFamily: '"Inter", "Roboto", sans-serif',
                 }}
               >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: '#f1f5f9',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '2px solid #e2e8f0',
-                  }}
-                >
-                  <PersonOutline sx={{ color: '#64748b', fontSize: 20 }} />
-                </Box>
-              </IconButton>
-              
-              <Menu
-                anchorEl={anchorEl}
-                open={Boolean(anchorEl)}
-                onClose={handleMenuClose}
-                PaperProps={{
-                  sx: {
-                    borderRadius: 3,
-                    minWidth: 220,
-                    mt: 1,
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.15)',
-                    border: '1px solid #e2e8f0',
-                  }
-                }}
-              >
-                <Box sx={{ px: 3, py: 2, borderBottom: '1px solid #f1f5f9' }}>
-                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5, color: '#1e293b' }}>
-                    {user?.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {user?.email}
-                  </Typography>
-                  <Chip
-                    label={`${user?.helpCount || 0} helps completed`}
-                    size="small"
-                    sx={{
-                      background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
-                      color: 'white',
-                      fontWeight: 500,
-                      fontSize: '0.75rem'
-                    }}
-                  />
-                </Box>
-                <MenuItem 
-                  onClick={handleLogout} 
-                  sx={{ 
-                    py: 1.5,
-                    px: 3,
-                    color: 'error.main',
-                    '&:hover': { bgcolor: 'error.50' }
-                  }}
-                >
-                  Logout
-                </MenuItem>
-              </Menu>
+                Help<span style={{ color: '#1976d2' }}>Hub</span>
+              </Typography>
             </Box>
-          ) : (
-            <Box display="flex" gap={1}>
+
+            {/* Spacer to push navigation to the right */}
+            <Box sx={{ flexGrow: 1 }} />
+
+            {/* Navigation Buttons - Moved to Right Side */}
+            <Box sx={{ 
+              display: { xs: 'none', md: 'flex' }, 
+              gap: 1, 
+              alignItems: 'center',
+              background: '#ffffff',
+              borderRadius: '16px',
+              padding: '8px 12px',
+              boxShadow: '0 4px 20px rgba(25, 118, 210, 0.08)',
+              border: '1px solid rgba(25, 118, 210, 0.06)',
+              mr: 2, // Add margin to separate from right section
+            }}>
               <Button 
                 color="inherit" 
-                onClick={() => handleNavigation('/login')}
+                onClick={() => handleNavigation('/')}
+                startIcon={<Groups sx={{ fontSize: '20px', color: '#1976d2' }} />}
                 sx={{ 
-                  borderRadius: 3,
+                  borderRadius: '12px',
                   px: 3,
-                  py: 1,
-                  color: '#64748b',
-                  fontSize: '0.95rem',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  '&:hover': { 
-                    bgcolor: '#f1f5f9',
-                    color: '#1e293b'
-                  }
-                }}
-              >
-                Login
-              </Button>
-              <Button 
-                variant="contained"
-                onClick={() => handleNavigation('/register')}
-                sx={{ 
-                  borderRadius: 3,
-                  px: 4,
-                  py: 1,
-                  background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
-                  color: 'white',
+                  py: 1.5,
+                  color: '#475569',
+                  fontSize: '0.875rem',
                   fontWeight: 600,
                   textTransform: 'none',
-                  boxShadow: '0 4px 15px rgba(79, 134, 255, 0.3)',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': { 
+                    background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+                    color: '#1565c0',
                     transform: 'translateY(-1px)',
-                    boxShadow: '0 6px 20px rgba(79, 134, 255, 0.4)',
                   }
                 }}
               >
-                Register
+                Help Requests
+              </Button>
+              <Button 
+                color="inherit" 
+                onClick={() => handleNavigation('/hall-of-fame')}
+                startIcon={<EmojiEvents sx={{ color: '#2196f3', fontSize: '20px' }} />}
+                sx={{ 
+                  borderRadius: '12px',
+                  px: 3,
+                  py: 1.5,
+                  color: '#475569',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                  transition: 'all 0.2s ease',
+                  '&:hover': { 
+                    background: 'linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%)',
+                    color: '#0d47a1',
+                    transform: 'translateY(-1px)',
+                  }
+                }}
+              >
+                Hall of Fame
               </Button>
             </Box>
-          )}
-        </Toolbar>
-      </AppBar>
+
+            {/* Right Section */}
+            {isAuthenticated ? (
+              <Box display="flex" alignItems="center" gap={2}>
+                {/* CTA Button - Blue Theme */}
+                <Button
+                  variant="contained"
+                  startIcon={<VolunteerActivism />}
+                  onClick={() => handleNavigation('/create-request')}
+                  sx={{
+                    borderRadius: '25px',
+                    px: 4,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 50%, #1976d2 100%)',
+                    color: 'white',
+                    fontWeight: 700,
+                    fontSize: '0.875rem',
+                    textTransform: 'none',
+                    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.4)',
+                    border: 'none',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #1565c0 100%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 25px rgba(25, 118, 210, 0.5)',
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
+                      pointerEvents: 'none',
+                    }
+                  }}
+                >
+                  Request Help →
+                </Button>
+
+                {/* User Avatar - Blue Theme */}
+                <IconButton
+                  onClick={handleMenuOpen}
+                  sx={{ 
+                    p: 0,
+                    transition: 'transform 0.2s ease',
+                    '&:hover': { transform: 'scale(1.05)' }
+                  }}
+                >
+                  <Badge
+                    badgeContent={user?.helpCount || 0}
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                        color: 'white',
+                        boxShadow: '0 2px 8px rgba(25, 118, 210, 0.3)',
+                        border: '2px solid white',
+                      }
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: '22px',
+                        background: 'linear-gradient(135deg, #f8fafc 0%, #e3f2fd 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '2px solid #e3ebf0',
+                        boxShadow: '0 4px 12px rgba(25, 118, 210, 0.1)',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          borderColor: '#1976d2',
+                          boxShadow: '0 6px 16px rgba(25, 118, 210, 0.2)',
+                        }
+                      }}
+                    >
+                      <PersonOutline sx={{ color: '#475569', fontSize: 22 }} />
+                    </Box>
+                  </Badge>
+                </IconButton>
+                
+                {/* Enhanced Menu - Blue Theme */}
+                <Menu
+                  anchorEl={anchorEl}
+                  open={Boolean(anchorEl)}
+                  onClose={handleMenuClose}
+                  PaperProps={{
+                    sx: {
+                      borderRadius: '20px',
+                      minWidth: 280,
+                      mt: 1,
+                      background: '#ffffff',
+                      boxShadow: '0 20px 40px rgba(25, 118, 210, 0.15)',
+                      border: '1px solid rgba(25, 118, 210, 0.06)',
+                    }
+                  }}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                >
+                  <Box sx={{ px: 3, py: 3, borderBottom: '1px solid #e3ebf6' }}>
+                    <Box display="flex" alignItems="center" gap={2} mb={2}>
+                      <Box
+                        sx={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: '20px',
+                          background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                      >
+                        <PersonOutline sx={{ color: 'white', fontSize: 20 }} />
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 0.5, color: '#1e293b', fontSize: '1rem' }}>
+                          {user?.name}
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.8rem' }}>
+                          {user?.email}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Chip
+                      icon={<EmojiEvents sx={{ color: 'white !important', fontSize: '0.9rem' }} />}
+                      label={`${user?.helpCount || 0} helps completed`}
+                      size="small"
+                      sx={{
+                        background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                        color: 'white',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        boxShadow: '0 3px 10px rgba(25, 118, 210, 0.3)',
+                        border: 'none',
+                        borderRadius: '20px',
+                      }}
+                    />
+                  </Box>
+                  <MenuItem 
+                    onClick={handleLogout} 
+                    sx={{ 
+                      py: 2.5,
+                      px: 3,
+                      color: '#dc2626',
+                      fontSize: '0.9rem',
+                      fontWeight: 600,
+                      borderRadius: '0 0 20px 20px',
+                      '&:hover': { 
+                        bgcolor: 'rgba(220, 38, 38, 0.08)',
+                        color: '#b91c1c'
+                      }
+                    }}
+                  >
+                    Sign Out
+                  </MenuItem>
+                </Menu>
+              </Box>
+            ) : (
+              <Box display="flex" gap={2}>
+                <Button 
+                  color="inherit" 
+                  onClick={() => handleNavigation('/login')}
+                  sx={{ 
+                    borderRadius: '25px',
+                    px: 4,
+                    py: 1.5,
+                    color: '#475569',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    textTransform: 'none',
+                    background: '#ffffff',
+                    border: '2px solid #e3ebf0',
+                    boxShadow: '0 2px 8px rgba(25, 118, 210, 0.04)',
+                    transition: 'all 0.2s ease',
+                    '&:hover': { 
+                      background: 'rgba(25, 118, 210, 0.05)',
+                      color: '#1976d2',
+                      borderColor: '#1976d2',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 4px 12px rgba(25, 118, 210, 0.2)',
+                    }
+                  }}
+                >
+                  Sign In
+                </Button>
+                <Button 
+                  variant="contained"
+                  onClick={() => handleNavigation('/register')}
+                  sx={{ 
+                    borderRadius: '25px',
+                    px: 4,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 50%, #1976d2 100%)',
+                    color: 'white',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.4)',
+                    border: 'none',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #1565c0 0%, #0d47a1 50%, #1565c0 100%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 25px rgba(25, 118, 210, 0.5)',
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
+                      pointerEvents: 'none',
+                    }
+                  }}
+                >
+                  Join the Community →
+                </Button>
+              </Box>
+            )}
+          </Toolbar>
+        </AppBar>
+      </Container>
     </Box>
   );
 }

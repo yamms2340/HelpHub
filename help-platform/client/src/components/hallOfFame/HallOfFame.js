@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import PlatformStats from './PlatformStats';
+import InspiringStories from './InspiringStories';
+
 import {
   Container,
   Typography,
@@ -28,6 +31,12 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
+  Modal,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from '@mui/material';
 import {
   EmojiEvents,
@@ -66,111 +75,41 @@ import { useNavigate } from 'react-router-dom';
 function HallOfFame() {
   const [topHelpers, setTopHelpers] = useState([]);
   const [stats, setStats] = useState({});
+   const [inspiringStories, setInspiringStories] = useState([]);  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
   const [openStoryDialog, setOpenStoryDialog] = useState(false);
   const [selectedStory, setSelectedStory] = useState(null);
+  const [showPostStoryModal, setShowPostStoryModal] = useState(false);
+  const [storyData, setStoryData] = useState({
+    title: '',
+    description: '',
+    category: '',
+    impact: '',
+    helpType: []
+  });
   
   const navigate = useNavigate();
+  
 
-  // Real-life inspiring stories
-  const inspiringStories = [
-    {
-      id: 1,
-      title: "The Late-Night Coding Mentor",
-      helper: "Sarah Chen",
-      location: "San Francisco, CA",
-      category: "Tech Support",
-      image: "👩‍💻",
-      summary: "A senior developer who spent her nights helping struggling students debug code and learn programming fundamentals.",
-      fullStory: `Sarah Chen, a senior software engineer at a tech startup, discovered Help Hub during a particularly stressful period in her career. What started as a way to give back to the community became a life-changing journey for both her and hundreds of aspiring developers.
+  const categories = [
+    'Tech Support',
+    'Senior Care',
+    'Mental Health',
+    'Community Building',
+    'Emergency Response',
+    'Education',
+    'Home Repairs',
+    'Transportation'
+  ];
 
-Every evening after her demanding 10-hour workday, Sarah would log into Help Hub and spend 2-3 hours helping struggling computer science students and bootcamp graduates debug their code, understand complex algorithms, and navigate the overwhelming world of software development.
-
-Her most memorable case involved Marcus, a single father trying to transition from construction work to software development. Marcus was failing his coding bootcamp and was on the verge of dropping out, which would have meant losing his life savings and his chance at a better future for his young daughter.
-
-Sarah didn't just help Marcus fix his broken JavaScript functions. She became his mentor, spending countless hours walking him through fundamental programming concepts, sharing industry insights, and most importantly, believing in him when he had given up on himself. She created personalized coding challenges, reviewed his projects line by line, and even helped him prepare for technical interviews.
-
-Six months later, Marcus landed his first job as a junior developer at a respected tech company. His starting salary was three times what he made in construction. At his daughter's birthday party, he called Sarah to tell her that he had finally saved enough to move his family out of their one-bedroom apartment into a proper home.
-
-But the impact didn't stop there. Inspired by Sarah's dedication, Marcus began helping other career changers on Help Hub. Sarah's mentorship style created a ripple effect - each person she helped became a helper themselves, creating an ever-expanding network of support in the tech community.
-
-Today, Sarah has helped over 200 people break into tech, with a combined salary increase of over $8 million across all her mentees. She still codes every day, but now she says her greatest legacy isn't the software she builds at work - it's the careers she's helped launch and the dreams she's helped make real.`,
-      impact: "200+ careers launched",
-      timeInvested: "1,500+ hours",
-      rating: 4.9
-    },
-    {
-      id: 2,
-      title: "The Midnight Crisis Counselor",
-      helper: "Dr. James Rodriguez",
-      location: "Austin, TX",
-      category: "Mental Health",
-      image: "🧠",
-      summary: "A clinical psychologist who provided free emotional support during the pandemic's darkest hours.",
-      fullStory: `Dr. James Rodriguez had been a licensed clinical psychologist for over 15 years when the COVID-19 pandemic struck. Watching the mental health crisis unfold from his private practice, he knew he had to do something bigger than his traditional one-on-one sessions.
-
-He discovered Help Hub and began offering free crisis counseling sessions to anyone who needed them, particularly during late-night hours when traditional mental health services weren't available. What he didn't expect was the overwhelming response from people who had nowhere else to turn.
-
-One particular case still haunts and inspires him. It was 2:30 AM on a Tuesday when he received an urgent message from Emma, a 28-year-old nurse working in a COVID ICU. She had been working 16-hour shifts for months, watching patients die alone due to visitor restrictions. The isolation, stress, and trauma had pushed her to a breaking point.
-
-Emma's message was simple but heartbreaking: "I can't do this anymore. I'm sitting in my car outside the hospital and I don't think I can go home. I don't think I can go anywhere."
-
-Dr. Rodriguez immediately jumped on a video call with Emma. For the next four hours, sitting in his home office in his pajamas, he talked her through the worst night of her life. He didn't just provide crisis intervention - he helped her process the trauma she'd been carrying, taught her grounding techniques she could use during her shifts, and helped her understand that her feelings were a normal response to an abnormal situation.
-
-But that wasn't the end of their story. Dr. Rodriguez continued to meet with Emma weekly through Help Hub for the next eight months, helping her navigate PTSD symptoms and develop healthy coping mechanisms. He also connected her with other healthcare workers he was counseling, creating an informal support group that met virtually every Sunday.
-
-Emma not only recovered but found new purpose in her work. She became a peer counselor in her hospital, implementing mental health support programs for healthcare staff. She credits Dr. Rodriguez with saving not just her life, but her career and her ability to help save others.
-
-Word spread through healthcare networks about Dr. Rodriguez's availability on Help Hub. Soon, he was providing support to healthcare workers, teachers, essential workers, and isolated elderly people across the country. His calendar filled with people who couldn't afford therapy, lived in areas without mental health services, or simply needed someone to talk to at 3 AM when the anxiety felt overwhelming.
-
-During the pandemic's peak, Dr. Rodriguez was working 80+ hours a week between his practice and Help Hub. His wife jokes that she lost her husband to Help Hub, but she's incredibly proud of the impact he made. In two years, he conducted over 3,000 crisis interventions and provided ongoing support to more than 800 people.
-
-Today, Dr. Rodriguez has recruited 50 other mental health professionals to provide services through Help Hub. He's working on a book about pandemic mental health and continues to be available for crisis calls. He says the experience taught him that healing happens not in sterile offices, but in moments of genuine human connection, whenever and wherever they're needed most.`,
-      impact: "3,000+ crisis interventions",
-      timeInvested: "2,400+ hours",
-      rating: 5.0
-    },
-    {
-      id: 3,
-      title: "The Food Angel Network",
-      helper: "Maria Santos",
-      location: "Detroit, MI",
-      category: "Community Support",
-      image: "🍕",
-      summary: "A restaurant owner who organized massive food distribution networks during economic hardships.",
-      fullStory: `Maria Santos owned a small family restaurant in Detroit that barely survived the 2008 recession. When the pandemic hit in 2020, she watched her community - already struggling with poverty and food insecurity - face even greater hardships. Restaurants were closing, people were losing jobs, and families were going hungry.
-
-Instead of focusing solely on her own struggling business, Maria discovered Help Hub and began coordinating something unprecedented: a community-wide food distribution network that would feed thousands of families and keep dozens of local restaurants afloat.
-
-It started small. Maria noticed posts on Help Hub from families in her neighborhood who couldn't afford groceries. She began cooking extra meals and delivering them personally. But as word spread, the requests multiplied faster than she could handle alone.
-
-That's when Maria had a brilliant idea. She reached out to other struggling restaurant owners on Help Hub and proposed a collaboration: What if they pooled their resources, shared bulk purchasing power, and created a systematic approach to feeding their community while keeping their businesses alive?
-
-Within weeks, the "Food Angel Network" was born. Maria coordinated 15 local restaurants to prepare meals for families in need. Each restaurant specialized in what they did best - Mrs. Johnson's soul food kitchen made incredible mac and cheese and collard greens, the Martinez family's taqueria provided rice, beans, and fresh tortillas, and the Lebanese market contributed hummus, pita, and fresh vegetables.
-
-But Maria's real genius was in the logistics. She used Help Hub to organize volunteers who would pick up meals from participating restaurants and deliver them to families. She created a system where people could request specific dietary needs - halal, kosher, vegetarian, diabetic-friendly - and the network would accommodate them.
-
-The impact was immediate and profound. Families who hadn't had a proper meal in weeks suddenly had nutritious, culturally diverse food delivered to their doors. Children who had been going to bed hungry were getting three meals a day. Elderly people who were too afraid to leave their homes during the pandemic received not just food, but human connection from the volunteers who delivered it.
-
-One story that still brings tears to Maria's eyes involves the Thompson family. Robert Thompson had lost his job as an auto worker when the plant closed, and his wife Lisa was battling cancer. With three young children and mounting medical bills, they had been surviving on peanut butter sandwiches and whatever they could find at food pantries.
-
-When Maria's network began delivering meals to the Thompsons, it wasn't just about the food - though the kids' faces when they saw fresh fruit and homemade cookies were priceless. It was about dignity. Lisa didn't have to spend her limited energy standing in food pantry lines. Robert didn't have to choose between paying for his wife's medications and feeding his children.
-
-As Lisa went through chemotherapy, the Food Angel Network adapted. They brought easy-to-digest soups and teas. When she was too sick to care for the children, volunteers organized childcare. When Robert found temporary work but couldn't afford the gas to get there, the network helped with transportation.
-
-Lisa beat cancer, and Robert eventually found steady work again. But they never forgot what the community did for them. Today, the Thompsons coordinate the Food Angel Network's family outreach program, helping identify families in crisis and ensuring no one falls through the cracks.
-
-The Food Angel Network distributed over 500,000 meals during the pandemic. More importantly, it created a sustainable model that continues today. The participating restaurants now have a reliable customer base through meal deliveries, several have expanded their businesses, and the network has become a permanent safety net for the community.
-
-Maria's restaurant not only survived but thrived. The publicity from her Food Angel work brought in new customers who wanted to support a business that cared about the community. She now has three locations and employs 25 people, many of whom were previously served by her network.
-
-Maria says the pandemic taught her that her restaurant wasn't just about serving food - it was about nourishing her community. The Food Angel Network proved that when people work together, everyone can not only survive but thrive.`,
-      impact: "500,000+ meals distributed",
-      timeInvested: "3,000+ hours",
-      rating: 4.9
-    }
+  const helpTypes = [
+    'One-time Help',
+    'Ongoing Support',
+    'Emergency Response',
+    'Skill Sharing',
+    'Community Project'
   ];
 
   useEffect(() => {
@@ -179,23 +118,39 @@ Maria says the pandemic taught her that her restaurant wasn't just about serving
   }, []);
 
   const fetchHallOfFameData = async () => {
-    try {
-      setLoading(true);
-      
-      const [helpersResponse, statsResponse] = await Promise.all([
-        helpAPI.getHallOfFame(),
-        helpAPI.getStats()
-      ]);
-      
-      setTopHelpers(helpersResponse.data);
-      setStats(statsResponse.data);
-      setError('');
-    } catch (error) {
-      setError('Failed to fetch Hall of Fame data');
-    } finally {
-      setLoading(false);
+  try {
+    setLoading(true);
+    
+    const [helpersResponse, statsResponse, storiesResponse] = await Promise.all([
+      helpAPI.getHallOfFame(),
+      helpAPI.getStats(),
+      helpAPI.getInspiringStories()
+    ]);
+    
+    // DEBUG: Check what your API actually returns
+    console.log('Stories response:', storiesResponse);
+    console.log('Stories data:', storiesResponse.data);
+    
+    // Safe extraction - handle different response structures
+    let storiesArray = [];
+    if (Array.isArray(storiesResponse.data)) {
+      storiesArray = storiesResponse.data;
+    } else if (storiesResponse.data && Array.isArray(storiesResponse.data.data)) {
+      storiesArray = storiesResponse.data.data;
     }
-  };
+    
+    setTopHelpers(helpersResponse.data || []);
+    setStats(statsResponse.data || {});
+    setInspiringStories(storiesArray);
+    setError('');
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    setError('Failed to fetch Hall of Fame data');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // Button handlers
   const handleJoinHeroes = () => {
@@ -209,7 +164,7 @@ Maria says the pandemic taught her that her restaurant wasn't just about serving
   const handleStartJourney = () => {
     navigate('/onboarding');
   };
-
+  
   const handleShareStory = () => {
     if (navigator.share) {
       navigator.share({
@@ -230,6 +185,27 @@ Maria says the pandemic taught her that her restaurant wasn't just about serving
     setSelectedStory(story);
     setOpenStoryDialog(true);
   };
+
+  const handleSubmitStory = async () => {
+  try {
+    const response = await helpAPI.submitStory(storyData);
+    
+    alert('Story submitted successfully!');
+    setShowPostStoryModal(false);
+    setStoryData({ title: '', description: '', category: '', impact: '', helpType: [] });
+    
+    // Refresh stories list
+    fetchHallOfFameData(); // If using Option 1
+    // or trigger re-fetch in container component
+    
+  } catch (error) {
+    console.error('Error submitting story:', error);
+    alert('Error submitting story');
+  }
+};
+
+
+
 
   const getRankIcon = (index) => {
     switch (index) {
@@ -453,6 +429,33 @@ Maria says the pandemic taught her that her restaurant wasn't just about serving
                 >
                   Join Heroes
                 </Button>
+
+                {/* Post Your Story Button */}
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Create />}
+                  onClick={() => setShowPostStoryModal(true)}
+                  sx={{
+                    background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+                    '&:hover': {
+                      background:  'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)'
+
+                    }
+                  }}
+                >
+                  Post Your Story
+                </Button>
                 
                 <Button
                   variant="outlined"
@@ -500,311 +503,10 @@ Maria says the pandemic taught her that her restaurant wasn't just about serving
           )}
 
           {/* Platform Statistics */}
-          <Grow in timeout={800}>
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                p: 5, 
-                mb: 6, 
-                borderRadius: 4,
-                background: '#ffffff',
-                border: '1px solid rgba(25, 118, 210, 0.1)',
-                boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: '4px',
-                  background: 'linear-gradient(90deg, #1976d2 0%, #2196f3 50%, #1976d2 100%)',
-                }
-              }}
-            >
-              <Box textAlign="center" mb={4}>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: 800, 
-                    color: '#1e293b', 
-                    mb: 2,
-                  }}
-                >
-                  📊 Platform Impact
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748b', fontWeight: 400, mb: 2 }}>
-                  Real numbers, real impact in our community
-                </Typography>
-                <Button
-                  size="small"
-                  startIcon={<Timeline />}
-                  onClick={handleViewProgress}
-                  sx={{
-                    background: '#ffffff',
-                    color: '#1976d2',
-                    fontWeight: 500,
-                    fontSize: '0.8rem',
-                    px: 2,
-                    py: 1,
-                    borderRadius: 3,
-                    textTransform: 'none',
-                    border: '1px solid rgba(25, 118, 210, 0.2)',
-                    '&:hover': {
-                      background: '#f8fafc',
-                    }
-                  }}
-                >
-                  View My Impact
-                </Button>
-              </Box>
-              
-              <Grid container spacing={4}>
-                {[
-                  {
-                    icon: <Favorite sx={{ fontSize: 40, color: '#1976d2' }} />,
-                    value: stats.totalHelp || 0,
-                    label: 'Lives Touched',
-                    color: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                    accent: '#1976d2'
-                  },
-                  {
-                    icon: <Groups sx={{ fontSize: 40, color: '#1565c0' }} />,
-                    value: stats.totalHelpers || 0,
-                    label: 'Active Heroes',
-                    color: 'linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%)',
-                    accent: '#1565c0'
-                  },
-                  {
-                    icon: <Star sx={{ fontSize: 40, color: '#2196f3' }} />,
-                    value: (stats.averageRating || 0).toFixed(1),
-                    label: 'Community Love',
-                    color: 'linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%)',
-                    accent: '#2196f3'
-                  }
-                ].map((stat, index) => (
-                  <Grid item xs={12} md={4} key={index}>
-                    <Box 
-                      textAlign="center"
-                      sx={{
-                        p: 4,
-                        borderRadius: 4,
-                        background: stat.color,
-                        border: `2px solid ${stat.accent}20`,
-                        transition: 'all 0.3s ease-out',
-                        '&:hover': {
-                          transform: 'translateY(-4px)',
-                          boxShadow: `0 15px 30px ${stat.accent}20`,
-                        }
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: 80,
-                          height: 80,
-                          borderRadius: '50%',
-                          background: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          margin: '0 auto 20px auto',
-                          boxShadow: `0 8px 20px ${stat.accent}15`,
-                        }}
-                      >
-                        {stat.icon}
-                      </Box>
-                      <Typography 
-                        variant="h3" 
-                        sx={{ 
-                          fontWeight: 900, 
-                          color: '#1e293b', 
-                          mb: 1,
-                          fontSize: { xs: '2rem', md: '2.5rem' },
-                          lineHeight: 1,
-                        }}
-                      >
-                        {stat.value}
-                      </Typography>
-                      <Typography 
-                        variant="h6" 
-                        sx={{ 
-                          fontWeight: 600, 
-                          color: stat.accent,
-                          fontSize: '1rem',
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em'
-                        }}
-                      >
-                        {stat.label}
-                      </Typography>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </Paper>
-          </Grow>
-
+          <PlatformStats stats={stats} onViewProgress={handleViewProgress} />         
           {/* Inspiring Stories Section - Full Width Cards */}
-          <Grow in timeout={1000}>
-            <Paper 
-              elevation={0} 
-              sx={{ 
-                p: 5, 
-                mb: 6, 
-                borderRadius: 4,
-                background: '#ffffff',
-                border: '1px solid rgba(25, 118, 210, 0.1)',
-                boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
-              }}
-            >
-              <Box textAlign="center" mb={4}>
-                <Typography 
-                  variant="h4" 
-                  sx={{ 
-                    fontWeight: 800, 
-                    color: '#1e293b', 
-                    mb: 2,
-                  }}
-                >
-                  ✨ Stories That Inspire
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748b', mb: 3 }}>
-                  Real stories of extraordinary people doing extraordinary things
-                </Typography>
-              </Box>
-              
-              {/* Full Width Story Cards */}
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                {inspiringStories.map((story, index) => (
-                  <Grow in timeout={1200 + index * 200} key={story.id}>
-                    <Card 
-                      elevation={0}
-                      onClick={() => openStory(story)}
-                      sx={{ 
-                        borderRadius: 4,
-                        background: '#ffffff',
-                        border: '1px solid rgba(226, 232, 240, 0.8)',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease-out',
-                        '&:hover': { 
-                          boxShadow: '0 12px 30px rgba(25, 118, 210, 0.15)', 
-                          transform: 'translateY(-2px)',
-                          borderColor: 'rgba(25, 118, 210, 0.3)',
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ p: 4 }}>
-                        <Grid container spacing={4} alignItems="center">
-                          {/* Story Icon and Category */}
-                          <Grid item xs={12} md={2}>
-                            <Box textAlign="center">
-                              <Typography 
-                                variant="h1" 
-                                sx={{ 
-                                  mb: 2, 
-                                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                                  fontSize: '4rem'
-                                }}
-                              >
-                                {story.image}
-                              </Typography>
-                              <Chip
-                                label={story.category}
-                                size="small"
-                                sx={{
-                                  background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
-                                  color: 'white',
-                                  fontWeight: 500,
-                                  borderRadius: 2,
-                                }}
-                              />
-                            </Box>
-                          </Grid>
-                          
-                          {/* Story Content */}
-                          <Grid item xs={12} md={7}>
-                            <Typography 
-                              variant="h5" 
-                              sx={{ 
-                                fontWeight: 700, 
-                                color: '#1e293b',
-                                mb: 1,
-                              }}
-                            >
-                              {story.title}
-                            </Typography>
-                            
-                            <Typography 
-                              variant="subtitle1" 
-                              sx={{ 
-                                color: '#1976d2', 
-                                fontWeight: 600,
-                                mb: 2,
-                              }}
-                            >
-                              {story.helper} • {story.location}
-                            </Typography>
-                            
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
-                                color: '#64748b',
-                                lineHeight: 1.6,
-                                mb: 2,
-                              }}
-                            >
-                              {story.summary}
-                            </Typography>
-                            
-                            <Box display="flex" alignItems="center" gap={2}>
-                              <Box display="flex" alignItems="center">
-                                <Star sx={{ color: '#fbbf24', mr: 0.5, fontSize: 20 }} />
-                                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
-                                  {story.rating}
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2" sx={{ color: '#64748b' }}>
-                                {story.impact}
-                              </Typography>
-                            </Box>
-                          </Grid>
-                          
-                          {/* Read More Button */}
-                          <Grid item xs={12} md={3}>
-                            <Box textAlign="center">
-                              <Button
-                                variant="contained"
-                                endIcon={<ReadMore />}
-                                sx={{
-                                  background: '#ffffff',
-                                  color: '#1976d2',
-                                  fontWeight: 600,
-                                  px: 3,
-                                  py: 1.5,
-                                  borderRadius: 3,
-                                  textTransform: 'none',
-                                  border: '1px solid rgba(25, 118, 210, 0.2)',
-                                  boxShadow: '0 2px 8px rgba(25, 118, 210, 0.1)',
-                                  '&:hover': {
-                                    background: '#f8fafc',
-                                    transform: 'translateY(-1px)',
-                                  }
-                                }}
-                              >
-                                Read Full Story
-                              </Button>
-                            </Box>
-                          </Grid>
-                        </Grid>
-                      </CardContent>
-                    </Card>
-                  </Grow>
-                ))}
-              </Box>
-            </Paper>
-          </Grow>
+          <InspiringStories stories={inspiringStories} onStoryClick={openStory} />
+
 
           {/* Top Helpers Section */}
           {topHelpers.length === 0 ? (
@@ -1164,6 +866,160 @@ Maria says the pandemic taught her that her restaurant wasn't just about serving
             </Paper>
           </Box>
         </Container>
+
+        {/* Post Story Modal */}
+        <Modal 
+          open={showPostStoryModal} 
+          onClose={() => setShowPostStoryModal(false)}
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Box sx={{
+            position: 'relative',
+            width: { xs: '90%', md: 600 },
+            bgcolor: 'background.paper',
+            borderRadius: 4,
+            boxShadow: '0 20px 60px rgba(25, 118, 210, 0.2)',
+            p: 4,
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              mb: 3 
+            }}>
+              <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                Share Your Hero Story ✨
+              </Typography>
+              <IconButton 
+                onClick={() => setShowPostStoryModal(false)}
+                sx={{
+                  background: 'rgba(25, 118, 210, 0.1)',
+                  color: '#1976d2',
+                  '&:hover': {
+                    background: 'rgba(25, 118, 210, 0.2)',
+                  }
+                }}
+              >
+                <Close />
+              </IconButton>
+            </Box>
+
+            <Typography variant="body1" color="textSecondary" sx={{ mb: 4 }}>
+              Inspire others by sharing how you made a difference in someone's life
+            </Typography>
+
+            <TextField
+              fullWidth
+              label="Story Title"
+              placeholder="e.g., 'The Late-Night Coding Mentor'"
+              value={storyData.title}
+              onChange={(e) => setStoryData({...storyData, title: e.target.value})}
+              sx={{ mb: 3 }}
+            />
+
+            <TextField
+              fullWidth
+              multiline
+              rows={4}
+              label="Your Story"
+              placeholder="Tell us about the help you provided and its impact..."
+              value={storyData.description}
+              onChange={(e) => setStoryData({...storyData, description: e.target.value})}
+              sx={{ mb: 3 }}
+            />
+
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel>Category</InputLabel>
+                  <Select 
+                    label="Category"
+                    value={storyData.category}
+                    onChange={(e) => setStoryData({...storyData, category: e.target.value})}
+                  >
+                    {categories.map(cat => (
+                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Impact Achieved"
+                  placeholder="e.g., '50+ students helped'"
+                  value={storyData.impact}
+                  onChange={(e) => setStoryData({...storyData, impact: e.target.value})}
+                />
+              </Grid>
+            </Grid>
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
+                Type of Help
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {helpTypes.map(type => (
+                  <Chip
+                    key={type}
+                    label={type}
+                    clickable
+                    color={storyData.helpType.includes(type) ? 'primary' : 'default'}
+                    onClick={() => {
+                      const newTypes = storyData.helpType.includes(type)
+                        ? storyData.helpType.filter(t => t !== type)
+                        : [...storyData.helpType, type];
+                      setStoryData({...storyData, helpType: newTypes});
+                    }}
+                    sx={{ mb: 1 }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 4 }}>
+              <Button 
+                variant="outlined" 
+                onClick={() => setShowPostStoryModal(false)}
+                sx={{ 
+                  borderRadius: 3, 
+                  textTransform: 'none', 
+                  px: 3,
+                  borderColor: '#1976d2',
+                  color: '#1976d2'
+                }}
+              >
+                Cancel
+              </Button>
+              <Button 
+  variant="contained" 
+  onClick={handleSubmitStory}
+  disabled={!storyData.title || !storyData.description}
+  sx={{ 
+    borderRadius: 3, 
+    textTransform: 'none', 
+    px: 3,
+    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
+    '&:hover': {
+      background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+    }
+  }}
+>
+  Submit Story
+</Button>
+
+
+            </Box>
+          </Box>
+        </Modal>
 
         {/* Story Dialog */}
         <Dialog

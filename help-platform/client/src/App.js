@@ -14,6 +14,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import RequestList from './components/requests/RequestList';
 import CreateRequest from './components/requests/CreateRequest';
+import MyRequests from './components/requests/Myrequests';
 import HallOfFame from './components/hallOfFame/HallOfFame';
 import HomePage from './components/home/HomePage';
 import Leaderboard from './components/requests/LeaderBoard';
@@ -107,28 +108,6 @@ const theme = createTheme({
         },
       },
     },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          borderRadius: 16,
-          boxShadow:
-            '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        },
-      },
-    },
-    MuiTextField: {
-      styleOverrides: {
-        root: {
-          '& .MuiOutlinedInput-root': {
-            borderRadius: 8,
-            '&:hover fieldset': { borderColor: '#4f86ff' },
-          },
-        },
-      },
-    },
-    MuiChip: {
-      styleOverrides: { root: { borderRadius: 16, fontWeight: 500 } },
-    },
   },
 });
 
@@ -142,8 +121,10 @@ function App() {
             <Routes>
               {/* Public redirect to Home */}
               <Route path="/" element={<Navigate to="/home" replace />} />
+              
               {/* Public Home */}
               <Route path="/home" element={<HomePage />} />
+              
               {/* Public Auth */}
               <Route
                 path="/login"
@@ -191,6 +172,29 @@ function App() {
                       <Header />
                       <Box component="main" sx={{ flexGrow: 1 }}>
                         <RequestList />
+                      </Box>
+                    </Box>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected: My Requests */}
+              <Route
+                path="/my-requests"
+                element={
+                  <ProtectedRoute>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: '100vh',
+                        background:
+                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                      }}
+                    >
+                      <Header />
+                      <Box component="main" sx={{ flexGrow: 1 }}>
+                        <MyRequests />
                       </Box>
                     </Box>
                   </ProtectedRoute>

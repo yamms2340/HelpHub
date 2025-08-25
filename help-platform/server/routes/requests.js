@@ -1,134 +1,123 @@
 const express = require('express');
+const router = express.Router();
 const HelpRequest = require('../models/HelpRequest');
-const Help = require('../models/Help');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
-const router = express.Router();
-
-// Create help request
+// ✅ Step 1: Create request (status: "Open")
 router.post('/', auth, async (req, res) => {
   try {
     const { title, description, category, urgency, location } = req.body;
-
-    const helpRequest = new HelpRequest({
+    
+    const newRequest = new HelpRequest({
       title,
       description,
       category,
       urgency,
       location,
-      requester: req.user._id
+      requester: req.user.id,
+      status: 'Open'
     });
-
-    await helpRequest.save();
-    await helpRequest.populate('requester', 'name email');
-
-    res.status(201).json(helpRequest);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// In your requests.js route file, update the GET route:
-
-// Get all help requests
-router.get('/', async (req, res) => {
-  try {
-    const { category, urgency, status = 'Open' } = req.query;
     
-    let filter = {};
-    if (status) filter.status = status;
-    if (category) filter.category = category;
-    if (urgency) filter.urgency = urgency;
-
-    const requests = await HelpRequest.find(filter)
-      .populate('requester', 'name email')  // Make sure User model exists
-      .populate('acceptedBy', 'name email') // Make sure this is correct
-      .sort({ createdAt: -1 });
-
-    console.log('📊 Found requests:', requests.length); // Debug log
-    console.log('📋 Requests data:', requests); // Debug log
-
-    res.json(requests);
+    const savedRequest = await newRequest.save();
+    await savedRequest.populate('requester', 'name email');
+    
+    res.status(201).json(savedRequest);
   } catch (error) {
-    console.error('❌ API Error:', error); // Debug log
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Create request error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-
-// Accept help request
-router.put('/:id/accept', auth, async (req, res) => {
+// ✅ Step 2: User offers help → automatically accepted (status: "In Progress")
+router.put('/:id/offer-help', auth, async (req, res) => {
   try {
     const request = await HelpRequest.findById(req.params.id);
     
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
-
+    
     if (request.status !== 'Open') {
-      return res.status(400).json({ message: 'Request is not available' });
+      return res.status(400).json({ message: 'Request is no longer available' });
     }
-
-    if (request.requester.toString() === req.user._id.toString()) {
-      return res.status(400).json({ message: 'Cannot accept your own request' });
-    }
-
+    
+    // ✅ Directly accept helper and change status to "In Progress"
     request.status = 'In Progress';
-    request.acceptedBy = req.user._id;
+    request.acceptedBy = req.user.id;
+    request.acceptedAt = new Date();
+    
     await request.save();
-
     await request.populate(['requester', 'acceptedBy'], 'name email');
-
+    
     res.json(request);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Offer help error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 });
-
-// Complete help request
-router.put('/:id/complete', auth, async (req, res) => {
+router.put('/:id/confirm', auth, async (req, res) => {
   try {
-    const { rating, feedback } = req.body;
+    const { rating, feedback, completedEarly } = req.body;
     const request = await HelpRequest.findById(req.params.id);
     
     if (!request) {
       return res.status(404).json({ message: 'Request not found' });
     }
-
-    if (request.requester.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized' });
+    
+    // Only requester can confirm
+    if (request.requester.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Only the requester can confirm completion' });
     }
-
+    
     if (request.status !== 'In Progress') {
       return res.status(400).json({ message: 'Request is not in progress' });
     }
-
-    // Update request
+    
+    // ✅ Calculate points
+    let points = 10; // base points
+    if (completedEarly) points += 5;
+    if (feedback && feedback.length > 50) points += 3;
+    
+    // ✅ Mark as completed
     request.status = 'Completed';
     request.completedAt = new Date();
+    request.rating = rating || 5;
+    request.feedback = feedback || '';
+    request.pointsAwarded = points;
+    
     await request.save();
-
-    // Create help record
-    const help = new Help({
-      request: request._id,
-      helper: request.acceptedBy,
-      requester: request.requester,
-      rating,
-      feedback
+    
+    // ✅ Award points to helper
+    await User.findByIdAndUpdate(request.acceptedBy, { 
+      $inc: { points: points } 
     });
-    await help.save();
-
-    // Update helper's stats
-    const helper = await User.findById(request.acceptedBy);
-    helper.helpCount += 1;
-    helper.totalRatings += rating;
-    helper.rating = helper.totalRatings / helper.helpCount;
-    await helper.save();
-
-    res.json({ message: 'Request completed successfully' });
+    
+    await request.populate(['requester', 'acceptedBy'], 'name email points');
+    
+    res.json({ 
+      message: 'Request completed and points awarded!',
+      request,
+      points
+    });
+    
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Confirm completion error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all requests
+router.get('/', async (req, res) => {
+  try {
+    const requests = await HelpRequest.find()
+      .populate('requester', 'name email')
+      .populate('acceptedBy', 'name email')
+      .sort({ createdAt: -1 });
+    
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
 });
 

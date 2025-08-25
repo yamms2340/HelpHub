@@ -54,40 +54,27 @@ export const authAPI = {
   getCurrentUser: () => api.get('/auth/me'),
   logout: () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    localStorage.removeUser('user');
     return Promise.resolve();
   }
 };
 
 // Help requests API calls
+// In your api.js file
 export const requestsAPI = {
-  // Create a new help request
+  // Create new request
   createRequest: (requestData) => api.post('/requests', requestData),
   
-  // Get all help requests with optional filtering
+  // Get all requests
   getAllRequests: (params = {}) => api.get('/requests', { params }),
   
-  // Get a specific request by ID
-  getRequest: (id) => api.get(`/requests/${id}`),
+  // ✅ Offer help (automatically accepts)
+  offerHelp: (id) => api.put(`/requests/${id}/offer-help`),
   
-  // Accept a help request
-  acceptRequest: (id) => api.put(`/requests/${id}/accept`),
-  
-  // Complete a help request with rating and feedback
-  completeRequest: (id, completionData) => api.put(`/requests/${id}/complete`, completionData),
-  
-  // Update a request (for status changes, etc.)
-  updateRequest: (id, updateData) => api.put(`/requests/${id}`, updateData),
-  
-  // Delete a request
-  deleteRequest: (id) => api.delete(`/requests/${id}`),
-  
-  // Get requests by user ID
-  getUserRequests: (userId) => api.get(`/requests/user/${userId}`),
-  
-  // Get requests accepted by user (helper)
-  getAcceptedRequests: (userId) => api.get(`/requests/accepted/${userId}`)
+  // ✅ Requester confirms completion (awards points)
+  confirmCompletion: (id, confirmationData) => api.put(`/requests/${id}/confirm`, confirmationData),
 };
+
 
 // Hall of Fame API calls
 export const helpAPI = {

@@ -1,4 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
+import {
+  Add,
+  LocationOn,
+  AccessTime,
+  Category,
+  Edit,
+  CheckCircle,
+  Star,
+} from '@mui/icons-material';
+
 import {
   Container,
   Typography,
@@ -11,17 +21,20 @@ import {
   Alert,
   CardActions,
   Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Rating,
 } from '@mui/material';
-import {
-  Add,
-  LocationOn,
-  AccessTime,
-  Category,
-} from '@mui/icons-material';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequests } from './RequestContext';
 import { useNavigate } from 'react-router-dom';
+import { requestsAPI } from '../../services/api';
 
+// ✅ Simplified status colors (3 states only)
 const statusColors = {
   Open: '#4f86ff',
   'In Progress': '#f59e0b',
@@ -37,12 +50,24 @@ const urgencyColors = {
 
 function MyRequests() {
   const { user } = useAuth();
-  const { requests } = useRequests();
+  const { requests, fetchRequests } = useRequests();
   const navigate = useNavigate();
+  
+  const [ratingModal, setRatingModal] = useState({
+    open: false,
+    requestId: null,
+    rating: 5,
+    feedback: '',
+  });
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
   
   // Filter requests to show only current user's requests
   const myRequests = requests.filter(request => 
-    request.requester?._id === user?.id || 
+    request.requester?._id === user?._id || 
+    request.requester?.id === user?._id ||
+    request.requester === user?._id ||
+    request.requester?._id === user?.id ||
     request.requester?.id === user?.id ||
     request.requester === user?.id
   );
@@ -55,6 +80,78 @@ function MyRequests() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // ✅ Simplified: Requester confirms completion (marks as "Completed" + awards points)
+  const handleConfirmCompletion = async (requestId) => {
+    try {
+      const confirmationData = {
+        rating: 5,
+        feedback: '',
+        completedEarly: false
+      };
+
+      const response = await requestsAPI.confirmCompletion(requestId, confirmationData);
+      
+      if (response.data) {
+        setSuccess(`✅ Request completed! Helper earned ${response.data.points} points!`);
+        
+        // Refresh requests to show "Completed" status everywhere
+        if (fetchRequests) {
+          await fetchRequests();
+        } else {
+          // Fallback: refresh page to show updated status
+          setTimeout(() => window.location.reload(), 1000);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Confirmation error:', error);
+      setError('Failed to confirm completion');
+    }
+  };
+
+  // Handle optional rating
+  const handleAddRating = (requestId) => {
+    setRatingModal({
+      open: true,
+      requestId,
+      rating: 5,
+      feedback: '',
+    });
+  };
+
+  // Submit optional rating
+  const submitRating = async () => {
+    try {
+      const ratingData = {
+        rating: ratingModal.rating,
+        feedback: ratingModal.feedback
+      };
+
+      const response = await fetch(`/api/requests/${ratingModal.requestId}/complete`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(ratingData)
+      });
+
+      if (response.ok) {
+        setSuccess('✅ Rating submitted! Thank you for your feedback.');
+        setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' });
+        
+        if (fetchRequests) {
+          await fetchRequests();
+        }
+      } else {
+        const errorData = await response.json();
+        setError(`Failed: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('❌ Rating error:', error);
+      setError('Failed to submit rating');
+    }
   };
 
   if (myRequests.length === 0) {
@@ -141,6 +238,27 @@ function MyRequests() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* Success/Error Alerts */}
+      {success && (
+        <Alert 
+          severity="success" 
+          sx={{ mb: 3, borderRadius: 2 }}
+          onClose={() => setSuccess('')}
+        >
+          {success}
+        </Alert>
+      )}
+      
+      {error && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 3, borderRadius: 2 }}
+          onClose={() => setError('')}
+        >
+          {error}
+        </Alert>
+      )}
+
       {/* Header */}
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         <Typography 
@@ -165,7 +283,7 @@ function MyRequests() {
           You have <strong>{myRequests.length}</strong> request{myRequests.length !== 1 ? 's' : ''}
         </Typography>
         
-        {/* Summary Cards */}
+        {/* ✅ Simplified Summary Cards (3 states only) */}
         <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
           <Grid item xs={12} sm={4}>
             <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3 }}>
@@ -288,7 +406,7 @@ function MyRequests() {
                 </Box>
                 
                 {/* Helper Info */}
-                {request.acceptedBy && (
+                {request.status === 'In Progress' && request.acceptedBy && (
                   <Box sx={{ 
                     mt: 2, 
                     p: 2, 
@@ -301,21 +419,146 @@ function MyRequests() {
                     </Typography>
                   </Box>
                 )}
+
+                {/* Show Points if Completed */}
+                {request.status === 'Completed' && request.pointsAwarded && (
+                  <Box sx={{ 
+                    mt: 2, 
+                    p: 2, 
+                    backgroundColor: '#f0fdf4',
+                    borderRadius: 2,
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <Typography variant="body2" sx={{ color: '#166534', fontWeight: 600 }}>
+                      🎯 Helper earned {request.pointsAwarded} points!
+                    </Typography>
+                  </Box>
+                )}
+
+                {/* Show Rating if Completed and Already Rated */}
+                {request.status === 'Completed' && request.rating && (
+                  <Box sx={{ 
+                    mt: 2, 
+                    p: 2, 
+                    backgroundColor: '#f0fdf4',
+                    borderRadius: 2,
+                    border: '1px solid #bbf7d0'
+                  }}>
+                    <Typography variant="body2" sx={{ color: '#166534', fontWeight: 600, mb: 1 }}>
+                      ⭐ Your Rating:
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Rating value={request.rating} size="small" readOnly />
+                      <Typography variant="body2" color="textSecondary">
+                        ({request.rating}/5)
+                      </Typography>
+                    </Box>
+                    {request.feedback && (
+                      <Typography variant="body2" sx={{ color: '#166534', mt: 1, fontStyle: 'italic' }}>
+                        "{request.feedback}"
+                      </Typography>
+                    )}
+                  </Box>
+                )}
               </CardContent>
               
-              <CardActions sx={{ p: 3, pt: 0, justifyContent: 'space-between' }}>
-                <Button 
-                  size="small" 
-                  onClick={() => navigate('/dashboard')}
-                  sx={{ color: '#64748b' }}
-                >
-                  View All Requests
-                </Button>
+              <CardActions sx={{ p: 3, pt: 0, flexDirection: 'column', gap: 2 }}>
+                {/* Status Info Row */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                  <Button 
+                    size="small" 
+                    onClick={() => navigate('/')}
+                    sx={{ color: '#64748b' }}
+                  >
+                    View All Requests
+                  </Button>
+                  
+                  {request.status === 'Open' && (
+                    <Typography variant="body2" sx={{ color: '#10b981', fontWeight: 500 }}>
+                      ✓ Available for help
+                    </Typography>
+                  )}
+                  
+                  {request.status === 'In Progress' && (
+                    <Typography variant="body2" sx={{ color: '#f59e0b', fontWeight: 500 }}>
+                      🔄 Helper is working
+                    </Typography>
+                  )}
+                  
+                  {request.status === 'Completed' && (
+                    <Typography variant="body2" sx={{ color: '#10b981', fontWeight: 500 }}>
+                      ✅ Completed
+                    </Typography>
+                  )}
+                </Box>
+
+                {/* ✅ Simplified Action Buttons (3 states only) */}
                 
+                {/* Open - Can edit request */}
                 {request.status === 'Open' && (
-                  <Typography variant="body2" sx={{ color: '#10b981', fontWeight: 500 }}>
-                    ✓ Available for help
-                  </Typography>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    startIcon={<Edit />}
+                    onClick={() => navigate(`/edit-request/${request._id}`)}
+                    sx={{
+                      color: '#4f86ff',
+                      borderColor: '#4f86ff',
+                      '&:hover': {
+                        background: 'rgba(79, 134, 255, 0.1)',
+                        borderColor: '#3b82f6',
+                      }
+                    }}
+                  >
+                    Edit Request
+                  </Button>
+                )}
+
+                {/* In Progress - Confirm completion button */}
+                {request.status === 'In Progress' && (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<CheckCircle />}
+                    onClick={() => handleConfirmCompletion(request._id)}
+                    sx={{
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white',
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      py: 1.5,
+                      borderRadius: 3,
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                      }
+                    }}
+                  >
+                    Confirm Completion & Award Points
+                  </Button>
+                )}
+
+                {/* Completed - Optional Rating */}
+                {request.status === 'Completed' && !request.rating && (
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    startIcon={<Star />}
+                    onClick={() => handleAddRating(request._id || request.id)}
+                    sx={{
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      color: 'white',
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      py: 1.5,
+                      borderRadius: 3,
+                      '&:hover': {
+                        background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                        transform: 'translateY(-1px)',
+                      }
+                    }}
+                  >
+                    Rate Helper (Optional)
+                  </Button>
                 )}
               </CardActions>
             </Card>
@@ -349,6 +592,93 @@ function MyRequests() {
           Create Another Request
         </Button>
       </Box>
+
+      {/* Rating Modal (Optional) */}
+      <Dialog 
+        open={ratingModal.open} 
+        onClose={() => setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' })} 
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            p: 1
+          }
+        }}
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Star sx={{ color: '#f59e0b' }} />
+            <Typography variant="h6" fontWeight={700}>
+              Rate Your Helper
+            </Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ py: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              How was your experience with the helper? Your feedback helps build a better community.
+            </Typography>
+            
+            <Box>
+              <Typography variant="subtitle1" gutterBottom fontWeight={600}>
+                Rating:
+              </Typography>
+              <Rating
+                value={ratingModal.rating}
+                onChange={(event, newValue) => 
+                  setRatingModal({...ratingModal, rating: newValue || 5})
+                }
+                size="large"
+                sx={{ mb: 1 }}
+              />
+              <Typography variant="body2" color="textSecondary">
+                Rate the helper's performance (1-5 stars)
+              </Typography>
+            </Box>
+            
+            <TextField
+              fullWidth
+              multiline
+              rows={3}
+              label="Feedback (optional)"
+              value={ratingModal.feedback}
+              onChange={(e) => setRatingModal({...ratingModal, feedback: e.target.value})}
+              placeholder="Share your experience with the helper..."
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 2,
+                }
+              }}
+            />
+          </Box>
+        </DialogContent>
+        
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button 
+            onClick={() => setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' })}
+            sx={{ mr: 1 }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={submitRating} 
+            variant="contained"
+            startIcon={<Star />}
+            sx={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              fontWeight: 600,
+              px: 3,
+              '&:hover': {
+                background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+              }
+            }}
+          >
+            Submit Rating
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

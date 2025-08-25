@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Container,
   Typography,
-  Grid,
   Card,
   CardContent,
   CardActions,
@@ -16,26 +15,12 @@ import {
   Alert,
   CircularProgress,
   Paper,
-  Link,
-  IconButton,
-  Divider,
-  TextField,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Rating,
 } from '@mui/material';
 import {
   LocationOnOutlined,
   PersonOutlined,
   AccessTimeOutlined,
   CategoryOutlined,
-  HandshakeOutlined,
   CheckCircleOutlined,
   HourglassEmptyOutlined,
   ComputerOutlined,
@@ -49,30 +34,15 @@ import {
   ArrowForwardOutlined,
   ExpandMoreOutlined,
   ExpandLessOutlined,
-  Facebook,
-  Twitter,
-  LinkedIn,
-  Instagram,
-  GitHub,
-  Email,
-  Phone,
-  LocationOn,
-  Favorite,
-  Send,
   Help,
-  Security,
-  Group,
-  EmojiEvents,
-  VolunteerActivism,
   Star,
-  Create,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequests } from './RequestContext';
 import { requestsAPI } from '../../services/api';
 
-// Blue and white color palette - professional theme
+// Blue and white color palette
 const blueShades = [
   {
     primary: '#1976d2',
@@ -113,33 +83,35 @@ const blueShades = [
 ];
 
 const urgencyColors = {
-  Low: '#1976d2',
-  Medium: '#1565c0', 
-  High: '#0d47a1',
-  Critical: '#0c2461'
+  Low: '#4f86ff',
+  Medium: '#f59e0b', 
+  High: '#ef4444',
+  Critical: '#dc2626'
 };
 
+// ✅ Simplified status colors (3 states only)
 const statusColors = {
-  Open: '#1976d2',
-  'In Progress': '#1565c0',
-  Completed: '#0d47a1'
+  Open: '#4f86ff',
+  'In Progress': '#f59e0b',
+  Completed: '#10b981'
 };
 
 const categoryConfig = {
-  Technology: { icon: ComputerOutlined, color: '#1976d2' },
+  Technology: { icon: ComputerOutlined, color: '#4f86ff' },
   Education: { icon: SchoolOutlined, color: '#1565c0' }, 
   Transportation: { icon: DirectionsCarOutlined, color: '#2196f3' },
   Food: { icon: RestaurantOutlined, color: '#1e88e5' },
   Health: { icon: LocalHospitalOutlined, color: '#42a5f5' },
   Household: { icon: HomeOutlined, color: '#0d47a1' },
-  Other: { icon: HelpOutlineOutlined, color: '#1976d2' }
+  Other: { icon: HelpOutlineOutlined, color: '#4f86ff' }
 };
 
 function RequestList() {
-  const { requests: allRequests, getFilteredRequests, updateRequest, completeRequest } = useRequests();
+  const { requests: allRequests, getFilteredRequests, fetchRequests } = useRequests();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [filters, setFilters] = useState({
     category: 'All',
     urgency: 'All', 
@@ -148,16 +120,6 @@ function RequestList() {
   const [displayCount, setDisplayCount] = useState(6);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingLess, setLoadingLess] = useState(false);
-  const [email, setEmail] = useState('');
-  
-  // Completion modal state
-  const [completionModal, setCompletionModal] = useState({
-    open: false,
-    requestId: null,
-    rating: 5,
-    feedback: '',
-    completedEarly: false
-  });
   
   const INITIAL_DISPLAY_COUNT = 6;
   const { user, isAuthenticated } = useAuth();
@@ -169,84 +131,35 @@ function RequestList() {
   }, [filters, allRequests]);
 
   const applyFilters = () => {
-    // Get filtered requests and exclude user's own requests
     const filteredRequests = getFilteredRequests(filters);
-    const requestsExcludingMine = filteredRequests.filter(request => 
-      request.requester._id !== (user?.id || 'current-user-id')
-    );
+    const requestsExcludingMine = filteredRequests.filter(request => {
+      const requesterId = request.requester?._id || request.requester?.id || request.requester;
+      const currentUserId = user?._id || user?.id;
+      return requesterId !== currentUserId;
+    });
     setRequests(requestsExcludingMine);
   };
 
-  const handleAcceptRequest = async (requestId) => {
+  // ✅ Simplified: Offer Help (automatically accepts)
+  const handleOfferHelp = async (requestId) => {
     if (!isAuthenticated) {
       setError('Please log in to help others');
       return;
     }
 
     try {
-      setError('');
-      
-      // Update request status
-      updateRequest(requestId, {
-        status: 'In Progress',
-        acceptedBy: { 
-          id: user?.id || 'current-user-id',
-          name: user?.name || 'Helper' 
-        },
-        acceptedAt: new Date().toISOString()
-      });
-      
-      setError('Request accepted successfully! 🎉 You can now help this person.');
-      
-    } catch (error) {
-      setError('Failed to accept request');
-    }
-  };
-
-  const handleCompleteRequest = (requestId) => {
-    setCompletionModal({
-      open: true,
-      requestId,
-      rating: 5,
-      feedback: '',
-      completedEarly: false
-    });
-  };
-
-  const submitCompletion = () => {
-    try {
-      const completionData = {
-        rating: completionModal.rating,
-        feedback: completionModal.feedback,
-        completedEarly: completionModal.completedEarly,
-        excellentFeedback: completionModal.feedback.length > 50
-      };
-
-      const result = completeRequest(
-        completionModal.requestId, 
-        completionData, 
-        user?.id || 'current-user-id'
-      );
-
-      let message = `🎉 Request completed! You earned ${result.points} points!`;
-      
-      if (result.badges.length > 0) {
-        const badgeNames = result.badges.map(b => b.name).join(', ');
-        const badgePoints = result.badges.reduce((total, badge) => total + badge.points, 0);
-        message += ` \n🏆 New badges earned: ${badgeNames} (+${badgePoints} bonus points!)`;
+      await requestsAPI.offerHelp(requestId);
+      setSuccess('✅ Help accepted! You can now start working on this request.');
+      if (fetchRequests) {
+        await fetchRequests();
       }
-
-      setError(message);
-      setCompletionModal({ open: false, requestId: null, rating: 5, feedback: '', completedEarly: false });
-      
     } catch (error) {
-      setError('Failed to complete request');
+      setError('Failed to offer help');
     }
   };
 
   const handleViewMore = () => {
     setLoadingMore(true);
-    
     setTimeout(() => {
       setDisplayCount(prev => prev + 6);
       setLoadingMore(false);
@@ -255,7 +168,6 @@ function RequestList() {
 
   const handleViewLess = () => {
     setLoadingLess(true);
-    
     setTimeout(() => {
       setDisplayCount(INITIAL_DISPLAY_COUNT);
       setLoadingLess(false);
@@ -265,12 +177,6 @@ function RequestList() {
         requestsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 500);
-  };
-
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    console.log('Newsletter subscription:', email);
-    setEmail('');
   };
 
   const formatDate = (dateString) => {
@@ -296,37 +202,6 @@ function RequestList() {
   const hasMoreRequests = displayCount < requests.length;
   const canViewLess = displayCount > INITIAL_DISPLAY_COUNT;
 
-  // Footer data
-  const quickLinks = [
-    { label: 'Help Requests', path: '/', icon: Group },
-    { label: 'My Requests', path: '/my-requests', icon: Create },
-    { label: 'Hall of Fame', path: '/hall-of-fame', icon: EmojiEvents },
-    { label: 'Create Request', path: '/create-request', icon: VolunteerActivism },
-    { label: 'About Us', path: '/about', icon: Help },
-  ];
-
-  const supportLinks = [
-    { label: 'Help Center', path: '/help' },
-    { label: 'Contact Support', path: '/support' },
-    { label: 'Community Guidelines', path: '/guidelines' },
-    { label: 'Safety Tips', path: '/safety' },
-  ];
-
-  const legalLinks = [
-    { label: 'Privacy Policy', path: '/privacy' },
-    { label: 'Terms of Service', path: '/terms' },
-    { label: 'Cookie Policy', path: '/cookies' },
-    { label: 'Accessibility', path: '/accessibility' },
-  ];
-
-  const socialLinks = [
-    { icon: Facebook, url: 'https://facebook.com/helphub', label: 'Facebook' },
-    { icon: Twitter, url: 'https://twitter.com/helphub', label: 'Twitter' },
-    { icon: LinkedIn, url: 'https://linkedin.com/company/helphub', label: 'LinkedIn' },
-    { icon: Instagram, url: 'https://instagram.com/helphub', label: 'Instagram' },
-    { icon: GitHub, url: 'https://github.com/helphub', label: 'GitHub' },
-  ];
-
   if (loading) {
     return (
       <Box
@@ -345,12 +220,12 @@ function RequestList() {
             borderRadius: '24px',
             textAlign: 'center',
             background: '#ffffff',
-            boxShadow: '0 10px 25px rgba(25, 118, 210, 0.1)',
-            border: '1px solid rgba(25, 118, 210, 0.1)',
+            boxShadow: '0 10px 25px rgba(79, 134, 255, 0.1)',
+            border: '1px solid rgba(79, 134, 255, 0.1)',
           }}
         >
-          <CircularProgress size={40} sx={{ mb: 2, color: '#1976d2' }} />
-          <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', color: '#1e293b', fontWeight: 600 }}>
+          <CircularProgress size={40} sx={{ mb: 2, color: '#4f86ff' }} />
+          <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600 }}>
             Loading Help Requests...
           </Typography>
         </Paper>
@@ -372,19 +247,17 @@ function RequestList() {
               variant="h3" 
               component="h1" 
               sx={{ 
-                fontFamily: 'Inter, sans-serif',
                 fontWeight: 800,
                 color: '#1e293b',
                 mb: 2,
                 fontSize: { xs: '2rem', md: '2.5rem' },
               }}
             >
-              Community Help <span style={{ color: '#1976d2' }}>Requests</span>
+              Community Help <span style={{ color: '#4f86ff' }}>Requests</span>
             </Typography>
             <Typography 
               variant="h6" 
               sx={{ 
-                fontFamily: 'Inter, sans-serif',
                 color: '#64748b',
                 fontWeight: 500,
                 maxWidth: '500px',
@@ -395,7 +268,6 @@ function RequestList() {
               Connect with your community and make a meaningful difference
             </Typography>
             
-            {/* Info about excluding own requests */}
             <Box sx={{ mt: 3 }}>
               <Chip
                 icon={<Help />}
@@ -411,18 +283,31 @@ function RequestList() {
             </Box>
           </Box>
 
-          {/* Error/Success Alert */}
-          {error && (
+          {/* Success/Error Alerts */}
+          {success && (
             <Alert 
-              severity={error.includes('successfully') || error.includes('earned') || error.includes('badges') ? 'success' : 'error'}
+              severity="success"
               sx={{ 
                 mb: 3, 
                 borderRadius: '16px',
-                fontFamily: 'Inter, sans-serif',
                 border: 'none',
-                boxShadow: error.includes('successfully') || error.includes('earned') || error.includes('badges')
-                  ? '0 8px 25px rgba(76, 175, 80, 0.15)' 
-                  : '0 8px 25px rgba(211, 47, 47, 0.15)',
+                boxShadow: '0 8px 25px rgba(76, 175, 80, 0.15)',
+                whiteSpace: 'pre-line'
+              }}
+              onClose={() => setSuccess('')}
+            >
+              {success}
+            </Alert>
+          )}
+
+          {error && (
+            <Alert 
+              severity="error"
+              sx={{ 
+                mb: 3, 
+                borderRadius: '16px',
+                border: 'none',
+                boxShadow: '0 8px 25px rgba(211, 47, 47, 0.15)',
                 whiteSpace: 'pre-line'
               }}
               onClose={() => setError('')}
@@ -431,7 +316,7 @@ function RequestList() {
             </Alert>
           )}
 
-          {/* PERFECTLY CENTERED FILTER PANEL */}
+          {/* FILTER PANEL */}
           <Box 
             sx={{ 
               display: 'flex', 
@@ -449,8 +334,8 @@ function RequestList() {
                 width: '100%',
                 background: '#ffffff', 
                 borderRadius: '24px',
-                border: '2px solid rgba(25, 118, 210, 0.15)',
-                boxShadow: '0 12px 40px rgba(25, 118, 210, 0.15)',
+                border: '2px solid rgba(79, 134, 255, 0.15)',
+                boxShadow: '0 12px 40px rgba(79, 134, 255, 0.15)',
                 position: 'relative',
                 mx: 'auto',
                 '&::before': {
@@ -460,7 +345,7 @@ function RequestList() {
                   left: 0,
                   right: 0,
                   height: '6px',
-                  background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                  background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
                   borderRadius: '24px 24px 0 0',
                 }
               }}
@@ -470,7 +355,7 @@ function RequestList() {
                   sx={{
                     p: 2,
                     borderRadius: '16px',
-                    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                    background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
                     mr: 3
                   }}
                 >
@@ -479,7 +364,6 @@ function RequestList() {
                 <Typography 
                   variant="h4"
                   sx={{ 
-                    fontFamily: 'Inter, sans-serif',
                     color: '#1e293b',
                     fontWeight: 800,
                     textAlign: 'center',
@@ -492,9 +376,8 @@ function RequestList() {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr 1fr' }, gap: 4 }}>
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    fontFamily: 'Inter, sans-serif', 
                     fontWeight: 600, 
-                    color: '#1976d2',
+                    color: '#4f86ff',
                     fontSize: '1.1rem'
                   }}>
                     Category
@@ -504,7 +387,6 @@ function RequestList() {
                     label="Category"
                     onChange={(e) => setFilters({...filters, category: e.target.value})}
                     sx={{ 
-                      fontFamily: 'Inter, sans-serif',
                       backgroundColor: 'white',
                       borderRadius: '16px',
                       minHeight: '64px',
@@ -512,11 +394,11 @@ function RequestList() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '16px',
                         '&:hover fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: '#4f86ff',
                           borderWidth: '2px',
                         },
                         '&.Mui-focused fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: '#4f86ff',
                           borderWidth: '2px',
                         }
                       }
@@ -527,7 +409,6 @@ function RequestList() {
                       const IconComponent = config.icon;
                       return (
                         <MenuItem key={cat} value={cat} sx={{ 
-                          fontFamily: 'Inter, sans-serif', 
                           fontWeight: 500, 
                           fontSize: '1.1rem',
                           py: 2.5
@@ -544,9 +425,8 @@ function RequestList() {
 
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    fontFamily: 'Inter, sans-serif', 
                     fontWeight: 600, 
-                    color: '#1976d2',
+                    color: '#4f86ff',
                     fontSize: '1.1rem'
                   }}>
                     Urgency Level
@@ -556,7 +436,6 @@ function RequestList() {
                     label="Urgency Level"
                     onChange={(e) => setFilters({...filters, urgency: e.target.value})}
                     sx={{ 
-                      fontFamily: 'Inter, sans-serif',
                       backgroundColor: 'white',
                       borderRadius: '16px',
                       minHeight: '64px',
@@ -564,11 +443,11 @@ function RequestList() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '16px',
                         '&:hover fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: '#4f86ff',
                           borderWidth: '2px',
                         },
                         '&.Mui-focused fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: '#4f86ff',
                           borderWidth: '2px',
                         }
                       }
@@ -577,7 +456,6 @@ function RequestList() {
                     <MenuItem value="All" sx={{ fontSize: '1.1rem', py: 2.5 }}>All Urgency Levels</MenuItem>
                     {Object.keys(urgencyColors).map((level) => (
                       <MenuItem key={level} value={level} sx={{ 
-                        fontFamily: 'Inter, sans-serif', 
                         fontWeight: 500, 
                         fontSize: '1.1rem',
                         py: 2.5
@@ -598,11 +476,11 @@ function RequestList() {
                   </Select>
                 </FormControl>
 
+                {/* ✅ Simplified status filter (3 options only) */}
                 <FormControl fullWidth>
                   <InputLabel sx={{ 
-                    fontFamily: 'Inter, sans-serif', 
                     fontWeight: 600, 
-                    color: '#1976d2',
+                    color: '#4f86ff',
                     fontSize: '1.1rem'
                   }}>
                     Request Status
@@ -612,7 +490,6 @@ function RequestList() {
                     label="Request Status"
                     onChange={(e) => setFilters({...filters, status: e.target.value})}
                     sx={{ 
-                      fontFamily: 'Inter, sans-serif',
                       backgroundColor: 'white',
                       borderRadius: '16px',
                       minHeight: '64px',
@@ -620,11 +497,11 @@ function RequestList() {
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '16px',
                         '&:hover fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: '#4f86ff',
                           borderWidth: '2px',
                         },
                         '&.Mui-focused fieldset': {
-                          borderColor: '#1976d2',
+                          borderColor: '#4f86ff',
                           borderWidth: '2px',
                         }
                       }
@@ -638,13 +515,12 @@ function RequestList() {
                 </FormControl>
               </Box>
 
-              {/* Enhanced Filter Info */}
               <Box 
                 sx={{ 
                   p: 4, 
                   background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
                   borderRadius: '16px',
-                  border: '2px solid rgba(25, 118, 210, 0.2)',
+                  border: '2px solid rgba(79, 134, 255, 0.2)',
                   mt: 5,
                   textAlign: 'center'
                 }}
@@ -652,7 +528,6 @@ function RequestList() {
                 <Typography 
                   variant="h6" 
                   sx={{ 
-                    fontFamily: 'Inter, sans-serif', 
                     color: '#0d47a1', 
                     fontWeight: 700,
                     mb: 2,
@@ -664,8 +539,7 @@ function RequestList() {
                 <Typography 
                   variant="body1" 
                   sx={{ 
-                    fontFamily: 'Inter, sans-serif', 
-                    color: '#1976d2', 
+                    color: '#4f86ff', 
                     fontSize: '1rem',
                     lineHeight: 1.6
                   }}
@@ -682,7 +556,6 @@ function RequestList() {
               <Typography 
                 variant="h5" 
                 sx={{ 
-                  fontFamily: 'Inter, sans-serif',
                   color: '#1e293b',
                   fontWeight: 700,
                   fontSize: '1.6rem'
@@ -704,17 +577,17 @@ function RequestList() {
                     textAlign: 'center', 
                     background: '#ffffff', 
                     borderRadius: '20px',
-                    border: '1px solid rgba(25, 118, 210, 0.1)',
-                    boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
+                    border: '1px solid rgba(79, 134, 255, 0.1)',
+                    boxShadow: '0 6px 20px rgba(79, 134, 255, 0.08)',
                     maxWidth: 500,
                     mx: 'auto'
                   }}
                 >
-                  <HelpOutlineOutlined sx={{ fontSize: 56, color: '#1976d2', mb: 2, opacity: 0.6 }} />
-                  <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', color: '#1e293b', mb: 1, fontWeight: 600 }}>
+                  <HelpOutlineOutlined sx={{ fontSize: 56, color: '#4f86ff', mb: 2, opacity: 0.6 }} />
+                  <Typography variant="h6" sx={{ color: '#1e293b', mb: 1, fontWeight: 600 }}>
                     No Requests Found
                   </Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'Inter, sans-serif', color: '#64748b', mb: 2 }}>
+                  <Typography variant="body1" sx={{ color: '#64748b', mb: 2 }}>
                     Try adjusting your filters or check back later.
                   </Typography>
                   <Button
@@ -728,7 +601,7 @@ function RequestList() {
               </Box>
             ) : (
               <>
-                {/* 2×m Matrix Layout */}
+                {/* Request Cards */}
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 4 }}>
                   {requestMatrix.map((row, rowIndex) => (
                     <Box 
@@ -746,17 +619,18 @@ function RequestList() {
                         const index = rowIndex * 2 + colIndex;
                         const CategoryIcon = categoryConfig[request.category]?.icon || HelpOutlineOutlined;
                         const cardColor = blueShades[index % blueShades.length];
-                        const isMyRequest = request.acceptedBy?.id === (user?.id || 'current-user-id');
+                        const isMyRequest = (request.acceptedBy?._id === (user?._id || user?.id)) || 
+                                           (request.acceptedBy?.id === (user?._id || user?.id));
                         
                         return (
                           <Card 
-                            key={request._id}
+                            key={request._id || request.id}
                             elevation={0}
                             sx={{ 
                               background: '#ffffff',
                               borderRadius: '20px',
-                              border: '1px solid rgba(25, 118, 210, 0.1)',
-                              boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
+                              border: '1px solid rgba(79, 134, 255, 0.1)',
+                              boxShadow: '0 6px 20px rgba(79, 134, 255, 0.08)',
                               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                               height: '500px',
                               display: 'flex',
@@ -786,7 +660,6 @@ function RequestList() {
                                   variant="h6" 
                                   component="h3" 
                                   sx={{ 
-                                    fontFamily: 'Inter, sans-serif',
                                     fontWeight: 700,
                                     color: '#1e293b',
                                     flex: 1,
@@ -807,7 +680,6 @@ function RequestList() {
                                   sx={{
                                     background: urgencyColors[request.urgency],
                                     color: 'white',
-                                    fontFamily: 'Inter, sans-serif',
                                     fontWeight: 600,
                                     borderRadius: '10px',
                                     fontSize: '0.7rem',
@@ -826,7 +698,6 @@ function RequestList() {
                                   sx={{
                                     background: cardColor.light,
                                     color: cardColor.primary,
-                                    fontFamily: 'Inter, sans-serif',
                                     fontWeight: 600,
                                     border: `1px solid ${cardColor.primary}30`,
                                     borderRadius: '10px',
@@ -841,7 +712,6 @@ function RequestList() {
                                   sx={{
                                     borderColor: statusColors[request.status],
                                     color: statusColors[request.status],
-                                    fontFamily: 'Inter, sans-serif',
                                     fontWeight: 600,
                                     borderRadius: '10px',
                                     fontSize: '0.7rem',
@@ -861,7 +731,6 @@ function RequestList() {
                                     sx={{
                                       background: '#10b981',
                                       color: 'white',
-                                      fontFamily: 'Inter, sans-serif',
                                       fontWeight: 600,
                                     }}
                                   />
@@ -872,7 +741,6 @@ function RequestList() {
                               <Typography 
                                 variant="body2" 
                                 sx={{ 
-                                  fontFamily: 'Inter, sans-serif',
                                   color: '#475569',
                                   mb: 2,
                                   lineHeight: 1.5,
@@ -903,7 +771,7 @@ function RequestList() {
                                   >
                                     <LocationOnOutlined sx={{ color: cardColor.primary, fontSize: 14 }} />
                                   </Box>
-                                  <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
+                                  <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
                                     {request.location}
                                   </Typography>
                                 </Box>
@@ -922,7 +790,7 @@ function RequestList() {
                                   >
                                     <PersonOutlined sx={{ color: cardColor.primary, fontSize: 14 }} />
                                   </Box>
-                                  <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
+                                  <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
                                     {request.requester?.name || 'Anonymous'}
                                   </Typography>
                                 </Box>
@@ -941,7 +809,7 @@ function RequestList() {
                                   >
                                     <AccessTimeOutlined sx={{ color: cardColor.primary, fontSize: 14 }} />
                                   </Box>
-                                  <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
+                                  <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
                                     {formatDate(request.createdAt)}
                                   </Typography>
                                 </Box>
@@ -958,113 +826,72 @@ function RequestList() {
                                     mb: 1.5
                                   }}
                                 >
-                                  <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#0d47a1', fontWeight: 600, fontSize: '0.75rem' }}>
+                                  <Typography variant="body2" sx={{ color: '#0d47a1', fontWeight: 600, fontSize: '0.75rem' }}>
                                     🤝 Being helped by: {request.acceptedBy.name}
                                   </Typography>
                                 </Box>
                               )}
                             </CardContent>
 
-                            {/* Professional Action Buttons */}
+                            {/* ✅ Simplified Action Buttons (3 states only) */}
                             <CardActions sx={{ p: 3, pt: 0 }}>
                               <Box sx={{ width: '100%' }}>
+                                {/* Open - can offer help */}
                                 {request.status === 'Open' && (
                                   <Button
                                     fullWidth
                                     variant="contained"
-                                    onClick={() => handleAcceptRequest(request._id)}
+                                    onClick={() => handleOfferHelp(request._id || request.id)}
                                     disabled={!isAuthenticated}
                                     endIcon={<ArrowForwardOutlined />}
                                     sx={{
-                                      background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
-                                      fontFamily: 'Inter, sans-serif',
+                                      background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
                                       fontWeight: 600,
                                       textTransform: 'none',
                                       py: 2,
                                       borderRadius: '12px',
                                       fontSize: '0.9rem',
                                       letterSpacing: '0.5px',
-                                      boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
-                                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                                      position: 'relative',
-                                      overflow: 'hidden',
+                                      boxShadow: '0 4px 12px rgba(79, 134, 255, 0.3)',
                                       '&:hover': {
-                                        background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-                                        boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
+                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                        boxShadow: '0 6px 20px rgba(79, 134, 255, 0.4)',
                                         transform: 'translateY(-1px)',
-                                      },
-                                      '&:active': {
-                                        transform: 'translateY(0px)',
-                                      },
-                                      '&::before': {
-                                        content: '""',
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
-                                        pointerEvents: 'none',
                                       }
                                     }}
                                   >
-                                    {!isAuthenticated 
-                                      ? 'Sign In to Help'
-                                      : 'Offer Help'
-                                    }
+                                    {!isAuthenticated ? 'Sign In to Help' : 'Offer Help'}
                                   </Button>
                                 )}
 
-                                {request.status === 'In Progress' && !isMyRequest && (
+                                {/* In Progress */}
+                                {request.status === 'In Progress' && (
                                   <Button
                                     fullWidth
                                     variant="outlined"
                                     disabled
                                     startIcon={<HourglassEmptyOutlined />}
                                     sx={{ 
-                                      borderColor: '#1976d2',
-                                      color: '#1976d2',
-                                      fontFamily: 'Inter, sans-serif',
+                                      borderColor: '#f59e0b',
+                                      color: '#f59e0b',
                                       fontWeight: 600,
                                       textTransform: 'none',
                                       py: 2,
                                       borderRadius: '12px',
                                       fontSize: '0.9rem',
-                                      background: 'rgba(25, 118, 210, 0.05)',
+                                      background: 'rgba(245, 158, 11, 0.05)',
                                       '&:disabled': {
-                                        borderColor: '#1976d2',
-                                        color: '#1976d2',
+                                        borderColor: '#f59e0b',
+                                        color: '#f59e0b',
                                         opacity: 0.8
                                       }
                                     }}
                                   >
-                                    In Progress
+                                    {isMyRequest ? 'You are helping with this' : `Being helped by ${request.acceptedBy?.name}`}
                                   </Button>
                                 )}
 
-                                {request.status === 'In Progress' && isMyRequest && (
-                                  <Button
-                                    fullWidth
-                                    variant="contained"
-                                    onClick={() => handleCompleteRequest(request._id)}
-                                    startIcon={<CheckCircleOutlined />}
-                                    sx={{ 
-                                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                      fontFamily: 'Inter, sans-serif',
-                                      fontWeight: 600,
-                                      textTransform: 'none',
-                                      py: 2,
-                                      borderRadius: '12px',
-                                      fontSize: '0.9rem',
-                                      '&:hover': {
-                                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                                      }
-                                    }}
-                                  >
-                                    Mark as Complete
-                                  </Button>
-                                )}
-
+                                {/* Completed */}
                                 {request.status === 'Completed' && (
                                   <Button
                                     fullWidth
@@ -1072,15 +899,14 @@ function RequestList() {
                                     disabled
                                     startIcon={<CheckCircleOutlined />}
                                     sx={{ 
-                                      background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
-                                      fontFamily: 'Inter, sans-serif',
+                                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                       fontWeight: 600,
                                       textTransform: 'none',
                                       py: 2,
                                       borderRadius: '12px',
                                       fontSize: '0.9rem',
                                       '&:disabled': {
-                                        background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
+                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                         color: 'white',
                                         opacity: 0.9
                                       }
@@ -1095,7 +921,6 @@ function RequestList() {
                         );
                       })}
                       
-                      {/* Fill empty space if odd number of requests in last row */}
                       {row.length === 1 && (
                         <Box sx={{ visibility: 'hidden' }}>
                           {/* Empty placeholder for grid alignment */}
@@ -1114,7 +939,6 @@ function RequestList() {
                     mt: 4,
                     flexWrap: 'wrap'
                   }}>
-                    {/* VIEW LESS BUTTON */}
                     {canViewLess && (
                       <Button
                         variant="outlined"
@@ -1122,9 +946,8 @@ function RequestList() {
                         disabled={loadingLess}
                         startIcon={loadingLess ? <CircularProgress size={20} color="inherit" /> : <ExpandLessOutlined />}
                         sx={{
-                          borderColor: '#1976d2',
-                          color: '#1976d2',
-                          fontFamily: 'Inter, sans-serif',
+                          borderColor: '#4f86ff',
+                          color: '#4f86ff',
                           fontWeight: 600,
                           textTransform: 'none',
                           py: 2,
@@ -1132,17 +955,17 @@ function RequestList() {
                           borderRadius: '16px',
                           fontSize: '1rem',
                           letterSpacing: '0.5px',
-                          background: 'rgba(25, 118, 210, 0.05)',
-                          border: '2px solid #1976d2',
+                          background: 'rgba(79, 134, 255, 0.05)',
+                          border: '2px solid #4f86ff',
                           position: 'relative',
                           overflow: 'hidden',
                           minWidth: '180px',
                           '&:hover': {
-                            background: 'rgba(25, 118, 210, 0.1)',
-                            borderColor: '#1565c0',
-                            color: '#1565c0',
+                            background: 'rgba(79, 134, 255, 0.1)',
+                            borderColor: '#3b82f6',
+                            color: '#3b82f6',
                             transform: 'translateY(-2px)',
-                            boxShadow: '0 8px 25px rgba(25, 118, 210, 0.2)',
+                            boxShadow: '0 8px 25px rgba(79, 134, 255, 0.2)',
                           },
                           '&:disabled': {
                             borderColor: '#90caf9',
@@ -1156,7 +979,6 @@ function RequestList() {
                       </Button>
                     )}
 
-                    {/* VIEW MORE BUTTON */}
                     {hasMoreRequests && (
                       <Button
                         variant="contained"
@@ -1164,8 +986,7 @@ function RequestList() {
                         disabled={loadingMore}
                         startIcon={loadingMore ? <CircularProgress size={20} color="inherit" /> : <ExpandMoreOutlined />}
                         sx={{
-                          background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
-                          fontFamily: 'Inter, sans-serif',
+                          background: 'linear-gradient(135deg, #4f86ff 0%, #3b82f6 100%)',
                           fontWeight: 600,
                           textTransform: 'none',
                           py: 2,
@@ -1173,14 +994,14 @@ function RequestList() {
                           borderRadius: '16px',
                           fontSize: '1rem',
                           letterSpacing: '0.5px',
-                          boxShadow: '0 6px 20px rgba(25, 118, 210, 0.3)',
+                          boxShadow: '0 6px 20px rgba(79, 134, 255, 0.3)',
                           border: '2px solid rgba(255, 255, 255, 0.2)',
                           position: 'relative',
                           overflow: 'hidden',
                           minWidth: '220px',
                           '&:hover': {
-                            background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-                            boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                            boxShadow: '0 8px 25px rgba(79, 134, 255, 0.4)',
                             transform: 'translateY(-2px)',
                           },
                           '&:disabled': {
@@ -1209,378 +1030,6 @@ function RequestList() {
             )}
           </Container>
         </Container>
-      </Box>
-
-      {/* Completion Modal */}
-      <Dialog open={completionModal.open} onClose={() => setCompletionModal({...completionModal, open: false})} maxWidth="sm" fullWidth>
-        <DialogTitle>Complete Request</DialogTitle>
-        <DialogContent>
-          <Box sx={{ py: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>Rate your experience:</Typography>
-            <Rating
-              value={completionModal.rating}
-              onChange={(event, newValue) => setCompletionModal({...completionModal, rating: newValue})}
-              size="large"
-            />
-            
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="Feedback (optional)"
-              value={completionModal.feedback}
-              onChange={(e) => setCompletionModal({...completionModal, feedback: e.target.value})}
-              sx={{ mt: 2 }}
-            />
-            
-            <Box sx={{ mt: 2 }}>
-              <Button
-                variant={completionModal.completedEarly ? "contained" : "outlined"}
-                onClick={() => setCompletionModal({...completionModal, completedEarly: !completionModal.completedEarly})}
-                size="small"
-              >
-                {completionModal.completedEarly ? "✅ Completed Early" : "Completed Early?"}
-              </Button>
-            </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCompletionModal({...completionModal, open: false})}>Cancel</Button>
-          <Button onClick={submitCompletion} variant="contained">Complete & Earn Points</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Footer Component - Same as before */}
-      <Box
-        component="footer"
-        sx={{
-          background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
-          color: 'white',
-          mt: 8,
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.02) 100%)',
-            pointerEvents: 'none',
-          }
-        }}
-      >
-        <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
-          <Grid container spacing={4}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{ mb: 3 }}>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '12px',
-                      background: 'rgba(255, 255, 255, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 2,
-                    }}
-                  >
-                    <Favorite sx={{ color: 'white', fontSize: 24 }} />
-                  </Box>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: 800,
-                      color: 'white',
-                    }}
-                  >
-                    Help<span style={{ color: '#64b5f6' }}>Hub</span>
-                  </Typography>
-                </Box>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: 'Inter, sans-serif',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    lineHeight: 1.6,
-                    mb: 3,
-                  }}
-                >
-                  Connecting communities through compassion. HelpHub makes it easy to find help when you need it and offer help when you can.
-                </Typography>
-                
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: 600,
-                      color: 'white',
-                      mb: 2,
-                    }}
-                  >
-                    Follow Us
-                  </Typography>
-                  <Box display="flex" gap={1}>
-                    {socialLinks.map((social, index) => {
-                      const IconComponent = social.icon;
-                      return (
-                        <IconButton
-                          key={index}
-                          href={social.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{
-                            color: 'rgba(255, 255, 255, 0.8)',
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '10px',
-                            width: 40,
-                            height: 40,
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              background: 'rgba(255, 255, 255, 0.2)',
-                              color: 'white',
-                              transform: 'translateY(-2px)',
-                            }
-                          }}
-                        >
-                          <IconComponent fontSize="small" />
-                        </IconButton>
-                      );
-                    })}
-                  </Box>
-                </Box>
-              </Box>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  color: 'white',
-                  mb: 3,
-                }}
-              >
-                Quick Links
-              </Typography>
-              <List sx={{ p: 0 }}>
-                {quickLinks.map((link, index) => {
-                  const IconComponent = link.icon;
-                  return (
-                    <ListItem
-                      key={index}
-                      disablePadding
-                      sx={{
-                        mb: 1,
-                        cursor: 'pointer',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          transform: 'translateX(4px)',
-                        }
-                      }}
-                      onClick={() => navigate(link.path)}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <IconComponent sx={{ color: '#64b5f6', fontSize: 20 }} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={link.label}
-                        primaryTypographyProps={{
-                          fontFamily: 'Inter, sans-serif',
-                          color: 'rgba(255, 255, 255, 0.9)',
-                          fontSize: '0.9rem',
-                          fontWeight: 500,
-                        }}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </List>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  color: 'white',
-                  mb: 3,
-                }}
-              >
-                Support
-              </Typography>
-              <List sx={{ p: 0 }}>
-                {supportLinks.map((link, index) => (
-                  <ListItem
-                    key={index}
-                    disablePadding
-                    sx={{
-                      mb: 1,
-                      cursor: 'pointer',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        transform: 'translateX(4px)',
-                      }
-                    }}
-                    onClick={() => navigate(link.path)}
-                  >
-                    <ListItemText
-                      primary={link.label}
-                      primaryTypographyProps={{
-                        fontFamily: 'Inter, sans-serif',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  color: 'white',
-                  mb: 3,
-                }}
-              >
-                Contact & Legal
-              </Typography>
-              
-              <Box sx={{ mb: 3 }}>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Email sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    support@helphub.com
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Phone sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    1-800-HELP-HUB
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" mb={3}>
-                  <LocationOn sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    San Francisco, CA
-                  </Typography>
-                </Box>
-              </Box>
-
-              <List sx={{ p: 0 }}>
-                {legalLinks.map((link, index) => (
-                  <ListItem
-                    key={index}
-                    disablePadding
-                    sx={{
-                      mb: 1,
-                      cursor: 'pointer',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        transform: 'translateX(4px)',
-                      }
-                    }}
-                    onClick={() => navigate(link.path)}
-                  >
-                    <ListItemText
-                      primary={link.label}
-                      primaryTypographyProps={{
-                        fontFamily: 'Inter, sans-serif',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Grid>
-          </Grid>
-        </Container>
-
-        <Box
-          sx={{
-            background: 'rgba(0, 0, 0, 0.2)',
-            py: 3,
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-          }}
-        >
-          <Container maxWidth="lg">
-            <Grid container alignItems="center" justifyContent="space-between">
-              <Grid item xs={12} md={6}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: 'Inter, sans-serif',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    textAlign: { xs: 'center', md: 'left' },
-                  }}
-                >
-                  © 2025 HelpHub. All rights reserved. Built with ❤️ for communities worldwide.
-                </Typography>
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <Box 
-                  display="flex" 
-                  alignItems="center" 
-                  justifyContent={{ xs: 'center', md: 'flex-end' }}
-                  mt={{ xs: 2, md: 0 }}
-                >
-                  <Security sx={{ color: '#64b5f6', fontSize: 16, mr: 1 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    Trusted • Secure • Community-Driven
-                  </Typography>
-                </Box>
-              </Grid>
-            </Grid>
-          </Container>
-        </Box>
       </Box>
     </>
   );

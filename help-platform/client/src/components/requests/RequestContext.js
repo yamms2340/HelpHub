@@ -74,33 +74,54 @@ export const RequestsProvider = ({ children }) => {
   };
 
   // Complete request
-  const completeRequest = async (requestId, completionData, userId) => {
-    try {
-      await requestsAPI.completeRequest(requestId, completionData);
-      
-      // Update local state
-      setRequests(prev => 
-        prev.map(request => 
-          request._id === requestId 
-            ? { 
-                ...request, 
-                status: 'Completed',
-                completedAt: new Date().toISOString(),
-                pointsAwarded: calculatePoints(completionData)
-              }
-            : request
-        )
-      );
+// Keep your existing RequestContext.js mostly the same, but update completeRequest function:
+const completeRequest = async (requestId, completionData, userId) => {
+  try {
+    console.log('Completing request:', requestId, completionData);
+    
+    // Call backend API
+    const response = await requestsAPI.completeRequest(requestId, completionData);
+    
+    console.log('Backend response:', response.data);
+    
+    // Update local state immediately
+    setRequests(prev => 
+      prev.map(request => {
+        if (request._id === requestId || request.id === requestId) {
+          // If it's a helper completion, mark as completed
+          if (response.data?.points) {
+            return {
+              ...request, 
+              status: 'Completed',
+              completedAt: new Date().toISOString(),
+              pointsAwarded: response.data.points
+            };
+          }
+          // If it's a rating update, just update rating/feedback
+          else if (completionData.rating) {
+            return {
+              ...request,
+              rating: completionData.rating,
+              feedback: completionData.feedback
+            };
+          }
+        }
+        return request;
+      })
+    );
 
-      return {
-        points: calculatePoints(completionData),
-        badges: calculateBadges(completionData)
-      };
-    } catch (error) {
-      console.error('Error completing request:', error);
-      throw error;
-    }
-  };
+    return {
+      points: response.data?.points || 0,
+      badges: response.data?.badges || []
+    };
+    
+  } catch (error) {
+    console.error('Error completing request:', error);
+    throw error;
+  }
+};
+
+
 
   // Filter requests
   const getFilteredRequests = (filters) => {
@@ -236,8 +257,8 @@ export const RequestsProvider = ({ children }) => {
     completeRequest,
     getFilteredRequests,
     fetchRequests,
-    getUserStats,    // ADD THIS
-    getLeaderboard,  // ADD THIS
+    getUserStats,   
+    getLeaderboard,  
   };
 
   return (

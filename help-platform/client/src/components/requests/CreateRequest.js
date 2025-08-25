@@ -148,50 +148,50 @@ function CreateRequest() {
     return null;
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-    
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    
-    setLoading(true);
+  // In your existing CreateRequest.js, replace the handleSubmit function:
 
-    try {
-      // Add request to context with user info
-      const requestWithUserInfo = {
-        ...formData,
-        requester: { 
-          _id: user?.id || 'current-user-id',
-          name: user?.name || 'Current User' 
-        }
-      };
-      addRequest(requestWithUserInfo);
-      
-      // Optional: Also call your API
-      // await requestsAPI.createRequest(formData);
-      
-      setSuccess('🎉 Help request created successfully! You can view all your requests in "My Requests" section.');
-      
-      // Reset form but don't redirect
-      setFormData({
-        title: '',
-        description: '',
-        category: '',
-        urgency: '',
-        location: ''
-      });
-      
-    } catch (error) {
-      setError('Failed to create request');
-    } finally {
-      setLoading(false);
-    }
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError('');
+  setSuccess('');
+  
+  const validationError = validateForm();
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
+  
+  setLoading(true);
+
+  try {
+    // Create request via context (which calls API)
+    const newRequest = await addRequest(formData);
+    
+    setSuccess('🎉 Help request created successfully! You can view it in "My Requests" section.');
+    
+    // Reset form
+    setFormData({
+      title: '',
+      description: '',
+      category: '',
+      urgency: '',
+      location: ''
+    });
+    
+    // Navigate to see requests
+    setTimeout(() => {
+      navigate('/');
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Error creating request:', error);
+    setError(error.response?.data?.message || 'Failed to create request. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   const handleViewMyRequests = () => {
     navigate('/my-requests');

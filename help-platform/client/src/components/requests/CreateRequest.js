@@ -55,6 +55,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useRequests } from './RequestContext';
 import { requestsAPI } from '../../services/api';
 
 const categories = [
@@ -63,7 +64,7 @@ const categories = [
   { value: 'Transportation', icon: DriveEta, color: '#1565c0' },
   { value: 'Food', icon: Restaurant, color: '#0d47a1' },
   { value: 'Health', icon: LocalHospital, color: '#42a5f5' },
-  { value: 'Housing', icon: Business, color: '#1e88e5' },
+  { value: 'Household', icon: Business, color: '#1e88e5' },
   { value: 'Other', icon: HelpOutline, color: '#64b5f6' }
 ];
 
@@ -86,12 +87,14 @@ function CreateRequest() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { addRequest } = useRequests();
   const navigate = useNavigate();
 
   // Footer data
   const quickLinks = [
     { label: 'Help Requests', path: '/', icon: Groups },
+    { label: 'My Requests', path: '/my-requests', icon: Create },
     { label: 'Hall of Fame', path: '/hall-of-fame', icon: EmojiEvents },
     { label: 'Create Request', path: '/create-request', icon: VolunteerActivism },
     { label: 'About Us', path: '/about', icon: Help },
@@ -159,9 +162,22 @@ function CreateRequest() {
     setLoading(true);
 
     try {
-      await requestsAPI.createRequest(formData);
-      setSuccess('Help request created successfully! Redirecting to home...');
+      // Add request to context with user info
+      const requestWithUserInfo = {
+        ...formData,
+        requester: { 
+          _id: user?.id || 'current-user-id',
+          name: user?.name || 'Current User' 
+        }
+      };
+      addRequest(requestWithUserInfo);
       
+      // Optional: Also call your API
+      // await requestsAPI.createRequest(formData);
+      
+      setSuccess('🎉 Help request created successfully! You can view all your requests in "My Requests" section.');
+      
+      // Reset form but don't redirect
       setFormData({
         title: '',
         description: '',
@@ -170,15 +186,15 @@ function CreateRequest() {
         location: ''
       });
       
-      setTimeout(() => {
-        navigate('/');
-      }, 2000);
-      
     } catch (error) {
-      setError(error.response?.data?.message || 'Failed to create request');
+      setError('Failed to create request');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleViewMyRequests = () => {
+    navigate('/my-requests');
   };
 
   if (!isAuthenticated) {
@@ -345,7 +361,7 @@ function CreateRequest() {
                         mb: 1,
                       }}
                     >
-                       Create Your Request
+                      ✨ Create Your Request
                     </Typography>
                     <Typography variant="body1" sx={{ color: '#64748b' }}>
                       Fill out the details below to connect with potential helpers
@@ -378,6 +394,11 @@ function CreateRequest() {
                           background: 'rgba(25, 118, 210, 0.1)',
                           border: '1px solid rgba(25, 118, 210, 0.2)',
                         }}
+                        action={
+                          <Button color="inherit" size="small" onClick={handleViewMyRequests}>
+                            View My Requests
+                          </Button>
+                        }
                       >
                         {success}
                       </Alert>
@@ -718,7 +739,7 @@ function CreateRequest() {
                     }}
                   >
                     <Typography variant="h6" sx={{ color: 'white', mb: 2, fontWeight: 600 }}>
-                       Remember
+                      💡 Remember
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'rgba(255, 255, 255, 0.8)' }}>
                       Every request you share is an opportunity for someone to make a difference. 

@@ -44,6 +44,12 @@ export const helpAPI = {
   getHallOfFame: () => api.get('/help/hall-of-fame'),
   getUserHistory: (userId) => api.get(`/help/history/${userId}`),
   getStats: () => api.get('/help/stats'),
+  
+  // ADD THESE NEW STORY ENDPOINTS:
+  getInspiringStories: () => api.get('/inspiring-stories'),
+  submitStory: (storyData) => api.post('/stories/submit', storyData),
+  getAllStories: () => api.get('/stories'),
+  approveStory: (storyId) => api.put(`/stories/${storyId}/approve`),
 };
 
 export default api;

@@ -19,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/requests', require('./routes/requests'));
 app.use('/api/help', require('./routes/help'));
+app.use('/api', require('./routes/stories')); // Add this line
 
 // Test route
 app.get('/', (req, res) => {
@@ -27,7 +28,9 @@ app.get('/', (req, res) => {
     endpoints: {
       auth: '/api/auth',
       requests: '/api/requests', 
-      help: '/api/help'
+      help: '/api/help',
+      stories: '/api/stories', // Add this line
+      inspiringStories: '/api/inspiring-stories' // Add this line
     }
   });
 });

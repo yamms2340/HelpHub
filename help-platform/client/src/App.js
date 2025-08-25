@@ -18,6 +18,8 @@ import MyRequests from './components/requests/Myrequests';
 import HallOfFame from './components/hallOfFame/HallOfFame';
 import HomePage from './components/home/HomePage';
 import Leaderboard from './components/requests/LeaderBoard';
+// Fixed import path - make sure this matches your actual file location
+import DonationPage from './components/donation/Donation';
 
 // Enhanced theme with modern design
 const theme = createTheme({
@@ -195,6 +197,29 @@ function App() {
                       <Header />
                       <Box component="main" sx={{ flexGrow: 1 }}>
                         <MyRequests />
+                      </Box>
+                    </Box>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Protected: Donation Page */}
+              <Route
+                path="/donate"
+                element={
+                  <ProtectedRoute>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        minHeight: '100vh',
+                        background:
+                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+                      }}
+                    >
+                      <Header />
+                      <Box component="main" sx={{ flexGrow: 1 }}>
+                        <DonationPage />
                       </Box>
                     </Box>
                   </ProtectedRoute>

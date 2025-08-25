@@ -16,10 +16,7 @@ import {
   Alert,
   CircularProgress,
   Paper,
-  Link,
   IconButton,
-  Divider,
-  TextField,
   List,
   ListItem,
   ListItemIcon,
@@ -28,14 +25,14 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Rating,
+  TextField,
+  Divider,
 } from '@mui/material';
 import {
   LocationOnOutlined,
   PersonOutlined,
   AccessTimeOutlined,
   CategoryOutlined,
-  HandshakeOutlined,
   CheckCircleOutlined,
   HourglassEmptyOutlined,
   ComputerOutlined,
@@ -46,7 +43,6 @@ import {
   HomeOutlined,
   HelpOutlineOutlined,
   FilterListOutlined,
-  ArrowForwardOutlined,
   ExpandMoreOutlined,
   ExpandLessOutlined,
   Facebook,
@@ -58,19 +54,21 @@ import {
   Phone,
   LocationOn,
   Favorite,
-  Send,
-  Help,
   Security,
   Group,
   EmojiEvents,
   VolunteerActivism,
   Star,
   Create,
+  Edit,
+  Delete,
+  Visibility,
+  AddCircle,
+  Help,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequests } from './RequestContext';
-import { requestsAPI } from '../../services/api';
 
 // Blue and white color palette - professional theme
 const blueShades = [
@@ -135,8 +133,8 @@ const categoryConfig = {
   Other: { icon: HelpOutlineOutlined, color: '#1976d2' }
 };
 
-function RequestList() {
-  const { requests: allRequests, getFilteredRequests, updateRequest, completeRequest } = useRequests();
+function MyRequests() {
+  const { requests: allRequests, updateRequest, deleteRequest } = useRequests();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -148,15 +146,23 @@ function RequestList() {
   const [displayCount, setDisplayCount] = useState(6);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadingLess, setLoadingLess] = useState(false);
-  const [email, setEmail] = useState('');
   
-  // Completion modal state
-  const [completionModal, setCompletionModal] = useState({
+  // Edit dialog state
+  const [editDialog, setEditDialog] = useState({
+    open: false,
+    request: null,
+    title: '',
+    description: '',
+    category: '',
+    urgency: '',
+    location: ''
+  });
+
+  // Delete confirmation dialog
+  const [deleteDialog, setDeleteDialog] = useState({
     open: false,
     requestId: null,
-    rating: 5,
-    feedback: '',
-    completedEarly: false
+    title: ''
   });
   
   const INITIAL_DISPLAY_COUNT = 6;
@@ -164,83 +170,96 @@ function RequestList() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setDisplayCount(INITIAL_DISPLAY_COUNT);
-    applyFilters();
-  }, [filters, allRequests]);
-
-  const applyFilters = () => {
-    // Get filtered requests and exclude user's own requests
-    const filteredRequests = getFilteredRequests(filters);
-    const requestsExcludingMine = filteredRequests.filter(request => 
-      request.requester._id !== (user?.id || 'current-user-id')
-    );
-    setRequests(requestsExcludingMine);
-  };
-
-  const handleAcceptRequest = async (requestId) => {
     if (!isAuthenticated) {
-      setError('Please log in to help others');
+      navigate('/login');
       return;
     }
+    
+    setDisplayCount(INITIAL_DISPLAY_COUNT);
+    applyFilters();
+  }, [filters, allRequests, isAuthenticated, navigate]);
 
-    try {
-      setError('');
-      
-      // Update request status
-      updateRequest(requestId, {
-        status: 'In Progress',
-        acceptedBy: { 
-          id: user?.id || 'current-user-id',
-          name: user?.name || 'Helper' 
-        },
-        acceptedAt: new Date().toISOString()
-      });
-      
-      setError('Request accepted successfully! 🎉 You can now help this person.');
-      
-    } catch (error) {
-      setError('Failed to accept request');
+  const applyFilters = () => {
+    // Get only user's requests
+    const myRequests = allRequests.filter(request => 
+      request.requester._id === (user?.id || 'current-user-id')
+    );
+    
+    // Apply filters
+    let filteredRequests = myRequests;
+    
+    if (filters.category !== 'All') {
+      filteredRequests = filteredRequests.filter(request => request.category === filters.category);
     }
+    
+    if (filters.urgency !== 'All') {
+      filteredRequests = filteredRequests.filter(request => request.urgency === filters.urgency);
+    }
+    
+    if (filters.status !== 'All') {
+      filteredRequests = filteredRequests.filter(request => request.status === filters.status);
+    }
+    
+    setRequests(filteredRequests);
   };
 
-  const handleCompleteRequest = (requestId) => {
-    setCompletionModal({
+  const handleEditRequest = (request) => {
+    setEditDialog({
       open: true,
-      requestId,
-      rating: 5,
-      feedback: '',
-      completedEarly: false
+      request: request,
+      title: request.title,
+      description: request.description,
+      category: request.category,
+      urgency: request.urgency,
+      location: request.location
     });
   };
 
-  const submitCompletion = () => {
+  const handleSaveEdit = () => {
     try {
-      const completionData = {
-        rating: completionModal.rating,
-        feedback: completionModal.feedback,
-        completedEarly: completionModal.completedEarly,
-        excellentFeedback: completionModal.feedback.length > 50
-      };
-
-      const result = completeRequest(
-        completionModal.requestId, 
-        completionData, 
-        user?.id || 'current-user-id'
-      );
-
-      let message = `🎉 Request completed! You earned ${result.points} points!`;
+      updateRequest(editDialog.request._id, {
+        title: editDialog.title,
+        description: editDialog.description,
+        category: editDialog.category,
+        urgency: editDialog.urgency,
+        location: editDialog.location,
+        updatedAt: new Date().toISOString()
+      });
       
-      if (result.badges.length > 0) {
-        const badgeNames = result.badges.map(b => b.name).join(', ');
-        const badgePoints = result.badges.reduce((total, badge) => total + badge.points, 0);
-        message += ` \n🏆 New badges earned: ${badgeNames} (+${badgePoints} bonus points!)`;
-      }
-
-      setError(message);
-      setCompletionModal({ open: false, requestId: null, rating: 5, feedback: '', completedEarly: false });
-      
+      setError('✅ Request updated successfully!');
+      setEditDialog({
+        open: false,
+        request: null,
+        title: '',
+        description: '',
+        category: '',
+        urgency: '',
+        location: ''
+      });
     } catch (error) {
-      setError('Failed to complete request');
+      setError('Failed to update request');
+    }
+  };
+
+  const handleDeleteRequest = (requestId, title) => {
+    setDeleteDialog({
+      open: true,
+      requestId: requestId,
+      title: title
+    });
+  };
+
+  const confirmDelete = () => {
+    try {
+      deleteRequest(deleteDialog.requestId);
+      setError('🗑️ Request deleted successfully!');
+      setDeleteDialog({
+        open: false,
+        requestId: null,
+        title: ''
+      });
+    } catch (error) {
+      setError('Failed to delete request');
     }
   };
 
@@ -260,17 +279,11 @@ function RequestList() {
       setDisplayCount(INITIAL_DISPLAY_COUNT);
       setLoadingLess(false);
       
-      const requestsSection = document.getElementById('requests-section');
+      const requestsSection = document.getElementById('my-requests-section');
       if (requestsSection) {
         requestsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 500);
-  };
-
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    console.log('Newsletter subscription:', email);
-    setEmail('');
   };
 
   const formatDate = (dateString) => {
@@ -351,11 +364,15 @@ function RequestList() {
         >
           <CircularProgress size={40} sx={{ mb: 2, color: '#1976d2' }} />
           <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', color: '#1e293b', fontWeight: 600 }}>
-            Loading Help Requests...
+            Loading Your Requests...
           </Typography>
         </Paper>
       </Box>
     );
+  }
+
+  if (!isAuthenticated) {
+    return null;
   }
 
   return (
@@ -379,7 +396,7 @@ function RequestList() {
                 fontSize: { xs: '2rem', md: '2.5rem' },
               }}
             >
-              Community Help <span style={{ color: '#1976d2' }}>Requests</span>
+              My Help <span style={{ color: '#1976d2' }}>Requests</span>
             </Typography>
             <Typography 
               variant="h6" 
@@ -387,43 +404,62 @@ function RequestList() {
                 fontFamily: 'Inter, sans-serif',
                 color: '#64748b',
                 fontWeight: 500,
-                maxWidth: '500px',
+                maxWidth: '600px',
                 mx: 'auto',
                 fontSize: { xs: '1rem', md: '1.1rem' }
               }}
             >
-              Connect with your community and make a meaningful difference
+              Manage and track all the help requests you've created
             </Typography>
             
-            {/* Info about excluding own requests */}
-            <Box sx={{ mt: 3 }}>
-              <Chip
-                icon={<Help />}
-                label="Your own requests are hidden - check 'My Requests' to manage them"
+            {/* Quick Action Buttons */}
+            <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                variant="contained"
+                startIcon={<AddCircle />}
+                onClick={() => navigate('/create-request')}
                 sx={{
-                  background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                  color: '#0d47a1',
+                  background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                  borderRadius: '12px',
+                  px: 3,
+                  py: 1.5,
                   fontWeight: 600,
-                  cursor: 'pointer'
+                  textTransform: 'none'
                 }}
-                onClick={() => navigate('/my-requests')}
-              />
+              >
+                Create New Request
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<Group />}
+                onClick={() => navigate('/')}
+                sx={{
+                  borderColor: '#1976d2',
+                  color: '#1976d2',
+                  borderRadius: '12px',
+                  px: 3,
+                  py: 1.5,
+                  fontWeight: 600,
+                  textTransform: 'none'
+                }}
+              >
+                Browse All Requests
+              </Button>
             </Box>
           </Box>
 
           {/* Error/Success Alert */}
           {error && (
             <Alert 
-              severity={error.includes('successfully') || error.includes('earned') || error.includes('badges') ? 'success' : 'error'}
+              severity={error.includes('successfully') || error.includes('✅') || error.includes('🗑️') ? 'success' : 'error'}
               sx={{ 
                 mb: 3, 
                 borderRadius: '16px',
                 fontFamily: 'Inter, sans-serif',
                 border: 'none',
-                boxShadow: error.includes('successfully') || error.includes('earned') || error.includes('badges')
+                boxShadow: error.includes('successfully') || error.includes('✅') || error.includes('🗑️')
                   ? '0 8px 25px rgba(76, 175, 80, 0.15)' 
                   : '0 8px 25px rgba(211, 47, 47, 0.15)',
-                whiteSpace: 'pre-line'
               }}
               onClose={() => setError('')}
             >
@@ -431,7 +467,7 @@ function RequestList() {
             </Alert>
           )}
 
-          {/* PERFECTLY CENTERED FILTER PANEL */}
+          {/* FILTER PANEL */}
           <Box 
             sx={{ 
               display: 'flex', 
@@ -485,7 +521,7 @@ function RequestList() {
                     textAlign: 'center',
                   }}
                 >
-                  Filter Help Requests
+                  Filter My Requests
                 </Typography>
               </Box>
               
@@ -659,7 +695,7 @@ function RequestList() {
                     fontSize: '1.2rem'
                   }}
                 >
-                  📊 Showing {displayedRequests.length} of {requests.length} requests
+                  📊 Showing {displayedRequests.length} of {requests.length} your requests
                 </Typography>
                 <Typography 
                   variant="body1" 
@@ -670,15 +706,15 @@ function RequestList() {
                     lineHeight: 1.6
                   }}
                 >
-                  Use the filters above to find the most relevant help requests for your skills and availability.
+                  Manage your requests - edit details, track progress, and see who's helping you.
                 </Typography>
               </Box>
             </Paper>
           </Box>
 
-          {/* REQUEST LIST SECTION */}
+          {/* MY REQUESTS SECTION */}
           <Container maxWidth="xl">
-            <Box mb={3} textAlign="center" id="requests-section">
+            <Box mb={3} textAlign="center" id="my-requests-section">
               <Typography 
                 variant="h5" 
                 sx={{ 
@@ -688,10 +724,7 @@ function RequestList() {
                   fontSize: '1.6rem'
                 }}
               >
-                Available Requests ({requests.length}) 
-                <Typography component="span" sx={{ color: '#64748b', fontSize: '1rem', fontWeight: 400 }}>
-                  (Your requests are hidden)
-                </Typography>
+                Your Requests ({requests.length})
               </Typography>
             </Box>
 
@@ -710,19 +743,25 @@ function RequestList() {
                     mx: 'auto'
                   }}
                 >
-                  <HelpOutlineOutlined sx={{ fontSize: 56, color: '#1976d2', mb: 2, opacity: 0.6 }} />
+                  <Create sx={{ fontSize: 56, color: '#1976d2', mb: 2, opacity: 0.6 }} />
                   <Typography variant="h6" sx={{ fontFamily: 'Inter, sans-serif', color: '#1e293b', mb: 1, fontWeight: 600 }}>
                     No Requests Found
                   </Typography>
-                  <Typography variant="body1" sx={{ fontFamily: 'Inter, sans-serif', color: '#64748b', mb: 2 }}>
-                    Try adjusting your filters or check back later.
+                  <Typography variant="body1" sx={{ fontFamily: 'Inter, sans-serif', color: '#64748b', mb: 3 }}>
+                    {allRequests.filter(r => r.requester._id === (user?.id || 'current-user-id')).length === 0 
+                      ? "You haven't created any help requests yet." 
+                      : "Try adjusting your filters to see your requests."}
                   </Typography>
                   <Button
-                    variant="outlined"
-                    onClick={() => navigate('/my-requests')}
-                    sx={{ mt: 2 }}
+                    variant="contained"
+                    startIcon={<AddCircle />}
+                    onClick={() => navigate('/create-request')}
+                    sx={{
+                      background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                      borderRadius: '12px'
+                    }}
                   >
-                    View My Requests Instead
+                    Create Your First Request
                   </Button>
                 </Paper>
               </Box>
@@ -746,7 +785,6 @@ function RequestList() {
                         const index = rowIndex * 2 + colIndex;
                         const CategoryIcon = categoryConfig[request.category]?.icon || HelpOutlineOutlined;
                         const cardColor = blueShades[index % blueShades.length];
-                        const isMyRequest = request.acceptedBy?.id === (user?.id || 'current-user-id');
                         
                         return (
                           <Card 
@@ -758,7 +796,7 @@ function RequestList() {
                               border: '1px solid rgba(25, 118, 210, 0.1)',
                               boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
                               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              height: '500px',
+                              height: '550px',
                               display: 'flex',
                               flexDirection: 'column',
                               position: 'relative',
@@ -920,31 +958,33 @@ function RequestList() {
                                       justifyContent: 'center'
                                     }}
                                   >
-                                    <PersonOutlined sx={{ color: cardColor.primary, fontSize: 14 }} />
-                                  </Box>
-                                  <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
-                                    {request.requester?.name || 'Anonymous'}
-                                  </Typography>
-                                </Box>
-
-                                <Box display="flex" alignItems="center">
-                                  <Box
-                                    sx={{
-                                      p: 0.4,
-                                      borderRadius: '6px',
-                                      background: `${cardColor.primary}15`,
-                                      mr: 1.5,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center'
-                                    }}
-                                  >
                                     <AccessTimeOutlined sx={{ color: cardColor.primary, fontSize: 14 }} />
                                   </Box>
                                   <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
-                                    {formatDate(request.createdAt)}
+                                    Created: {formatDate(request.createdAt)}
                                   </Typography>
                                 </Box>
+
+                                {request.updatedAt && request.updatedAt !== request.createdAt && (
+                                  <Box display="flex" alignItems="center">
+                                    <Box
+                                      sx={{
+                                        p: 0.4,
+                                        borderRadius: '6px',
+                                        background: `${cardColor.primary}15`,
+                                        mr: 1.5,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                      }}
+                                    >
+                                      <Edit sx={{ color: cardColor.primary, fontSize: 14 }} />
+                                    </Box>
+                                    <Typography variant="body2" sx={{ fontFamily: 'Inter, sans-serif', color: '#475569', fontWeight: 500, fontSize: '0.8rem' }}>
+                                      Updated: {formatDate(request.updatedAt)}
+                                    </Typography>
+                                  </Box>
+                                )}
                               </Box>
 
                               {/* Helper Info */}
@@ -965,57 +1005,54 @@ function RequestList() {
                               )}
                             </CardContent>
 
-                            {/* Professional Action Buttons */}
+                            {/* Action Buttons */}
                             <CardActions sx={{ p: 3, pt: 0 }}>
-                              <Box sx={{ width: '100%' }}>
-                                {request.status === 'Open' && (
-                                  <Button
-                                    fullWidth
-                                    variant="contained"
-                                    onClick={() => handleAcceptRequest(request._id)}
-                                    disabled={!isAuthenticated}
-                                    endIcon={<ArrowForwardOutlined />}
-                                    sx={{
-                                      background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
-                                      fontFamily: 'Inter, sans-serif',
-                                      fontWeight: 600,
-                                      textTransform: 'none',
-                                      py: 2,
-                                      borderRadius: '12px',
-                                      fontSize: '0.9rem',
-                                      letterSpacing: '0.5px',
-                                      boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)',
-                                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                                      position: 'relative',
-                                      overflow: 'hidden',
-                                      '&:hover': {
-                                        background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-                                        boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
-                                        transform: 'translateY(-1px)',
-                                      },
-                                      '&:active': {
-                                        transform: 'translateY(0px)',
-                                      },
-                                      '&::before': {
-                                        content: '""',
-                                        position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        right: 0,
-                                        bottom: 0,
-                                        background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
-                                        pointerEvents: 'none',
-                                      }
-                                    }}
-                                  >
-                                    {!isAuthenticated 
-                                      ? 'Sign In to Help'
-                                      : 'Offer Help'
-                                    }
-                                  </Button>
-                                )}
+                              <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                {/* Primary Action Buttons */}
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  {request.status === 'Open' && (
+                                    <Button
+                                      fullWidth
+                                      variant="contained"
+                                      startIcon={<Edit />}
+                                      onClick={() => handleEditRequest(request)}
+                                      sx={{
+                                        background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                                        fontFamily: 'Inter, sans-serif',
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        py: 1.5,
+                                        borderRadius: '12px',
+                                        fontSize: '0.9rem',
+                                      }}
+                                    >
+                                      Edit
+                                    </Button>
+                                  )}
+                                  
+                                  {request.status === 'Open' && (
+                                    <Button
+                                      fullWidth
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<Delete />}
+                                      onClick={() => handleDeleteRequest(request._id, request.title)}
+                                      sx={{
+                                        fontFamily: 'Inter, sans-serif',
+                                        fontWeight: 600,
+                                        textTransform: 'none',
+                                        py: 1.5,
+                                        borderRadius: '12px',
+                                        fontSize: '0.9rem',
+                                      }}
+                                    >
+                                      Delete
+                                    </Button>
+                                  )}
+                                </Box>
 
-                                {request.status === 'In Progress' && !isMyRequest && (
+                                {/* Status Display */}
+                                {request.status === 'In Progress' && (
                                   <Button
                                     fullWidth
                                     variant="outlined"
@@ -1027,41 +1064,13 @@ function RequestList() {
                                       fontFamily: 'Inter, sans-serif',
                                       fontWeight: 600,
                                       textTransform: 'none',
-                                      py: 2,
+                                      py: 1.5,
                                       borderRadius: '12px',
                                       fontSize: '0.9rem',
                                       background: 'rgba(25, 118, 210, 0.05)',
-                                      '&:disabled': {
-                                        borderColor: '#1976d2',
-                                        color: '#1976d2',
-                                        opacity: 0.8
-                                      }
                                     }}
                                   >
-                                    In Progress
-                                  </Button>
-                                )}
-
-                                {request.status === 'In Progress' && isMyRequest && (
-                                  <Button
-                                    fullWidth
-                                    variant="contained"
-                                    onClick={() => handleCompleteRequest(request._id)}
-                                    startIcon={<CheckCircleOutlined />}
-                                    sx={{ 
-                                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                      fontFamily: 'Inter, sans-serif',
-                                      fontWeight: 600,
-                                      textTransform: 'none',
-                                      py: 2,
-                                      borderRadius: '12px',
-                                      fontSize: '0.9rem',
-                                      '&:hover': {
-                                        background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                                      }
-                                    }}
-                                  >
-                                    Mark as Complete
+                                    In Progress - Being Helped
                                   </Button>
                                 )}
 
@@ -1076,14 +1085,9 @@ function RequestList() {
                                       fontFamily: 'Inter, sans-serif',
                                       fontWeight: 600,
                                       textTransform: 'none',
-                                      py: 2,
+                                      py: 1.5,
                                       borderRadius: '12px',
                                       fontSize: '0.9rem',
-                                      '&:disabled': {
-                                        background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
-                                        color: 'white',
-                                        opacity: 0.9
-                                      }
                                     }}
                                   >
                                     Completed Successfully
@@ -1114,7 +1118,6 @@ function RequestList() {
                     mt: 4,
                     flexWrap: 'wrap'
                   }}>
-                    {/* VIEW LESS BUTTON */}
                     {canViewLess && (
                       <Button
                         variant="outlined"
@@ -1131,32 +1134,12 @@ function RequestList() {
                           px: 6,
                           borderRadius: '16px',
                           fontSize: '1rem',
-                          letterSpacing: '0.5px',
-                          background: 'rgba(25, 118, 210, 0.05)',
-                          border: '2px solid #1976d2',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          minWidth: '180px',
-                          '&:hover': {
-                            background: 'rgba(25, 118, 210, 0.1)',
-                            borderColor: '#1565c0',
-                            color: '#1565c0',
-                            transform: 'translateY(-2px)',
-                            boxShadow: '0 8px 25px rgba(25, 118, 210, 0.2)',
-                          },
-                          '&:disabled': {
-                            borderColor: '#90caf9',
-                            color: '#90caf9',
-                            background: 'rgba(144, 202, 249, 0.05)',
-                            opacity: 0.8
-                          }
                         }}
                       >
                         {loadingLess ? 'Collapsing...' : 'View Less'}
                       </Button>
                     )}
 
-                    {/* VIEW MORE BUTTON */}
                     {hasMoreRequests && (
                       <Button
                         variant="contained"
@@ -1172,32 +1155,6 @@ function RequestList() {
                           px: 6,
                           borderRadius: '16px',
                           fontSize: '1rem',
-                          letterSpacing: '0.5px',
-                          boxShadow: '0 6px 20px rgba(25, 118, 210, 0.3)',
-                          border: '2px solid rgba(255, 255, 255, 0.2)',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          minWidth: '220px',
-                          '&:hover': {
-                            background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-                            boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
-                            transform: 'translateY(-2px)',
-                          },
-                          '&:disabled': {
-                            background: 'linear-gradient(135deg, #90caf9 0%, #64b5f6 100%)',
-                            color: 'white',
-                            opacity: 0.8
-                          },
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(255,255,255,0.08) 100%)',
-                            pointerEvents: 'none',
-                          }
                         }}
                       >
                         {loadingMore ? 'Loading More...' : `View More (${requests.length - displayCount} remaining)`}
@@ -1211,46 +1168,179 @@ function RequestList() {
         </Container>
       </Box>
 
-      {/* Completion Modal */}
-      <Dialog open={completionModal.open} onClose={() => setCompletionModal({...completionModal, open: false})} maxWidth="sm" fullWidth>
-        <DialogTitle>Complete Request</DialogTitle>
+      {/* Edit Request Dialog */}
+      <Dialog 
+        open={editDialog.open} 
+        onClose={() => setEditDialog({...editDialog, open: false})} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          fontFamily: 'Inter, sans-serif', 
+          fontWeight: 700, 
+          fontSize: '1.5rem',
+          color: '#1e293b',
+          pb: 2
+        }}>
+          ✏️ Edit Your Request
+        </DialogTitle>
         <DialogContent>
-          <Box sx={{ py: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>Rate your experience:</Typography>
-            <Rating
-              value={completionModal.rating}
-              onChange={(event, newValue) => setCompletionModal({...completionModal, rating: newValue})}
-              size="large"
+          <Box sx={{ pt: 2, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <TextField
+              fullWidth
+              label="Request Title"
+              value={editDialog.title}
+              onChange={(e) => setEditDialog({...editDialog, title: e.target.value})}
+              sx={{ borderRadius: '12px' }}
             />
             
             <TextField
               fullWidth
               multiline
-              rows={3}
-              label="Feedback (optional)"
-              value={completionModal.feedback}
-              onChange={(e) => setCompletionModal({...completionModal, feedback: e.target.value})}
-              sx={{ mt: 2 }}
+              rows={4}
+              label="Description"
+              value={editDialog.description}
+              onChange={(e) => setEditDialog({...editDialog, description: e.target.value})}
+              sx={{ borderRadius: '12px' }}
             />
-            
-            <Box sx={{ mt: 2 }}>
-              <Button
-                variant={completionModal.completedEarly ? "contained" : "outlined"}
-                onClick={() => setCompletionModal({...completionModal, completedEarly: !completionModal.completedEarly})}
-                size="small"
-              >
-                {completionModal.completedEarly ? "✅ Completed Early" : "Completed Early?"}
-              </Button>
+
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={editDialog.category}
+                  label="Category"
+                  onChange={(e) => setEditDialog({...editDialog, category: e.target.value})}
+                >
+                  {Object.entries(categoryConfig).map(([cat, config]) => {
+                    const IconComponent = config.icon;
+                    return (
+                      <MenuItem key={cat} value={cat}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                          <IconComponent sx={{ fontSize: 20, color: config.color }} />
+                          {cat}
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+
+              <FormControl fullWidth>
+                <InputLabel>Urgency</InputLabel>
+                <Select
+                  value={editDialog.urgency}
+                  label="Urgency"
+                  onChange={(e) => setEditDialog({...editDialog, urgency: e.target.value})}
+                >
+                  {Object.keys(urgencyColors).map((level) => (
+                    <MenuItem key={level} value={level}>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Box 
+                          sx={{ 
+                            width: 12, 
+                            height: 12, 
+                            borderRadius: '50%', 
+                            backgroundColor: urgencyColors[level] 
+                          }} 
+                        />
+                        {level}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
+
+            <TextField
+              fullWidth
+              label="Location"
+              value={editDialog.location}
+              onChange={(e) => setEditDialog({...editDialog, location: e.target.value})}
+              sx={{ borderRadius: '12px' }}
+            />
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCompletionModal({...completionModal, open: false})}>Cancel</Button>
-          <Button onClick={submitCompletion} variant="contained">Complete & Earn Points</Button>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setEditDialog({...editDialog, open: false})}
+            sx={{ 
+              fontFamily: 'Inter, sans-serif',
+              textTransform: 'none',
+              borderRadius: '12px'
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSaveEdit} 
+            variant="contained"
+            sx={{ 
+              background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+              fontFamily: 'Inter, sans-serif',
+              textTransform: 'none',
+              borderRadius: '12px',
+              px: 4
+            }}
+          >
+            Save Changes
+          </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Footer Component - Same as before */}
+      {/* Delete Confirmation Dialog */}
+      <Dialog 
+        open={deleteDialog.open} 
+        onClose={() => setDeleteDialog({...deleteDialog, open: false})}
+        PaperProps={{
+          sx: { borderRadius: '20px' }
+        }}
+      >
+        <DialogTitle sx={{ 
+          fontFamily: 'Inter, sans-serif', 
+          fontWeight: 700, 
+          color: '#dc2626'
+        }}>
+          🗑️ Delete Request
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ fontFamily: 'Inter, sans-serif' }}>
+            Are you sure you want to delete "<strong>{deleteDialog.title}</strong>"? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button 
+            onClick={() => setDeleteDialog({...deleteDialog, open: false})}
+            sx={{ 
+              fontFamily: 'Inter, sans-serif',
+              textTransform: 'none',
+              borderRadius: '12px'
+            }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={confirmDelete} 
+            variant="contained" 
+            color="error"
+            sx={{ 
+              fontFamily: 'Inter, sans-serif',
+              textTransform: 'none',
+              borderRadius: '12px'
+            }}
+          >
+            Delete Forever
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Footer Component */}
       <Box
         component="footer"
         sx={{
@@ -1259,16 +1349,6 @@ function RequestList() {
           mt: 8,
           position: 'relative',
           overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.02) 100%)',
-            pointerEvents: 'none',
-          }
         }}
       >
         <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
@@ -1586,4 +1666,4 @@ function RequestList() {
   );
 }
 
-export default RequestList;
+export default MyRequests;

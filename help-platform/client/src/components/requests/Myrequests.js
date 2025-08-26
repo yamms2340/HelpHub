@@ -6,7 +6,6 @@ import {
   Category,
   Edit,
   CheckCircle,
-  Star,
 } from '@mui/icons-material';
 
 import {
@@ -21,12 +20,6 @@ import {
   Alert,
   CardActions,
   Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Rating,
 } from '@mui/material';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -52,12 +45,6 @@ function MyRequests() {
   const { requests, fetchRequests, completeRequest } = useRequests();
   const navigate = useNavigate();
   
-  const [ratingModal, setRatingModal] = useState({
-    open: false,
-    requestId: null,
-    rating: 5,
-    feedback: '',
-  });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -91,8 +78,6 @@ function MyRequests() {
       console.log('🎯 Confirming completion for request:', requestId);
       
       const confirmationData = {
-        rating: 5,
-        feedback: '',
         completedEarly: false
       };
 
@@ -103,7 +88,6 @@ function MyRequests() {
       
       if (result) {
         const points = result.points || 0;
-        setSuccess(`✅ Request completed successfully! Helper earned ${points} points!`);
         
         // Force refresh after completion
         setTimeout(() => {
@@ -115,53 +99,6 @@ function MyRequests() {
     } catch (error) {
       console.error('❌ Completion error:', error);
       const errorMessage = error.response?.data?.message || 'Failed to confirm completion. Please try again.';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle optional rating
-  const handleAddRating = (requestId) => {
-    setRatingModal({
-      open: true,
-      requestId,
-      rating: 5,
-      feedback: '',
-    });
-  };
-
-  // Submit rating
-  const submitRating = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      
-      console.log('⭐ Submitting rating for request:', ratingModal.requestId);
-      
-      const ratingData = {
-        rating: ratingModal.rating,
-        feedback: ratingModal.feedback,
-        completedEarly: false
-      };
-
-      // Use completeRequest from context
-      const result = await completeRequest(ratingModal.requestId, ratingData);
-      
-      console.log('✅ Rating result:', result);
-      
-      if (result) {
-        setSuccess('✅ Rating submitted! Thank you for your feedback.');
-        setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' });
-        
-        // Refresh requests
-        if (fetchRequests) {
-          await fetchRequests();
-        }
-      }
-    } catch (error) {
-      console.error('❌ Rating error:', error);
-      const errorMessage = error.response?.data?.message || 'Failed to submit rating. Please try again.';
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -448,32 +385,6 @@ function MyRequests() {
                     </Typography>
                   </Box>
                 )}
-
-                {/* Show Rating if Completed and Already Rated */}
-                {request.status === 'Completed' && request.rating && (
-                  <Box sx={{ 
-                    mt: 2, 
-                    p: 2, 
-                    backgroundColor: '#f0fdf4',
-                    borderRadius: 2,
-                    border: '1px solid #bbf7d0'
-                  }}>
-                    <Typography variant="body2" sx={{ color: '#166534', fontWeight: 600, mb: 1 }}>
-                      ⭐ Your Rating:
-                    </Typography>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Rating value={request.rating} size="small" readOnly />
-                      <Typography variant="body2" color="textSecondary">
-                        ({request.rating}/5)
-                      </Typography>
-                    </Box>
-                    {request.feedback && (
-                      <Typography variant="body2" sx={{ color: '#166534', mt: 1, fontStyle: 'italic' }}>
-                        "{request.feedback}"
-                      </Typography>
-                    )}
-                  </Box>
-                )}
               </CardContent>
               
               <CardActions sx={{ p: 3, pt: 0, flexDirection: 'column', gap: 2 }}>
@@ -554,34 +465,6 @@ function MyRequests() {
                     {loading ? 'Confirming...' : 'Confirm Completion & Award Points'}
                   </Button>
                 )}
-
-                {/* Completed - Optional Rating */}
-                {request.status === 'Completed' && !request.rating && (
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    startIcon={<Star />}
-                    onClick={() => handleAddRating(request._id || request.id)}
-                    disabled={loading}
-                    sx={{
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      color: 'white',
-                      fontWeight: 600,
-                      textTransform: 'none',
-                      py: 1.5,
-                      borderRadius: 3,
-                      '&:hover': {
-                        background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                        transform: 'translateY(-1px)',
-                      },
-                      '&:disabled': {
-                        opacity: 0.7
-                      }
-                    }}
-                  >
-                    Rate Helper (Optional)
-                  </Button>
-                )}
               </CardActions>
             </Card>
           </Grid>
@@ -614,98 +497,6 @@ function MyRequests() {
           Create Another Request
         </Button>
       </Box>
-
-      {/* Rating Modal */}
-      <Dialog 
-        open={ratingModal.open} 
-        onClose={() => setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' })} 
-        maxWidth="sm" 
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 1
-          }
-        }}
-      >
-        <DialogTitle sx={{ pb: 1 }}>
-          <Box display="flex" alignItems="center" gap={1}>
-            <Star sx={{ color: '#f59e0b' }} />
-            <Typography variant="h6" fontWeight={700}>
-              Rate Your Helper
-            </Typography>
-          </Box>
-        </DialogTitle>
-        
-        <DialogContent sx={{ py: 3 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              How was your experience with the helper? Your feedback helps build a better community.
-            </Typography>
-            
-            <Box>
-              <Typography variant="subtitle1" gutterBottom fontWeight={600}>
-                Rating:
-              </Typography>
-              <Rating
-                value={ratingModal.rating}
-                onChange={(event, newValue) => 
-                  setRatingModal({...ratingModal, rating: newValue || 5})
-                }
-                size="large"
-                sx={{ mb: 1 }}
-              />
-              <Typography variant="body2" color="textSecondary">
-                Rate the helper's performance (1-5 stars)
-              </Typography>
-            </Box>
-            
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              label="Feedback (optional)"
-              value={ratingModal.feedback}
-              onChange={(e) => setRatingModal({...ratingModal, feedback: e.target.value})}
-              placeholder="Share your experience with the helper..."
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                }
-              }}
-            />
-          </Box>
-        </DialogContent>
-        
-        <DialogActions sx={{ px: 3, pb: 3 }}>
-          <Button 
-            onClick={() => setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' })}
-            sx={{ mr: 1 }}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={submitRating} 
-            variant="contained"
-            startIcon={<Star />}
-            disabled={loading}
-            sx={{
-              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-              fontWeight: 600,
-              px: 3,
-              '&:hover': {
-                background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-              },
-              '&:disabled': {
-                opacity: 0.7
-              }
-            }}
-          >
-            {loading ? 'Submitting...' : 'Submit Rating'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Container>
   );
 }

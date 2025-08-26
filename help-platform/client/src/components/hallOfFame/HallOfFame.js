@@ -503,7 +503,7 @@ function HallOfFame() {
           )}
 
           {/* Platform Statistics */}
-          <PlatformStats stats={stats} onViewProgress={handleViewProgress} />         
+          {/* <PlatformStats stats={stats} onViewProgress={handleViewProgress} />          */}
           {/* Inspiring Stories Section - Full Width Cards */}
           <InspiringStories stories={inspiringStories} onStoryClick={openStory} />
 

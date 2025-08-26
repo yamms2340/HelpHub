@@ -23,7 +23,7 @@ const FEATURES = [
 const PRIMARY_BLUE = '#2196F3';
 
 const FeaturesSection = () => (
-  <Box sx={{ py: 10, background: '#f8fafc' }}>
+  <Box id="features-section" sx={{ py: 10, background: '#f8fafc' }}> {/* Added ID here */}
     <Container maxWidth="md">
       <Typography
         variant="h3"
@@ -80,7 +80,7 @@ const FeaturesSection = () => (
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: '#1e293b', fontSize: '1.3rem' }}>
                 {feature.title}
               </Typography>
-              <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.5, fontSize: '1rem', px:1 }}>
+              <Typography variant="body2" sx={{ color: '#64748b', lineHeight: 1.5, fontSize: '1rem', px: 1 }}>
                 {feature.description}
               </Typography>
             </Paper>

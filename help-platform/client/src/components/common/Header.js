@@ -60,29 +60,53 @@ function Header() {
   const handleLogout = () => {
     logout();
     setAnchorEl(null);
-    navigate('/home');
+    window.location.href = '/home';
   };
 
+  // Fixed level info with dark background colors and progress data
   const levelInfo = (() => {
-    const p = userStats.totalPoints || 0;
-    if (p < 100) return { level: 'Beginner', current: p, next: 100, progress: p, color: '#64748b' };
-    if (p < 500)
-      return {
-        level: 'Helper',
-        current: p - 100,
-        next: 400,
-        progress: ((p - 100) / 400) * 100,
-        color: '#1976d2',
-      };
-    if (p < 1500)
-      return {
-        level: 'Expert',
-        current: p - 500,
-        next: 1000,
-        progress: ((p - 500) / 1000) * 100,
-        color: '#2196f3',
-      };
-    return { level: 'Master', current: p - 1500, next: 0, progress: 100, color: '#10b981' };
+    const p = userStats.totalPoints || 0;  // Points from backend
+    
+    if (p < 100) return { 
+      level: 'Beginner', 
+      color: '#8b5cf6',         // Purple (Violet 500)
+      bgColor: '#2e1065',       // Dark purple background
+      current: p,
+      next: 100,
+      progress: p
+    };
+    if (p < 500) return {
+      level: 'Helper',
+      color: '#1976d2',         // Blue 
+      bgColor: '#0d47a1',       // Dark blue background
+      current: p - 100,
+      next: 400,
+      progress: ((p - 100) / 400) * 100
+    };
+    if (p < 1500) return {
+      level: 'Expert',
+      color: '#2196f3',         // Light Blue
+      bgColor: '#01579b',       // Dark blue background
+      current: p - 500,
+      next: 1000,
+      progress: ((p - 500) / 1000) * 100
+    };
+    if (p < 3000) return {
+      level: 'Master',
+      color: '#4caf50',         // Green
+      bgColor: '#1b5e20',       // Dark green background
+      current: p - 1500,
+      next: 1500,
+      progress: ((p - 1500) / 1500) * 100
+    };
+    return { 
+      level: 'Legend',
+      color: '#ff9800',         // Orange
+      bgColor: '#e65100',       // Dark orange background
+      current: p - 3000,
+      next: 0,
+      progress: 100
+    };
   })();
 
   /* ─────────── render ─────────── */
@@ -134,21 +158,17 @@ function Header() {
             )}
 
             {/* ───── Right side ───── */}
-            {isAuthenticated ? (
-              <UserSection
-                user={user}
-                userStats={userStats}
-                levelInfo={levelInfo}
-                rank={rank}
-                statsLoading={statsLoading}
-                handleNavigation={handleNavigation}
-                anchorEl={anchorEl}
-                setAnchorEl={setAnchorEl}
-                logout={handleLogout}
-              />
-            ) : (
-              <GuestButtons handleNavigation={handleNavigation} />
-            )}
+            <UserSection
+              user={user}
+              userStats={userStats}
+              levelInfo={levelInfo}
+              rank={rank}
+              statsLoading={statsLoading}
+              handleNavigation={handleNavigation}
+              anchorEl={anchorEl}
+              setAnchorEl={setAnchorEl}
+              logout={handleLogout}
+            />
           </Toolbar>
         </AppBar>
       </Container>
@@ -156,9 +176,6 @@ function Header() {
   );
 }
 
-/* ════════════════════════════════════════════════
-   Sub-components
-════════════════════════════════════════════════ */
 function NavButtons({ isActive, handleNavigation }) {
   const common = {
     borderRadius: '12px',
@@ -167,7 +184,8 @@ function NavButtons({ isActive, handleNavigation }) {
     fontSize: '.875rem',
     fontWeight: 600,
     textTransform: 'none',
-    transition: '.2s',
+    transition: 'all .2s ease',
+    minHeight: '44px',
   };
 
   return (
@@ -188,17 +206,30 @@ function NavButtons({ isActive, handleNavigation }) {
       <Button
         color="inherit"
         onClick={() => handleNavigation('/dashboard')}
-        startIcon={<Groups sx={{ fontSize: 20, color: '#1976d2' }} />}
+        startIcon={<Groups sx={{ fontSize: 20 }} />}
         sx={{
           ...common,
-          color: isActive('/dashboard') ? '#1565c0' : '#475569',
-          bgcolor: isActive('/dashboard')
-            ? 'linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%)'
-            : 'transparent',
+          ...(isActive('/dashboard') ? {
+            color: '#fff !important',
+            bgcolor: '#1976d2 !important',
+            boxShadow: '0 2px 8px rgba(25,118,210,.3)',
+            '& .MuiSvgIcon-root': {
+              color: '#fff !important',
+            },
+          } : {
+            color: '#64748b',
+            bgcolor: 'transparent',
+            '& .MuiSvgIcon-root': {
+              color: '#1976d2',
+            },
+          }),
           '&:hover': {
-            bgcolor: 'linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%)',
-            color: '#1565c0',
+            bgcolor: isActive('/dashboard') ? '#1565c0 !important' : '#e3f2fd !important',
+            color: isActive('/dashboard') ? '#fff !important' : '#1976d2 !important',
             transform: 'translateY(-1px)',
+            '& .MuiSvgIcon-root': {
+              color: isActive('/dashboard') ? '#fff !important' : '#1976d2 !important',
+            },
           },
         }}
       >
@@ -209,17 +240,30 @@ function NavButtons({ isActive, handleNavigation }) {
       <Button
         color="inherit"
         onClick={() => handleNavigation('/leaderboard')}
-        startIcon={<LeaderboardIcon sx={{ fontSize: 20, color: '#2196f3' }} />}
+        startIcon={<LeaderboardIcon sx={{ fontSize: 20 }} />}
         sx={{
           ...common,
-          color: isActive('/leaderboard') ? '#0d47a1' : '#475569',
-          bgcolor: isActive('/leaderboard')
-            ? 'linear-gradient(135deg,#e1f5fe 0%,#b3e5fc 100%)'
-            : 'transparent',
+          ...(isActive('/leaderboard') ? {
+            color: '#fff !important',
+            bgcolor: '#2196f3 !important',
+            boxShadow: '0 2px 8px rgba(33,150,243,.3)',
+            '& .MuiSvgIcon-root': {
+              color: '#fff !important',
+            },
+          } : {
+            color: '#64748b',
+            bgcolor: 'transparent',
+            '& .MuiSvgIcon-root': {
+              color: '#2196f3',
+            },
+          }),
           '&:hover': {
-            bgcolor: 'linear-gradient(135deg,#e1f5fe 0%,#b3e5fc 100%)',
-            color: '#0d47a1',
+            bgcolor: isActive('/leaderboard') ? '#1976d2 !important' : '#e1f5fe !important',
+            color: isActive('/leaderboard') ? '#fff !important' : '#0d47a1 !important',
             transform: 'translateY(-1px)',
+            '& .MuiSvgIcon-root': {
+              color: isActive('/leaderboard') ? '#fff !important' : '#0d47a1 !important',
+            },
           },
         }}
       >
@@ -230,17 +274,30 @@ function NavButtons({ isActive, handleNavigation }) {
       <Button
         color="inherit"
         onClick={() => handleNavigation('/donate')}
-        startIcon={<VolunteerActivism sx={{ fontSize: 20, color: '#10b981' }} />}
+        startIcon={<VolunteerActivism sx={{ fontSize: 20 }} />}
         sx={{
           ...common,
-          color: isActive('/donate') ? '#059669' : '#475569',
-          bgcolor: isActive('/donate')
-            ? 'linear-gradient(135deg,#d1fae5 0%,#a7f3d0 100%)'
-            : 'transparent',
+          ...(isActive('/donate') ? {
+            color: '#fff !important',
+            bgcolor: '#10b981 !important',
+            boxShadow: '0 2px 8px rgba(16,185,129,.3)',
+            '& .MuiSvgIcon-root': {
+              color: '#fff !important',
+            },
+          } : {
+            color: '#64748b',
+            bgcolor: 'transparent',
+            '& .MuiSvgIcon-root': {
+              color: '#10b981',
+            },
+          }),
           '&:hover': {
-            bgcolor: 'linear-gradient(135deg,#d1fae5 0%,#a7f3d0 100%)',
-            color: '#059669',
+            bgcolor: isActive('/donate') ? '#059669 !important' : '#d1fae5 !important',
+            color: isActive('/donate') ? '#fff !important' : '#059669 !important',
             transform: 'translateY(-1px)',
+            '& .MuiSvgIcon-root': {
+              color: isActive('/donate') ? '#fff !important' : '#059669 !important',
+            },
           },
         }}
       >
@@ -251,64 +308,34 @@ function NavButtons({ isActive, handleNavigation }) {
       <Button
         color="inherit"
         onClick={() => handleNavigation('/hall-of-fame')}
-        startIcon={<EmojiEvents sx={{ fontSize: 20, color: '#f59e0b' }} />}
+        startIcon={<EmojiEvents sx={{ fontSize: 20 }} />}
         sx={{
           ...common,
-          color: isActive('/hall-of-fame') ? '#d97706' : '#475569',
-          bgcolor: isActive('/hall-of-fame')
-            ? 'linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)'
-            : 'transparent',
+          ...(isActive('/hall-of-fame') ? {
+            color: '#fff !important',
+            bgcolor: '#f59e0b !important',
+            boxShadow: '0 2px 8px rgba(245,158,11,.3)',
+            '& .MuiSvgIcon-root': {
+              color: '#fff !important',
+            },
+          } : {
+            color: '#64748b',
+            bgcolor: 'transparent',
+            '& .MuiSvgIcon-root': {
+              color: '#f59e0b',
+            },
+          }),
           '&:hover': {
-            bgcolor: 'linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)',
-            color: '#d97706',
+            bgcolor: isActive('/hall-of-fame') ? '#d97706 !important' : '#fef3c7 !important',
+            color: isActive('/hall-of-fame') ? '#fff !important' : '#d97706 !important',
             transform: 'translateY(-1px)',
+            '& .MuiSvgIcon-root': {
+              color: isActive('/hall-of-fame') ? '#fff !important' : '#d97706 !important',
+            },
           },
         }}
       >
         Hall of Fame
-      </Button>
-    </Box>
-  );
-}
-
-function GuestButtons({ handleNavigation }) {
-  return (
-    <Box display="flex" gap={2}>
-      <Button
-        color="inherit"
-        onClick={() => handleNavigation('/login')}
-        sx={{
-          borderRadius: '25px',
-          px: 4,
-          py: 1.5,
-          border: '2px solid #e3ebf0',
-          fontWeight: 600,
-          '&:hover': {
-            bgcolor: 'rgba(25,118,210,.05)',
-            color: '#1976d2',
-            borderColor: '#1976d2',
-          },
-        }}
-      >
-        Sign In
-      </Button>
-
-      <Button
-        variant="contained"
-        onClick={() => handleNavigation('/register')}
-        sx={{
-          borderRadius: '25px',
-          px: 4,
-          py: 1.5,
-          bgcolor: 'linear-gradient(135deg,#1976d2 0%,#2196f3 100%)',
-          fontWeight: 700,
-          '&:hover': {
-            bgcolor: 'linear-gradient(135deg,#1565c0 0%,#0d47a1 100%)',
-            transform: 'translateY(-2px)',
-          },
-        }}
-      >
-        Join the Community →
       </Button>
     </Box>
   );
@@ -327,17 +354,17 @@ function UserSection({
 }) {
   return (
     <Box display="flex" alignItems="center" gap={2}>
-      {/* points pill */}
+      {/* points pill - FIXED COLORS */}
       <Box
         sx={{
           display: { xs: 'none', sm: 'flex' },
           alignItems: 'center',
           gap: 1,
-          bgcolor: 'linear-gradient(135deg,#1976d2 0%,#2196f3 100%)',
+          backgroundColor: levelInfo.bgColor, // Use dark background
           borderRadius: '20px',
           px: 3,
           py: 1.5,
-          boxShadow: '0 4px 15px rgba(25,118,210,.3)',
+          boxShadow: `0 4px 15px ${levelInfo.color}40`,
           border: '2px solid rgba(255,255,255,.2)',
         }}
       >
@@ -381,13 +408,13 @@ function UserSection({
         Request Help →
       </Button>
 
-      {/* avatar */}
+      {/* avatar - FIXED BADGE */}
       <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0 }}>
         <Badge
           badgeContent={userStats.requestsCompleted || 0}
           sx={{
             '& .MuiBadge-badge': {
-              bgcolor: 'linear-gradient(135deg,#10b981 0%,#059669 100%)',
+              backgroundColor: levelInfo.color, // Use backgroundColor
               color: '#fff',
               fontSize: '.7rem',
               fontWeight: 600,
@@ -400,14 +427,14 @@ function UserSection({
               width: 44,
               height: 44,
               borderRadius: '22px',
-              bgcolor: 'linear-gradient(135deg,#f8fafc 0%,#e3f2fd 100%)',
+              backgroundColor: levelInfo.bgColor, // Use dark background
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              border: '2px solid #e3ebf0',
+              border: `2px solid ${levelInfo.color}30`,
             }}
           >
-            <PersonOutline sx={{ color: '#475569' }} />
+            <PersonOutline sx={{ color: levelInfo.color }} />
           </Box>
         </Badge>
       </IconButton>
@@ -435,7 +462,7 @@ function UserSection({
                 width: 50,
                 height: 50,
                 borderRadius: '25px',
-                bgcolor: 'linear-gradient(135deg,#1976d2 0%,#2196f3 100%)',
+                backgroundColor: levelInfo.bgColor, // Use dark background
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -477,7 +504,9 @@ function UserSection({
                       ? 'Helper'
                       : levelInfo.level === 'Helper'
                       ? 'Expert'
-                      : 'Master'}
+                      : levelInfo.level === 'Expert'
+                      ? 'Master'
+                      : 'Legend'}
                   </Typography>
                   <Typography variant="caption" color="#64748b">
                     {levelInfo.current}/{levelInfo.next}
@@ -490,9 +519,9 @@ function UserSection({
                     height: 6,
                     borderRadius: 3,
                     mt: 0.5,
-                    bgcolor: 'rgba(25,118,210,.1)',
+                    bgcolor: `${levelInfo.color}20`,
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: 'linear-gradient(135deg,#1976d2 0%,#2196f3 100%)',
+                      bgcolor: levelInfo.color,
                     },
                   }}
                 />

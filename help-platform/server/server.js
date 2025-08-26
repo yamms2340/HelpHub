@@ -17,6 +17,7 @@ app.use('/api/requests', require('./routes/requests'));
 app.use('/api/help', require('./routes/help'));
 app.use('/api/leaderboard', require('./routes/LeaderBoard')); // ✅ Add this line
 app.use('/api', require('./routes/stories'));
+app.use('/api/impact-posts', require('./routes/impactPostsRouter'));
 
 // Test route
 app.get('/', (req, res) => {

@@ -151,14 +151,17 @@ function RequestList() {
   }, [filters, allRequests]);
 
   const applyFilters = () => {
-    const filteredRequests = getFilteredRequests(filters);
-    const requestsExcludingMine = filteredRequests.filter(request => {
-      const requesterId = request.requester?._id || request.requester?.id || request.requester;
-      const currentUserId = user?._id || user?.id;
-      return requesterId !== currentUserId;
-    });
-    setRequests(requestsExcludingMine);
-  };
+  const filteredRequests = getFilteredRequests(filters);
+  const requestsExcludingMine = filteredRequests.filter(request => {
+    const requesterId = request.requester?._id || request.requester?.id || request.requester;
+    const currentUserId = user?._id || user?.id;
+    
+    // Only show requests that are NOT completed AND exclude own requests
+    return requesterId !== currentUserId && request.status !== 'Completed';
+  });
+  setRequests(requestsExcludingMine);
+};
+
 
   // ✅ Simplified: Offer Help (automatically accepts)
   const handleOfferHelp = async (requestId) => {

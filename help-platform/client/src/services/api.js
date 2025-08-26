@@ -8,7 +8,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // Increased timeout for better reliability
+  timeout: 15000,
 });
 
 // Request interceptor with enhanced logging
@@ -19,7 +19,6 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Add request timestamp for debugging
     config.metadata = { startTime: new Date() };
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
     
@@ -31,10 +30,9 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor with enhanced error handling
+// Enhanced response interceptor
 api.interceptors.response.use(
   (response) => {
-    // Calculate request duration
     const duration = new Date() - response.config.metadata.startTime;
     console.log(`✅ API Response: ${response.config.url} (${duration}ms) - Status: ${response.status}`);
     return response;
@@ -43,12 +41,10 @@ api.interceptors.response.use(
     const duration = error.config?.metadata ? new Date() - error.config.metadata.startTime : 0;
     console.error(`❌ API Error: ${error.config?.url} (${duration}ms) - ${error.response?.status || 'Network Error'}`);
     
-    // Handle different error scenarios
     if (error.response?.status === 401) {
       console.warn('🔒 Unauthorized - Clearing session');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      // Only redirect if not already on login page
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
@@ -82,10 +78,40 @@ export const authAPI = {
 };
 
 /**
+ * Impact Posts API endpoints - NEW ADDITION
+ */
+export const impactPostsAPI = {
+  // Basic CRUD operations
+  getAllPosts: (params = {}) => api.get('/impact-posts', { params }),
+  getPostById: (id) => api.get(`/impact-posts/${id}`),
+  createPost: (postData) => api.post('/impact-posts', postData),
+  updatePost: (id, updateData) => api.put(`/impact-posts/${id}`, updateData),
+  deletePost: (id) => api.delete(`/impact-posts/${id}`),
+  
+  // Post interactions
+  likePost: (id) => api.post(`/impact-posts/${id}/like`),
+  unlikePost: (id) => api.delete(`/impact-posts/${id}/like`),
+  incrementViews: (id) => api.put(`/impact-posts/${id}/views`),
+  
+  // Filtering and search
+  getPostsByCategory: (category) => api.get(`/impact-posts/category/${category}`),
+  getPostsByAuthor: (authorId) => api.get(`/impact-posts/author/${authorId}`),
+  getPostsByStatus: (status) => api.get(`/impact-posts/status/${status}`),
+  searchPosts: (query) => api.get('/impact-posts/search', { params: { q: query } }),
+  
+  // Statistics
+  getPostStats: () => api.get('/impact-posts/stats'),
+  
+  // Admin operations
+  verifyPost: (id) => api.put(`/impact-posts/${id}/verify`),
+  unverifyPost: (id) => api.put(`/impact-posts/${id}/unverify`),
+  moderatePost: (id, action, reason) => api.put(`/impact-posts/${id}/moderate`, { action, reason })
+};
+
+/**
  * Help Requests API endpoints
  */
 export const requestsAPI = {
-  // Basic CRUD operations
   createRequest: (requestData) => api.post('/requests', requestData),
   getAllRequests: (params = {}) => api.get('/requests', { params }),
   getRequestById: (id) => api.get(`/requests/${id}`),
@@ -114,56 +140,33 @@ export const requestsAPI = {
  * Enhanced Leaderboard API endpoints
  */
 export const leaderboardAPI = {
-  // Main leaderboard functions
   getLeaderboard: (timeframe = 'all', limit = 10) => 
     api.get('/leaderboard', { params: { timeframe, limit } }),
-  
   getUserStats: (userId) => api.get(`/leaderboard/user/${userId}`),
-  
   getUserRank: (userId, timeframe = 'all') => 
     api.get(`/leaderboard/user/${userId}/rank`, { params: { timeframe } }),
-  
-  // Comprehensive stats
   getStatsOverview: () => api.get('/leaderboard/stats/overview'),
   getTopPerformers: (category, limit = 5) => 
     api.get('/leaderboard/top-performers', { params: { category, limit } }),
-  
-  // Points and achievements
   awardPoints: (pointsData) => api.post('/leaderboard/award-points', pointsData),
   getUserPointsHistory: (userId, limit = 20) => 
     api.get(`/leaderboard/user/${userId}/points-history`, { params: { limit } }),
-  
-  // Badges and achievements
   getUserBadges: (userId) => api.get(`/leaderboard/user/${userId}/badges`),
   getUserAchievements: (userId) => api.get(`/leaderboard/user/${userId}/achievements`),
   getAllBadges: () => api.get('/leaderboard/badges'),
   getAllAchievements: () => api.get('/leaderboard/achievements'),
-  
-  // Leaderboard variations
   getLeaderboardByCategory: (category, timeframe = 'all', limit = 10) =>
     api.get(`/leaderboard/category/${category}`, { params: { timeframe, limit } }),
-  
   getLeaderboardByLocation: (location, timeframe = 'all', limit = 10) =>
     api.get(`/leaderboard/location/${encodeURIComponent(location)}`, { params: { timeframe, limit } }),
-  
-  // Competition features
   getCurrentCompetitions: () => api.get('/leaderboard/competitions'),
   getCompetitionLeaderboard: (competitionId) => api.get(`/leaderboard/competitions/${competitionId}`),
-  
-  // Admin functions
   resetPoints: () => api.post('/leaderboard/reset-points'),
   recalculateStats: () => api.post('/leaderboard/recalculate'),
-  
-  // Real-time features
   subscribeToUpdates: (userId) => api.get(`/leaderboard/subscribe/${userId}`),
-  
-  // Bulk operations
   getBulkUserStats: (userIds) => api.post('/leaderboard/bulk-stats', { userIds }),
-  
-  // Analytics
   getLeaderboardTrends: (timeframe = 'month') => 
     api.get('/leaderboard/trends', { params: { timeframe } }),
-  
   getUserProgressAnalytics: (userId, timeframe = 'month') =>
     api.get(`/leaderboard/user/${userId}/analytics`, { params: { timeframe } })
 };
@@ -172,31 +175,22 @@ export const leaderboardAPI = {
  * Help and Community API endpoints
  */
 export const helpAPI = {
-  // Hall of fame
   getHallOfFame: () => api.get('/help/hall-of-fame'),
   getTopHelpersThisMonth: () => api.get('/help/top-helpers/month'),
   getTopHelpersThisWeek: () => api.get('/help/top-helpers/week'),
-  
-  // User history and statistics
   getUserHistory: (userId, limit = 20) => 
     api.get(`/help/history/${userId}`, { params: { limit } }),
   getUserHelpStats: (userId) => api.get(`/help/stats/${userId}`),
-  
-  // Platform statistics
   getStats: () => api.get('/help/stats'),
   getCommunityStats: () => api.get('/help/community-stats'),
   getPlatformAnalytics: (timeframe = 'month') => 
     api.get('/help/analytics', { params: { timeframe } }),
-  
-  // Stories and testimonials
   getInspiringStories: (limit = 10) => api.get('/inspiring-stories', { params: { limit } }),
   getFeaturedStories: () => api.get('/inspiring-stories/featured'),
   submitStory: (storyData) => api.post('/stories/submit', storyData),
   getAllStories: (status = 'approved') => api.get('/stories', { params: { status } }),
   approveStory: (storyId) => api.put(`/stories/${storyId}/approve`),
   rejectStory: (storyId, reason) => api.put(`/stories/${storyId}/reject`, { reason }),
-  
-  // Legacy compatibility
   getLeaderboard: (timeframe = 'all', limit = 10) => 
     leaderboardAPI.getLeaderboard(timeframe, limit),
   getUserPoints: (userId) => leaderboardAPI.getUserStats(userId)
@@ -206,36 +200,25 @@ export const helpAPI = {
  * User Management API endpoints
  */
 export const userAPI = {
-  // Profile management
   getProfile: (userId) => api.get(`/users/${userId}`),
   updateProfile: (userId, profileData) => api.put(`/users/${userId}`, profileData),
   uploadProfilePicture: (userId, formData) => api.post(`/users/${userId}/avatar`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
-  
-  // User activities
   getUserRequests: (userId, status = 'all') => 
     api.get(`/users/${userId}/requests`, { params: { status } }),
   getUserHelpActivities: (userId, limit = 20) => 
     api.get(`/users/${userId}/help-activities`, { params: { limit } }),
-  
-  // User preferences
   updatePreferences: (userId, preferences) => 
     api.put(`/users/${userId}/preferences`, preferences),
   getNotificationSettings: (userId) => api.get(`/users/${userId}/notifications`),
   updateNotificationSettings: (userId, settings) => 
     api.put(`/users/${userId}/notifications`, settings),
-  
-  // Social features
   followUser: (userId) => api.post(`/users/${userId}/follow`),
   unfollowUser: (userId) => api.delete(`/users/${userId}/follow`),
   getFollowers: (userId) => api.get(`/users/${userId}/followers`),
   getFollowing: (userId) => api.get(`/users/${userId}/following`),
-  
-  // User verification
   requestVerification: (userId) => api.post(`/users/${userId}/verify-request`),
-  
-  // User statistics
   getUserDashboard: (userId) => api.get(`/users/${userId}/dashboard`)
 };
 
@@ -267,29 +250,20 @@ export const notificationAPI = {
  * Admin API endpoints
  */
 export const adminAPI = {
-  // User management
   getAllUsers: (page = 1, limit = 20) => 
     api.get('/admin/users', { params: { page, limit } }),
   getUserDetails: (userId) => api.get(`/admin/users/${userId}`),
   suspendUser: (userId, reason) => api.put(`/admin/users/${userId}/suspend`, { reason }),
   unsuspendUser: (userId) => api.put(`/admin/users/${userId}/unsuspend`),
-  
-  // Content moderation
   getReportedContent: () => api.get('/admin/reports'),
   moderateContent: (contentId, action, reason) => 
     api.put(`/admin/moderate/${contentId}`, { action, reason }),
-  
-  // Platform analytics
   getAnalytics: (timeframe = 'month') => 
     api.get('/admin/analytics', { params: { timeframe } }),
   getDashboardStats: () => api.get('/admin/dashboard'),
-  
-  // System management
   getSystemLogs: (level = 'error', limit = 100) => 
     api.get('/admin/logs', { params: { level, limit } }),
   performSystemMaintenance: () => api.post('/admin/maintenance'),
-  
-  // Reports
   generateReport: (reportType, params = {}) => 
     api.post('/admin/reports/generate', { type: reportType, ...params }),
   getReports: () => api.get('/admin/reports')
@@ -305,8 +279,6 @@ export const fileAPI = {
   }),
   deleteFile: (fileId) => api.delete(`/files/${fileId}`),
   getFileInfo: (fileId) => api.get(`/files/${fileId}/info`),
-  
-  // Bulk operations
   uploadMultipleFiles: (formData, onUploadProgress) => 
     api.post('/files/upload-multiple', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -323,21 +295,17 @@ export const searchAPI = {
   searchUsers: (query, filters = {}) => 
     api.get('/search/users', { params: { q: query, ...filters } }),
   searchStories: (query) => api.get('/search/stories', { params: { q: query } }),
-  
-  // Advanced search
-  globalSearch: (query, types = ['requests', 'users', 'stories']) => 
+  searchImpactPosts: (query) => api.get('/search/impact-posts', { params: { q: query } }),
+  globalSearch: (query, types = ['requests', 'users', 'stories', 'impact-posts']) => 
     api.get('/search/global', { params: { q: query, types: types.join(',') } }),
-  
-  // Search suggestions
   getSearchSuggestions: (query) => 
     api.get('/search/suggestions', { params: { q: query } })
 };
 
 /**
- * Utility functions for API usage - ✅ FIXED: Removed export keyword
+ * Utility functions for API usage
  */
 const apiUtils = {
-  // Handle API errors consistently
   handleApiError: (error) => {
     if (error.response) {
       return {
@@ -360,41 +328,64 @@ const apiUtils = {
     }
   },
   
-  // Create cancel token for request cancellation
   createCancelToken: () => axios.CancelToken.source(),
-  
-  // Check if error is due to request cancellation
   isCancel: (error) => axios.isCancel(error),
   
-  // Format API response consistently
   formatResponse: (response) => ({
     success: true,
     data: response.data,
     status: response.status,
     message: response.data?.message || 'Success'
-  })
+  }),
+
+  // NEW: Helper for handling file uploads with progress
+  uploadWithProgress: async (endpoint, formData, onProgress) => {
+    try {
+      const response = await api.post(endpoint, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress?.(percentCompleted);
+        }
+      });
+      return apiUtils.formatResponse(response);
+    } catch (error) {
+      throw apiUtils.handleApiError(error);
+    }
+  },
+
+  // NEW: Helper for retrying failed requests
+  retryRequest: async (requestFn, maxRetries = 3, delay = 1000) => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        return await requestFn();
+      } catch (error) {
+        if (i === maxRetries - 1) throw error;
+        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+      }
+    }
+  }
 };
 
 /**
  * Real-time features (WebSocket-like endpoints)
  */
 export const realtimeAPI = {
-  // For future WebSocket integration
   subscribeToLeaderboardUpdates: (callback) => {
-    // Placeholder for WebSocket subscription
     console.log('WebSocket subscription for leaderboard updates');
   },
-  
   subscribeToUserNotifications: (userId, callback) => {
-    // Placeholder for WebSocket subscription
     console.log(`WebSocket subscription for user ${userId} notifications`);
+  },
+  subscribeToImpactPostUpdates: (callback) => {
+    console.log('WebSocket subscription for impact post updates');
   }
 };
 
 // Default export
 export default api;
 
-// ✅ FIXED: Named exports for convenience (apiUtils only exported here now)
+// Named exports for convenience
 export {
   api,
   API_BASE_URL,

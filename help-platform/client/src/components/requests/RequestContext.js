@@ -20,11 +20,13 @@ export const RequestsProvider = ({ children }) => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching requests from API...');
       const response = await requestsAPI.getAllRequests();
+      console.log('✅ Fetched requests:', response.data?.length || 0, 'items');
       setRequests(response.data || []);
       setError('');
     } catch (error) {
-      console.error('Error fetching requests:', error);
+      console.error('❌ Error fetching requests:', error);
       setError('Failed to fetch requests');
     } finally {
       setLoading(false);
@@ -39,12 +41,22 @@ export const RequestsProvider = ({ children }) => {
   // Add new request
   const addRequest = async (requestData) => {
     try {
+      console.log('➕ Creating new request:', requestData);
       const response = await requestsAPI.createRequest(requestData);
       const newRequest = response.data;
+      
+      // Add to beginning of list
       setRequests(prev => [newRequest, ...prev]);
+      
+      // Refresh from server after short delay
+      setTimeout(() => {
+        fetchRequests();
+      }, 1000);
+      
+      console.log('✅ Request created successfully:', newRequest._id);
       return newRequest;
     } catch (error) {
-      console.error('Error creating request:', error);
+      console.error('❌ Error creating request:', error);
       throw error;
     }
   };
@@ -52,20 +64,33 @@ export const RequestsProvider = ({ children }) => {
   // Complete request and award points
   const completeRequest = async (requestId, completionData) => {
     try {
-      console.log('Completing request:', requestId, completionData);
+      console.log('🎯 Completing request:', requestId, completionData);
       
       const response = await requestsAPI.confirmCompletion(requestId, completionData);
       
-      console.log('Backend response:', response.data);
+      console.log('✅ Completion response:', response.data);
       
-      // Update local state
+      // Update local state immediately
       setRequests(prev => 
-        prev.map(request => 
-          (request._id === requestId || request.id === requestId)
-            ? { ...request, ...response.data.request }
-            : request
-        )
+        prev.map(request => {
+          if (request._id === requestId || request.id === requestId) {
+            return {
+              ...request,
+              status: 'Completed',
+              completedAt: new Date().toISOString(),
+              rating: completionData.rating || 5,
+              feedback: completionData.feedback || '',
+              pointsAwarded: response.data.points || 0
+            };
+          }
+          return request;
+        })
       );
+
+      // Refresh from server to ensure consistency
+      setTimeout(() => {
+        fetchRequests();
+      }, 1000);
 
       return {
         points: response.data.points || 0,
@@ -74,7 +99,7 @@ export const RequestsProvider = ({ children }) => {
       };
       
     } catch (error) {
-      console.error('Error completing request:', error);
+      console.error('❌ Error completing request:', error);
       throw error;
     }
   };
@@ -96,7 +121,7 @@ export const RequestsProvider = ({ children }) => {
     return filtered;
   };
 
-  // ✅ ADD THIS FUNCTION BACK
+  // Get user stats
   const getUserStats = async (userId) => {
     try {
       if (!userId) {
@@ -112,12 +137,10 @@ export const RequestsProvider = ({ children }) => {
         };
       }
 
-      // Use the leaderboard API to get user stats
       const response = await leaderboardAPI.getUserStats(userId);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching user stats:', error);
-      // Return default stats if API fails
       return {
         totalPoints: 0,
         monthlyPoints: 0,
@@ -131,7 +154,7 @@ export const RequestsProvider = ({ children }) => {
     }
   };
 
-  // ✅ ADD LEADERBOARD FUNCTION
+  // Get leaderboard
   const getLeaderboard = async (timeframe = 'all', limit = 10) => {
     try {
       const response = await leaderboardAPI.getLeaderboard(timeframe, limit);
@@ -150,8 +173,8 @@ export const RequestsProvider = ({ children }) => {
     completeRequest,
     getFilteredRequests,
     fetchRequests,
-    getUserStats,    // ✅ Add this back
-    getLeaderboard,  // ✅ Add this back
+    getUserStats,
+    getLeaderboard,
   };
 
   return (

@@ -1,4 +1,3 @@
-// src/components/layout/Header.jsx
 import React, { useState } from 'react';
 import {
   AppBar,
@@ -15,6 +14,8 @@ import {
   LinearProgress,
   Divider,
   ListItemIcon,
+  CircularProgress,
+  Skeleton,
 } from '@mui/material';
 import {
   PersonOutline,
@@ -27,7 +28,7 @@ import {
   ExitToApp,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
-import { useRequests } from '../requests/RequestContext';
+import { useUserStats, useLeaderboard } from '../../hooks/useUserStats';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 /* ════════════════════════════════════════════════
@@ -36,7 +37,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 function Header() {
   /* ─────────── context & hooks ─────────── */
   const { user, isAuthenticated, logout } = useAuth();
-  const { getUserStats, getLeaderboard } = useRequests();
+  const { userStats, loading: statsLoading } = useUserStats();
+  const { leaderboard } = useLeaderboard('all', 10);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -44,9 +46,7 @@ function Header() {
   const [anchorEl, setAnchorEl] = useState(null);
 
   /* ─────────── user-centric data ─────────── */
-  const stats = getUserStats(user?.id || 'current-user-id');
-  const leaderboard = getLeaderboard('all', 10);
-  const rank = leaderboard.findIndex((l) => l.userId === (user?.id || 'current-user-id')) + 1;
+  const rank = leaderboard.findIndex((l) => l.userId === (user?.id || user?._id)) + 1;
 
   /* ─────────── enhanced navigation helpers ─────────── */
   const handleNavigation = (path) => {
@@ -64,7 +64,7 @@ function Header() {
   };
 
   const levelInfo = (() => {
-    const p = stats.totalPoints;
+    const p = userStats.totalPoints || 0;
     if (p < 100) return { level: 'Beginner', current: p, next: 100, progress: p, color: '#64748b' };
     if (p < 500)
       return {
@@ -137,9 +137,10 @@ function Header() {
             {isAuthenticated ? (
               <UserSection
                 user={user}
-                stats={stats}
+                userStats={userStats}
                 levelInfo={levelInfo}
                 rank={rank}
+                statsLoading={statsLoading}
                 handleNavigation={handleNavigation}
                 anchorEl={anchorEl}
                 setAnchorEl={setAnchorEl}
@@ -225,7 +226,7 @@ function NavButtons({ isActive, handleNavigation }) {
         Leaderboard
       </Button>
 
-      {/* Donate - Enhanced with active state */}
+      {/* Donate */}
       <Button
         color="inherit"
         onClick={() => handleNavigation('/donate')}
@@ -315,9 +316,10 @@ function GuestButtons({ handleNavigation }) {
 
 function UserSection({
   user,
-  stats,
+  userStats,
   levelInfo,
   rank,
+  statsLoading,
   handleNavigation,
   anchorEl,
   setAnchorEl,
@@ -340,9 +342,13 @@ function UserSection({
         }}
       >
         <Star sx={{ color: '#fff', fontSize: 20 }} />
-        <Typography variant="body2" sx={{ color: '#fff', fontWeight: 700 }}>
-          {stats.totalPoints}
-        </Typography>
+        {statsLoading ? (
+          <Skeleton variant="text" width={40} sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
+        ) : (
+          <Typography variant="body2" sx={{ color: '#fff', fontWeight: 700 }}>
+            {userStats.totalPoints || 0}
+          </Typography>
+        )}
         <Chip
           label={levelInfo.level}
           size="small"
@@ -378,7 +384,7 @@ function UserSection({
       {/* avatar */}
       <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} sx={{ p: 0 }}>
         <Badge
-          badgeContent={stats.requestsCompleted || 0}
+          badgeContent={userStats.requestsCompleted || 0}
           sx={{
             '& .MuiBadge-badge': {
               bgcolor: 'linear-gradient(135deg,#10b981 0%,#059669 100%)',
@@ -450,7 +456,11 @@ function UserSection({
             <Box display="flex" justifyContent="space-between" mb={1}>
               <Box display="flex" gap={1} alignItems="center">
                 <Star sx={{ color: '#f59e0b', fontSize: 20 }} />
-                <Typography fontWeight="bold">{stats.totalPoints}</Typography>
+                {statsLoading ? (
+                  <Skeleton variant="text" width={60} />
+                ) : (
+                  <Typography fontWeight="bold">{userStats.totalPoints || 0}</Typography>
+                )}
               </Box>
               <Chip
                 label={levelInfo.level}
@@ -493,12 +503,16 @@ function UserSection({
           {/* quick stats */}
           <Box display="grid" gridTemplateColumns="repeat(3,1fr)" gap={2}>
             {[
-              { label: 'Completed', value: stats.requestsCompleted },
-              { label: 'Badges', value: stats.badges?.length || 0 },
+              { label: 'Completed', value: userStats.requestsCompleted || 0 },
+              { label: 'Badges', value: userStats.badges?.length || 0 },
               { label: 'Rank', value: rank > 0 ? `#${rank}` : 'N/A' },
             ].map((i) => (
               <Box key={i.label} textAlign="center">
-                <Typography fontWeight="bold">{i.value}</Typography>
+                {statsLoading ? (
+                  <Skeleton variant="text" width={40} sx={{ mx: 'auto' }} />
+                ) : (
+                  <Typography fontWeight="bold">{i.value}</Typography>
+                )}
                 <Typography variant="caption" color="#64748b">
                   {i.label}
                 </Typography>

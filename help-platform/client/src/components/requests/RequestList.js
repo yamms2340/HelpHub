@@ -126,6 +126,26 @@ function RequestList() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Refresh requests when component becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && fetchRequests) {
+        console.log('🔄 Page became visible, refreshing requests...');
+        fetchRequests();
+      }
+    };
+
+    // Refresh on mount
+    if (fetchRequests) {
+      fetchRequests();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchRequests]);
+
+  useEffect(() => {
     setDisplayCount(INITIAL_DISPLAY_COUNT);
     applyFilters();
   }, [filters, allRequests]);

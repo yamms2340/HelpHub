@@ -32,9 +32,8 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { useRequests } from './RequestContext';
 import { useNavigate } from 'react-router-dom';
-import { requestsAPI } from '../../services/api';
 
-// ✅ Simplified status colors (3 states only)
+// Status and urgency colors
 const statusColors = {
   Open: '#4f86ff',
   'In Progress': '#f59e0b',
@@ -50,7 +49,7 @@ const urgencyColors = {
 
 function MyRequests() {
   const { user } = useAuth();
-  const { requests, fetchRequests } = useRequests();
+  const { requests, fetchRequests, completeRequest } = useRequests();
   const navigate = useNavigate();
   
   const [ratingModal, setRatingModal] = useState({
@@ -61,6 +60,7 @@ function MyRequests() {
   });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   
   // Filter requests to show only current user's requests
   const myRequests = requests.filter(request => 
@@ -82,31 +82,42 @@ function MyRequests() {
     });
   };
 
-  // ✅ Simplified: Requester confirms completion (marks as "Completed" + awards points)
+  // ✅ FIXED: Use completeRequest from context
   const handleConfirmCompletion = async (requestId) => {
     try {
+      setLoading(true);
+      setError('');
+      
+      console.log('🎯 Confirming completion for request:', requestId);
+      
       const confirmationData = {
         rating: 5,
         feedback: '',
         completedEarly: false
       };
 
-      const response = await requestsAPI.confirmCompletion(requestId, confirmationData);
+      // Use completeRequest from context
+      const result = await completeRequest(requestId, confirmationData);
       
-      if (response.data) {
-        setSuccess(`✅ Request completed! Helper earned ${response.data.points} points!`);
+      console.log('✅ Completion result:', result);
+      
+      if (result) {
+        const points = result.points || 0;
+        setSuccess(`✅ Request completed successfully! Helper earned ${points} points!`);
         
-        // Refresh requests to show "Completed" status everywhere
-        if (fetchRequests) {
-          await fetchRequests();
-        } else {
-          // Fallback: refresh page to show updated status
-          setTimeout(() => window.location.reload(), 1000);
-        }
+        // Force refresh after completion
+        setTimeout(() => {
+          if (fetchRequests) {
+            fetchRequests();
+          }
+        }, 500);
       }
     } catch (error) {
-      console.error('❌ Confirmation error:', error);
-      setError('Failed to confirm completion');
+      console.error('❌ Completion error:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to confirm completion. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -120,37 +131,40 @@ function MyRequests() {
     });
   };
 
-  // Submit optional rating
+  // Submit rating
   const submitRating = async () => {
     try {
+      setLoading(true);
+      setError('');
+      
+      console.log('⭐ Submitting rating for request:', ratingModal.requestId);
+      
       const ratingData = {
         rating: ratingModal.rating,
-        feedback: ratingModal.feedback
+        feedback: ratingModal.feedback,
+        completedEarly: false
       };
 
-      const response = await fetch(`/api/requests/${ratingModal.requestId}/complete`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify(ratingData)
-      });
-
-      if (response.ok) {
+      // Use completeRequest from context
+      const result = await completeRequest(ratingModal.requestId, ratingData);
+      
+      console.log('✅ Rating result:', result);
+      
+      if (result) {
         setSuccess('✅ Rating submitted! Thank you for your feedback.');
         setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' });
         
+        // Refresh requests
         if (fetchRequests) {
           await fetchRequests();
         }
-      } else {
-        const errorData = await response.json();
-        setError(`Failed: ${errorData.message || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('❌ Rating error:', error);
-      setError('Failed to submit rating');
+      const errorMessage = error.response?.data?.message || 'Failed to submit rating. Please try again.';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -283,7 +297,7 @@ function MyRequests() {
           You have <strong>{myRequests.length}</strong> request{myRequests.length !== 1 ? 's' : ''}
         </Typography>
         
-        {/* ✅ Simplified Summary Cards (3 states only) */}
+        {/* Summary Cards */}
         <Grid container spacing={2} sx={{ maxWidth: 800, mx: 'auto', mb: 4 }}>
           <Grid item xs={12} sm={4}>
             <Paper sx={{ p: 2, textAlign: 'center', borderRadius: 3 }}>
@@ -467,7 +481,7 @@ function MyRequests() {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
                   <Button 
                     size="small" 
-                    onClick={() => navigate('/')}
+                    onClick={() => navigate('/dashboard')}
                     sx={{ color: '#64748b' }}
                   >
                     View All Requests
@@ -492,7 +506,7 @@ function MyRequests() {
                   )}
                 </Box>
 
-                {/* ✅ Simplified Action Buttons (3 states only) */}
+                {/* Action Buttons */}
                 
                 {/* Open - Can edit request */}
                 {request.status === 'Open' && (
@@ -520,7 +534,8 @@ function MyRequests() {
                     fullWidth
                     variant="contained"
                     startIcon={<CheckCircle />}
-                    onClick={() => handleConfirmCompletion(request._id)}
+                    onClick={() => handleConfirmCompletion(request._id || request.id)}
+                    disabled={loading}
                     sx={{
                       background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                       color: 'white',
@@ -530,10 +545,13 @@ function MyRequests() {
                       borderRadius: 3,
                       '&:hover': {
                         background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                      },
+                      '&:disabled': {
+                        opacity: 0.7
                       }
                     }}
                   >
-                    Confirm Completion & Award Points
+                    {loading ? 'Confirming...' : 'Confirm Completion & Award Points'}
                   </Button>
                 )}
 
@@ -544,6 +562,7 @@ function MyRequests() {
                     variant="contained"
                     startIcon={<Star />}
                     onClick={() => handleAddRating(request._id || request.id)}
+                    disabled={loading}
                     sx={{
                       background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
                       color: 'white',
@@ -554,6 +573,9 @@ function MyRequests() {
                       '&:hover': {
                         background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
                         transform: 'translateY(-1px)',
+                      },
+                      '&:disabled': {
+                        opacity: 0.7
                       }
                     }}
                   >
@@ -593,7 +615,7 @@ function MyRequests() {
         </Button>
       </Box>
 
-      {/* Rating Modal (Optional) */}
+      {/* Rating Modal */}
       <Dialog 
         open={ratingModal.open} 
         onClose={() => setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' })} 
@@ -659,6 +681,7 @@ function MyRequests() {
           <Button 
             onClick={() => setRatingModal({ open: false, requestId: null, rating: 5, feedback: '' })}
             sx={{ mr: 1 }}
+            disabled={loading}
           >
             Cancel
           </Button>
@@ -666,16 +689,20 @@ function MyRequests() {
             onClick={submitRating} 
             variant="contained"
             startIcon={<Star />}
+            disabled={loading}
             sx={{
               background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
               fontWeight: 600,
               px: 3,
               '&:hover': {
                 background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+              },
+              '&:disabled': {
+                opacity: 0.7
               }
             }}
           >
-            Submit Rating
+            {loading ? 'Submitting...' : 'Submit Rating'}
           </Button>
         </DialogActions>
       </Dialog>

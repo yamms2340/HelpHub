@@ -21,6 +21,7 @@ import {
   Breadcrumbs,
   Link,
   MenuItem,
+  Fab,
 } from '@mui/material';
 import {
   VolunteerActivism,
@@ -38,10 +39,13 @@ import {
   Group,
   NavigateNext,
   Add,
+  Edit,
+  Campaign,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { impactPostsAPI } from '../../services/api';
+import { impactPostsAPI, donationUpdateAPI } from '../../services/api';
+import DonationUpdateForm from './DonationUpdate';
 
 function DonationPage() {
   const { user } = useAuth();
@@ -58,7 +62,12 @@ function DonationPage() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [goodDeeds, setGoodDeeds] = useState([]);
 
-  // New state variables for enhanced post dialog
+  // Donation Update states
+  const [donationUpdateDialogOpen, setDonationUpdateDialogOpen] = useState(false);
+  const [editingDonationUpdateId, setEditingDonationUpdateId] = useState(null);
+  const [donationUpdates, setDonationUpdates] = useState([]);
+
+  // Post dialog states
   const [newPostTitle, setNewPostTitle] = useState('');
   const [newPostCategory, setNewPostCategory] = useState('User Story');
   const [newPostAmount, setNewPostAmount] = useState('');
@@ -67,48 +76,122 @@ function DonationPage() {
 
   const quickAmounts = [100, 500, 1000, 2000, 5000, 10000];
 
-  // Load impact posts from backend on mount
+  // Load data on mount
   useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        const response = await impactPostsAPI.getAllPosts();
-        const postsData = response.data.posts || response.data;
-        const formattedPosts = postsData.map(post => ({
-          ...post,
-          id: post._id || post.id,
-          date: post.createdAt || post.date,
-          icon: getIconForCategory(post.category)
-        }));
-        setGoodDeeds(formattedPosts);
-      } catch (error) {
-        console.error('Failed to fetch impact posts:', error);
-        // Add some default posts if API fails
-        setGoodDeeds([
-          {
-            id: 1,
-            title: 'Emergency Medical Support for Families',
-            category: 'Healthcare',
-            beneficiaries: 45,
-            amount: 25000,
-            date: '2025-08-20',
-            details: 'Covered ambulance services, emergency medicines, and hospital fees for families who could not afford treatment.',
-          },
-          {
-            id: 2,
-            title: 'Education Scholarship Program',
-            category: 'Education',
-            beneficiaries: 30,
-            amount: 18500,
-            date: '2025-08-15',
-            details: 'Funded school fees, textbooks, uniforms, and stationery for an entire academic year.',
-          }
-        ].map(post => ({ ...post, icon: getIconForCategory(post.category) })));
-      }
-    };
-
-    fetchPosts();
+    fetchImpactPosts();
+    fetchDonationUpdates();
   }, []);
 
+  const fetchImpactPosts = async () => {
+    try {
+      const response = await impactPostsAPI.getAllPosts();
+      const postsData = response.data.posts || response.data;
+      const formattedPosts = postsData.map(post => ({
+        ...post,
+        id: post._id || post.id,
+        date: post.createdAt || post.date,
+        icon: getIconForCategory(post.category)
+      }));
+      setGoodDeeds(formattedPosts);
+    } catch (error) {
+      console.error('Failed to fetch impact posts:', error);
+      // Fallback data
+      setGoodDeeds([
+        {
+          id: 1,
+          title: 'Emergency Medical Support for Families',
+          category: 'Healthcare',
+          beneficiaries: 45,
+          amount: 25000,
+          date: '2025-08-20',
+          details: 'Covered ambulance services, emergency medicines, and hospital fees for families who could not afford treatment.',
+        },
+        {
+          id: 2,
+          title: 'Education Scholarship Program',
+          category: 'Education',
+          beneficiaries: 30,
+          amount: 18500,
+          date: '2025-08-15',
+          details: 'Funded school fees, textbooks, uniforms, and stationery for an entire academic year.',
+        }
+      ].map(post => ({ ...post, icon: getIconForCategory(post.category) })));
+    }
+  };
+
+  const fetchDonationUpdates = async () => {
+    try {
+      const response = await donationUpdateAPI.getAll({ limit: 6, status: 'active' });
+      if (response.success) {
+        setDonationUpdates(response.data.updates || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch donation updates:', error);
+      // Mock data for demo
+      setDonationUpdates([
+        {
+          _id: '1',
+          title: 'Help Build Community Center',
+          description: 'We need funds to construct a new community center that will serve as a hub for local activities and events.',
+          targetAmount: 100000,
+          currentAmount: 35000,
+          category: 'Community',
+          beneficiaryCount: 500,
+          urgencyLevel: 'Medium',
+          status: 'active'
+        },
+        {
+          _id: '2',
+          title: 'Medical Equipment for Rural Clinic',
+          description: 'Urgent need for medical equipment to upgrade our rural clinic and provide better healthcare services.',
+          targetAmount: 75000,
+          currentAmount: 45000,
+          category: 'Healthcare',
+          beneficiaryCount: 200,
+          urgencyLevel: 'High',
+          status: 'active'
+        },
+        {
+          _id: '3',
+          title: 'School Library Development',
+          description: 'Help us build a modern library with books and digital resources for underprivileged students.',
+          targetAmount: 60000,
+          currentAmount: 20000,
+          category: 'Education',
+          beneficiaryCount: 300,
+          urgencyLevel: 'Medium',
+          status: 'active'
+        }
+      ]);
+    }
+  };
+
+  // Donation Update handlers
+  const handleCreateDonationUpdate = () => {
+    setEditingDonationUpdateId(null);
+    setDonationUpdateDialogOpen(true);
+  };
+
+  const handleEditDonationUpdate = (updateId) => {
+    setEditingDonationUpdateId(updateId);
+    setDonationUpdateDialogOpen(true);
+  };
+
+  const handleDonationUpdateSave = (savedUpdate) => {
+    if (editingDonationUpdateId) {
+      setDonationUpdates(prev => 
+        prev.map(update => 
+          update._id === editingDonationUpdateId ? savedUpdate : update
+        )
+      );
+    } else {
+      setDonationUpdates(prev => [savedUpdate, ...prev]);
+    }
+    setDonationUpdateDialogOpen(false);
+    setEditingDonationUpdateId(null);
+  };
+
+  // Utility functions
   const categoryColor = (cat) =>
     ({
       Healthcare: '#dc2626',
@@ -118,6 +201,9 @@ function DonationPage() {
       Environment: '#059669',
       Empowerment: '#7c3aed',
       'User Story': '#7c3aed',
+      'Community': '#2196f3',
+      'Emergency': '#ff5722',
+      'Other': '#64748b'
     }[cat] || '#64748b');
 
   const getIconForCategory = (category) => {
@@ -263,7 +349,7 @@ function DonationPage() {
           </Typography>
         </Box>
 
-        {/* Progress */}
+        {/* Current Campaign Progress with Create Button */}
         <Paper
           elevation={0}
           sx={{
@@ -274,12 +360,41 @@ function DonationPage() {
             boxShadow: '0 6px 20px rgba(79,134,255,0.08)',
           }}
         >
+          {/* Header with Create Button */}
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Typography variant="h5" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              🎯 Current Campaign Progress
+            </Typography>
+            
+            {/* Create Campaign Button - Top Right Corner */}
+            {user && (
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={handleCreateDonationUpdate}
+                sx={{
+                  borderRadius: '12px',
+                  px: 3,
+                  py: 1.5,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  fontWeight: 700,
+                  fontSize: '14px',
+                  textTransform: 'none',
+                  boxShadow: '0 4px 12px rgba(16,185,129,0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 6px 16px rgba(16,185,129,0.4)',
+                  },
+                }}
+              >
+                Create Campaign
+              </Button>
+            )}
+          </Box>
+
           <Grid container spacing={4} alignItems="center">
             <Grid item xs={12} md={8}>
-              <Typography variant="h5" fontWeight="bold" mb={2}>
-                🎯 Current Campaign Progress
-              </Typography>
-
               <Box display="flex" justifyContent="space-between" mb={1}>
                 <Typography variant="h4" fontWeight="bold" color="#4f86ff">
                   ₹{totalCollected.toLocaleString('en-IN')}
@@ -304,9 +419,33 @@ function DonationPage() {
                 }}
               />
 
-              <Typography variant="body2" color="#64748b">
+              <Typography variant="body2" color="#64748b" mb={3}>
                 {Math.round(progressPct)} % completed • {Math.round((target - totalCollected) / 1000)} k remaining
               </Typography>
+
+              {/* Update Button for Main Campaign */}
+              {user && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Edit />}
+                  onClick={() => handleEditDonationUpdate('main-campaign')}
+                  sx={{
+                    borderColor: '#4f86ff',
+                    color: '#4f86ff',
+                    fontWeight: 600,
+                    borderRadius: '10px',
+                    px: 3,
+                    py: 1,
+                    '&:hover': {
+                      borderColor: '#3b82f6',
+                      color: '#3b82f6',
+                      backgroundColor: 'rgba(79, 134, 255, 0.05)',
+                    }
+                  }}
+                >
+                  Update Campaign
+                </Button>
+              )}
             </Grid>
 
             <Grid item xs={12} md={4} textAlign="center">
@@ -324,6 +463,171 @@ function DonationPage() {
             </Grid>
           </Grid>
         </Paper>
+
+        {/* Active Donation Campaigns with Update buttons */}
+        {donationUpdates.length > 0 && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: 4,
+              mb: 4,
+              borderRadius: '20px',
+              border: '1px solid rgba(16,185,129,0.1)',
+              boxShadow: '0 6px 20px rgba(16,185,129,0.08)',
+            }}
+          >
+            <Typography variant="h5" fontWeight="bold" textAlign="center" mb={1}>
+              🏃‍♂️ Running Campaigns
+            </Typography>
+            <Typography variant="body1" color="#64748b" mb={4} textAlign="center">
+              Support our ongoing campaigns and help us reach our goals.
+            </Typography>
+
+            <Grid container spacing={3}>
+              {donationUpdates.map((campaign) => (
+                <Grid item xs={12} md={4} key={campaign._id}>
+                  <Card
+                    elevation={0}
+                    sx={{
+                      height: '100%',
+                      borderRadius: '16px',
+                      border: '1px solid rgba(16,185,129,0.1)',
+                      transition: '.3s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: '0 8px 25px rgba(16,185,129,0.15)',
+                      },
+                    }}
+                  >
+                    <CardContent sx={{ p: 3 }}>
+                      {/* Campaign Header */}
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                        <Typography variant="h6" fontWeight="bold" sx={{ flex: 1, mr: 1 }}>
+                          {campaign.title}
+                        </Typography>
+                        <Chip
+                          label={campaign.urgencyLevel}
+                          size="small"
+                          sx={{
+                            bgcolor: campaign.urgencyLevel === 'High' ? '#dc2626' : 
+                                    campaign.urgencyLevel === 'Critical' ? '#7f1d1d' :
+                                    campaign.urgencyLevel === 'Medium' ? '#f59e0b' : '#4caf50',
+                            color: 'white',
+                            fontWeight: 600
+                          }}
+                        />
+                      </Box>
+
+                      {/* Description */}
+                      <Typography variant="body2" color="#64748b" mb={2}>
+                        {campaign.description.length > 100 
+                          ? `${campaign.description.substring(0, 100)}...` 
+                          : campaign.description}
+                      </Typography>
+
+                      {/* Progress Bar */}
+                      <Box mb={2}>
+                        <Box display="flex" justifyContent="space-between" mb={1}>
+                          <Typography variant="body2" fontWeight="bold">
+                            ₹{(campaign.currentAmount || 0).toLocaleString('en-IN')}
+                          </Typography>
+                          <Typography variant="body2" color="#64748b">
+                            of ₹{campaign.targetAmount.toLocaleString('en-IN')}
+                          </Typography>
+                        </Box>
+                        <LinearProgress
+                          variant="determinate"
+                          value={Math.min(100, ((campaign.currentAmount || 0) / campaign.targetAmount) * 100)}
+                          sx={{
+                            height: 6,
+                            borderRadius: 3,
+                            bgcolor: 'rgba(16,185,129,0.1)',
+                            '& .MuiLinearProgress-bar': {
+                              bgcolor: '#10b981',
+                              borderRadius: 3,
+                            },
+                          }}
+                        />
+                      </Box>
+
+                      {/* Campaign Details */}
+                      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                        <Chip
+                          label={campaign.category}
+                          size="small"
+                          sx={{ bgcolor: categoryColor(campaign.category), color: 'white' }}
+                        />
+                        <Typography variant="body2" color="#64748b">
+                          {campaign.beneficiaryCount} beneficiaries
+                        </Typography>
+                      </Box>
+
+                      {/* Action Buttons - Donate & Update */}
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<VolunteerActivism />}
+                          onClick={() => openDialogWith(1000)}
+                          sx={{
+                            bgcolor: '#10b981',
+                            borderRadius: '10px',
+                            py: 1.2,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': { bgcolor: '#059669' }
+                          }}
+                        >
+                          Donate
+                        </Button>
+                        
+                        {/* Update Button for each campaign */}
+                        <Button
+                          variant="outlined"
+                          startIcon={<Edit />}
+                          onClick={() => handleEditDonationUpdate(campaign._id)}
+                          sx={{
+                            borderColor: '#10b981',
+                            color: '#10b981',
+                            minWidth: '100px',
+                            borderRadius: '10px',
+                            py: 1.2,
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            '&:hover': {
+                              borderColor: '#059669',
+                              color: '#059669',
+                              bgcolor: 'rgba(16,185,129,0.05)'
+                            }
+                          }}
+                        >
+                          Update
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Box textAlign="center" mt={3}>
+              <Button
+                variant="outlined"
+                endIcon={<ArrowForward />}
+                sx={{
+                  borderColor: '#10b981',
+                  color: '#10b981',
+                  fontWeight: 700,
+                  borderRadius: '25px',
+                  px: 4,
+                  '&:hover': { bgcolor: '#10b981', color: 'white' },
+                }}
+              >
+                View All Campaigns
+              </Button>
+            </Box>
+          </Paper>
+        )}
 
         {/* Quick Amounts */}
         <Paper
@@ -548,7 +852,7 @@ function DonationPage() {
           </Box>
         </Paper>
 
-        {/* Post Story Dialog - Enhanced with All Schema Fields */}
+        {/* Post Story Dialog */}
         <Dialog
           open={postDialogOpen}
           onClose={() => handlePostDialogClose(false)}
@@ -799,6 +1103,26 @@ function DonationPage() {
               </Button>
             </Box>
           </Box>
+        </Dialog>
+
+        {/* DonationUpdate Dialog */}
+        <Dialog
+          open={donationUpdateDialogOpen}
+          onClose={() => setDonationUpdateDialogOpen(false)}
+          maxWidth="lg"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '20px',
+              maxHeight: '90vh'
+            }
+          }}
+        >
+          <DonationUpdateForm
+            updateId={editingDonationUpdateId}
+            onClose={() => setDonationUpdateDialogOpen(false)}
+            onSave={handleDonationUpdateSave}
+          />
         </Dialog>
 
         {/* Payment Dialog */}

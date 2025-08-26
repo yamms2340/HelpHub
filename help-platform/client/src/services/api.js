@@ -268,10 +268,101 @@ export const adminAPI = {
     api.post('/admin/reports/generate', { type: reportType, ...params }),
   getReports: () => api.get('/admin/reports')
 };
+// Add to your existing services/api.js
+// Update your donationUpdateAPI to use the configured 'api' instance
+export const donationUpdateAPI = {
+  getAll: async (params = {}) => {
+    try {
+      const queryString = new URLSearchParams(params).toString();
+      // Use 'api' instead of 'axios' and remove '/api' since your baseURL already includes it
+      const response = await api.get(`/donation-updates${queryString ? '?' + queryString : ''}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching donation updates:', error);
+      throw error;
+    }
+  },
 
-/**
- * File Upload API endpoints
- */
+  getById: async (id) => {
+    try {
+      // Use 'api' instead of 'axios' and remove '/api' prefix
+      const response = await api.get(`/donation-updates/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching donation update:', error);
+      throw error;
+    }
+  },
+
+  create: async (data) => {
+    try {
+      console.log('Creating donation update with data:', data);
+      // Use 'api' instead of 'axios' and remove '/api' prefix
+      const response = await api.post('/donation-updates', data);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating donation update:', error);
+      console.error('Full error details:', error.response || error);
+      throw error;
+    }
+  },
+
+  update: async (id, data) => {
+    try {
+      console.log('Updating donation update:', { id, data });
+      // Use 'api' instance and remove '/api' prefix
+      const response = await api.put(`/donation-updates/${id}`, data);
+      return response.data;
+    } catch (error) {
+      console.error('Error updating donation update:', error);
+      throw error;
+    }
+  },
+
+  // Add additional methods if needed
+  addProgressUpdate: async (id, updateData) => {
+    try {
+      const response = await api.post(`/donation-updates/${id}/updates`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding progress update:', error);
+      throw error;
+    }
+  },
+
+  donate: async (id, donationData) => {
+    try {
+      const response = await api.post(`/donation-updates/${id}/donate`, donationData);
+      return response.data;
+    } catch (error) {
+      console.error('Error recording donation:', error);
+      throw error;
+    }
+  },
+
+  delete: async (id) => {
+    try {
+      const response = await api.delete(`/donation-updates/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error deleting donation update:', error);
+      throw error;
+    }
+  },
+
+  getMyUpdates: async () => {
+    try {
+      const response = await api.get('/my-donation-updates');
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my donation updates:', error);
+      throw error;
+    }
+  }
+};
+
+//  * File Upload API endpoints
+//  */
 export const fileAPI = {
   uploadFile: (formData, onUploadProgress) => api.post('/files/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },

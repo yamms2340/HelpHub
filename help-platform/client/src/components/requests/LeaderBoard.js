@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Container, 
   Typography, 
@@ -13,35 +13,77 @@ import {
   Card,
   CardContent,
   Grid,
-  LinearProgress
+  LinearProgress,
+  CircularProgress,
+  Alert
 } from '@mui/material';
 import { 
   EmojiEvents, 
   TrendingUp, 
   Star, 
   WorkspacePremium,
-  CardGiftcard,
-  Group,
-  Timeline
+  Group
 } from '@mui/icons-material';
-import { useRequests } from '../requests/RequestContext';
+import { leaderboardAPI } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 function Leaderboard() {
-  const { getLeaderboard, getUserStats } = useRequests();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  
-  const allTimeLeaders = getLeaderboard('all', 10);
-  const monthlyLeaders = getLeaderboard('month', 10);
-  const weeklyLeaders = getLeaderboard('week', 10);
+  const [leaderboardData, setLeaderboardData] = useState({
+    allTime: [],
+    monthly: [],
+    weekly: []
+  });
+  const [userStats, setUserStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const currentUserStats = getUserStats(user?.id || 'current-user-id');
+  useEffect(() => {
+    fetchLeaderboardData();
+    if (user?.id || user?._id) {
+      fetchUserStats();
+    }
+  }, [user]);
+
+  const fetchLeaderboardData = async () => {
+    try {
+      setLoading(true);
+      const [allTimeRes, monthlyRes, weeklyRes] = await Promise.all([
+        leaderboardAPI.getLeaderboard('all', 10),
+        leaderboardAPI.getLeaderboard('month', 10),
+        leaderboardAPI.getLeaderboard('week', 10)
+      ]);
+
+      setLeaderboardData({
+        allTime: allTimeRes.data.data || [],
+        monthly: monthlyRes.data.data || [],
+        weekly: weeklyRes.data.data || []
+      });
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      setError('Failed to load leaderboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const userId = user?.id || user?._id;
+      if (userId) {
+        const response = await leaderboardAPI.getUserStats(userId);
+        setUserStats(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+    }
+  };
 
   const getRankIcon = (position) => {
-    if (position === 0) return <EmojiEvents sx={{ color: '#FFD700', fontSize: 28 }} />; // Gold
-    if (position === 1) return <EmojiEvents sx={{ color: '#C0C0C0', fontSize: 28 }} />; // Silver  
-    if (position === 2) return <EmojiEvents sx={{ color: '#CD7F32', fontSize: 28 }} />; // Bronze
+    if (position === 0) return <EmojiEvents sx={{ color: '#FFD700', fontSize: 28 }} />;
+    if (position === 1) return <EmojiEvents sx={{ color: '#C0C0C0', fontSize: 28 }} />;
+    if (position === 2) return <EmojiEvents sx={{ color: '#CD7F32', fontSize: 28 }} />;
     return <WorkspacePremium sx={{ color: '#1976d2', fontSize: 24 }} />;
   };
 
@@ -52,10 +94,40 @@ function Leaderboard() {
     return { current: points - 1500, next: 0, level: 'Master', progress: 100 };
   };
 
-  const currentLeaders = activeTab === 0 ? allTimeLeaders : activeTab === 1 ? monthlyLeaders : weeklyLeaders;
+  const getCurrentLeaders = () => {
+    switch (activeTab) {
+      case 1: return leaderboardData.monthly;
+      case 2: return leaderboardData.weekly;
+      default: return leaderboardData.allTime;
+    }
+  };
+
+  const getTimeframeName = () => {
+    switch (activeTab) {
+      case 1: return 'Monthly';
+      case 2: return 'Weekly';
+      default: return 'All Time';
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+        <CircularProgress size={50} />
+      </Box>
+    );
+  }
+
+  const currentLeaders = getCurrentLeaders();
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError('')}>
+          {error}
+        </Alert>
+      )}
+
       {/* Header */}
       <Box textAlign="center" mb={4}>
         <Typography 
@@ -86,130 +158,135 @@ function Leaderboard() {
 
       <Grid container spacing={4}>
         {/* User Stats Card */}
-        <Grid item xs={12} md={4}>
-          <Card elevation={0} sx={{ 
-            background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
-            color: 'white',
-            borderRadius: '20px',
-            position: 'relative',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
-            }
-          }}>
-            <CardContent sx={{ p: 4, position: 'relative', zIndex: 1 }}>
-              <Box textAlign="center" mb={3}>
-                <Avatar sx={{ 
-                  width: 80, 
-                  height: 80, 
-                  mx: 'auto', 
-                  mb: 2,
-                  bgcolor: 'rgba(255,255,255,0.2)',
-                  fontSize: '2rem',
-                  fontWeight: 'bold'
-                }}>
-                  {(user?.name || 'U').substring(0, 2).toUpperCase()}
-                </Avatar>
-                <Typography variant="h5" fontWeight="bold">
-                  Your Progress
-                </Typography>
-              </Box>
-
-              <Box mb={3}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                  <Typography variant="h4" fontWeight="bold">
-                    {currentUserStats.totalPoints}
+        {userStats && (
+          <Grid item xs={12} md={4}>
+            <Card elevation={0} sx={{ 
+              background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+              color: 'white',
+              borderRadius: '20px',
+              position: 'relative',
+              overflow: 'hidden',
+              '&::before': {
+                content: '""',
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 50%, rgba(255,255,255,0.05) 100%)',
+              }
+            }}>
+              <CardContent sx={{ p: 4, position: 'relative', zIndex: 1 }}>
+                <Box textAlign="center" mb={3}>
+                  <Avatar sx={{ 
+                    width: 80, 
+                    height: 80, 
+                    mx: 'auto', 
+                    mb: 2,
+                    bgcolor: 'rgba(255,255,255,0.2)',
+                    fontSize: '2rem',
+                    fontWeight: 'bold'
+                  }}>
+                    {(userStats.name || user?.name || 'U').substring(0, 2).toUpperCase()}
+                  </Avatar>
+                  <Typography variant="h5" fontWeight="bold">
+                    Your Progress
                   </Typography>
-                  <Chip 
-                    label={getProgressToNextLevel(currentUserStats.totalPoints).level}
-                    sx={{ 
-                      bgcolor: 'rgba(255,255,255,0.2)', 
-                      color: 'white',
-                      fontWeight: 'bold'
-                    }}
-                  />
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Rank #{userStats.rank || 'Unranked'}
+                  </Typography>
                 </Box>
-                <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                  Total Points Earned
-                </Typography>
-              </Box>
 
-              {getProgressToNextLevel(currentUserStats.totalPoints).next > 0 && (
                 <Box mb={3}>
-                  <Box display="flex" justifyContent="space-between" mb={1}>
-                    <Typography variant="body2">
-                      Progress to Next Level
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography variant="h4" fontWeight="bold">
+                      {userStats.totalPoints || 0}
                     </Typography>
-                    <Typography variant="body2">
-                      {getProgressToNextLevel(currentUserStats.totalPoints).current}/
-                      {getProgressToNextLevel(currentUserStats.totalPoints).next}
-                    </Typography>
+                    <Chip 
+                      label={getProgressToNextLevel(userStats.totalPoints || 0).level}
+                      sx={{ 
+                        bgcolor: 'rgba(255,255,255,0.2)', 
+                        color: 'white',
+                        fontWeight: 'bold'
+                      }}
+                    />
                   </Box>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={getProgressToNextLevel(currentUserStats.totalPoints).progress}
-                    sx={{ 
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: 'rgba(255,255,255,0.2)',
-                      '& .MuiLinearProgress-bar': {
-                        bgcolor: 'white'
-                      }
-                    }}
-                  />
-                </Box>
-              )}
-
-              <Grid container spacing={2}>
-                <Grid item xs={6}>
-                  <Box textAlign="center">
-                    <Typography variant="h6" fontWeight="bold">
-                      {currentUserStats.requestsCompleted}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Completed
-                    </Typography>
-                  </Box>
-                </Grid>
-                <Grid item xs={6}>
-                  <Box textAlign="center">
-                    <Typography variant="h6" fontWeight="bold">
-                      {currentUserStats.badges?.length || 0}
-                    </Typography>
-                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
-                      Badges
-                    </Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-
-              {currentUserStats.achievements && currentUserStats.achievements.length > 0 && (
-                <Box mt={3}>
-                  <Typography variant="subtitle2" mb={1} sx={{ opacity: 0.9 }}>
-                    Recent Achievement:
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Total Points Earned
                   </Typography>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Typography variant="body2">
-                      {currentUserStats.achievements[currentUserStats.achievements.length - 1]?.icon}
-                    </Typography>
-                    <Typography variant="body2" fontWeight="bold">
-                      {currentUserStats.achievements[currentUserStats.achievements.length - 1]?.name}
-                    </Typography>
-                  </Box>
                 </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
+
+                {getProgressToNextLevel(userStats.totalPoints || 0).next > 0 && (
+                  <Box mb={3}>
+                    <Box display="flex" justifyContent="space-between" mb={1}>
+                      <Typography variant="body2">
+                        Progress to Next Level
+                      </Typography>
+                      <Typography variant="body2">
+                        {getProgressToNextLevel(userStats.totalPoints || 0).current}/
+                        {getProgressToNextLevel(userStats.totalPoints || 0).next}
+                      </Typography>
+                    </Box>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={getProgressToNextLevel(userStats.totalPoints || 0).progress}
+                      sx={{ 
+                        height: 8,
+                        borderRadius: 4,
+                        bgcolor: 'rgba(255,255,255,0.2)',
+                        '& .MuiLinearProgress-bar': {
+                          bgcolor: 'white'
+                        }
+                      }}
+                    />
+                  </Box>
+                )}
+
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Box textAlign="center">
+                      <Typography variant="h6" fontWeight="bold">
+                        {userStats.requestsCompleted || 0}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        Completed
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Box textAlign="center">
+                      <Typography variant="h6" fontWeight="bold">
+                        {userStats.badges?.length || 0}
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                        Badges
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+
+                {userStats.achievements && userStats.achievements.length > 0 && (
+                  <Box mt={3}>
+                    <Typography variant="subtitle2" mb={1} sx={{ opacity: 0.9 }}>
+                      Recent Achievement:
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Typography variant="body2">
+                        {userStats.achievements[userStats.achievements.length - 1]?.icon}
+                      </Typography>
+                      <Typography variant="body2" fontWeight="bold">
+                        {userStats.achievements[userStats.achievements.length - 1]?.name}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
 
         {/* Leaderboard */}
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} md={userStats ? 8 : 12}>
           <Paper elevation={0} sx={{ 
             p: 4, 
             borderRadius: '20px',
@@ -284,13 +361,13 @@ function Leaderboard() {
                         fontSize: '1.2rem',
                         fontWeight: 'bold'
                       }}>
-                        {helper.userId.substring(0, 2).toUpperCase()}
+                        {(helper.name || 'U').substring(0, 2).toUpperCase()}
                       </Avatar>
                       
                       <Box flex={1}>
                         <Typography variant="h6" fontWeight="bold" color="#1e293b">
-                          Helper #{helper.userId.substring(0, 8)}
-                          {helper.userId === (user?.id || 'current-user-id') && (
+                          {helper.name || `Helper #${helper.userId.substring(0, 8)}`}
+                          {helper.userId === (user?.id || user?._id) && (
                             <Chip 
                               label="You" 
                               size="small" 
@@ -301,7 +378,7 @@ function Leaderboard() {
                         </Typography>
                         <Box display="flex" alignItems="center" gap={2} mt={0.5}>
                           <Typography variant="body2" color="text.secondary">
-                            {helper.requestsCompleted} requests completed
+                            {helper.requestsCompleted || 0} requests completed
                           </Typography>
                           {helper.badges && helper.badges.length > 0 && (
                             <Chip 
@@ -319,7 +396,7 @@ function Leaderboard() {
                       
                       <Box textAlign="right">
                         <Chip 
-                          label={`${helper.totalPoints} pts`}
+                          label={`${helper.totalPoints || 0} pts`}
                           color="primary"
                           sx={{ 
                             fontWeight: 'bold', 
@@ -363,7 +440,7 @@ function Leaderboard() {
                 Base Points
               </Typography>
               <Typography variant="body2" color="#0d47a1">
-                50-120 points per request based on category
+                50-100 points per request based on category
               </Typography>
             </Box>
           </Grid>
@@ -383,7 +460,7 @@ function Leaderboard() {
                 Quality Bonus
               </Typography>
               <Typography variant="body2" color="#0d47a1">
-                +25% for 5-star ratings, +15% for early completion
+                +25 points for 5-star ratings, +15 for early completion
               </Typography>
             </Box>
           </Grid>

@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const HelpRequest = require('../models/HelpRequest');
 const User = require('../models/User');
+const PointsService = require('../services/PointsService');
 const auth = require('../middleware/auth');
 
-// ✅ Step 1: Create request (status: "Open")
+// Create request
 router.post('/', auth, async (req, res) => {
   try {
     const { title, description, category, urgency, location } = req.body;
@@ -22,6 +23,11 @@ router.post('/', auth, async (req, res) => {
     const savedRequest = await newRequest.save();
     await savedRequest.populate('requester', 'name email');
     
+    // Increment user's requestsCreated counter
+    await User.findByIdAndUpdate(req.user.id, { 
+      $inc: { requestsCreated: 1 } 
+    });
+    
     res.status(201).json(savedRequest);
   } catch (error) {
     console.error('Create request error:', error);
@@ -29,7 +35,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// ✅ Step 2: User offers help → automatically accepted (status: "In Progress")
+// Offer help - automatically accepts
 router.put('/:id/offer-help', auth, async (req, res) => {
   try {
     const request = await HelpRequest.findById(req.params.id);
@@ -42,7 +48,12 @@ router.put('/:id/offer-help', auth, async (req, res) => {
       return res.status(400).json({ message: 'Request is no longer available' });
     }
     
-    // ✅ Directly accept helper and change status to "In Progress"
+    // Check if user is trying to help their own request
+    if (request.requester.toString() === req.user.id) {
+      return res.status(400).json({ message: 'You cannot help with your own request' });
+    }
+    
+    // Accept helper and change status to "In Progress"
     request.status = 'In Progress';
     request.acceptedBy = req.user.id;
     request.acceptedAt = new Date();
@@ -56,6 +67,8 @@ router.put('/:id/offer-help', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
+// Complete request and award points
 router.put('/:id/confirm', auth, async (req, res) => {
   try {
     const { rating, feedback, completedEarly } = req.body;
@@ -74,31 +87,40 @@ router.put('/:id/confirm', auth, async (req, res) => {
       return res.status(400).json({ message: 'Request is not in progress' });
     }
     
-    // ✅ Calculate points
-    let points = 10; // base points
-    if (completedEarly) points += 5;
-    if (feedback && feedback.length > 50) points += 3;
+    if (!request.acceptedBy) {
+      return res.status(400).json({ message: 'No helper assigned to this request' });
+    }
     
-    // ✅ Mark as completed
+    // Award points using PointsService
+    const pointsResult = await PointsService.awardPoints(
+      request.acceptedBy, 
+      {
+        id: request._id,
+        category: request.category,
+        urgency: request.urgency
+      },
+      {
+        rating: rating || 5,
+        completedEarly: completedEarly || false
+      }
+    );
+    
+    // Mark as completed
     request.status = 'Completed';
     request.completedAt = new Date();
     request.rating = rating || 5;
     request.feedback = feedback || '';
-    request.pointsAwarded = points;
+    request.pointsAwarded = pointsResult.points;
     
     await request.save();
-    
-    // ✅ Award points to helper
-    await User.findByIdAndUpdate(request.acceptedBy, { 
-      $inc: { points: points } 
-    });
-    
-    await request.populate(['requester', 'acceptedBy'], 'name email points');
+    await request.populate(['requester', 'acceptedBy'], 'name email totalPoints');
     
     res.json({ 
       message: 'Request completed and points awarded!',
       request,
-      points
+      points: pointsResult.points,
+      badges: pointsResult.badges,
+      achievements: pointsResult.achievements
     });
     
   } catch (error) {
@@ -112,11 +134,12 @@ router.get('/', async (req, res) => {
   try {
     const requests = await HelpRequest.find()
       .populate('requester', 'name email')
-      .populate('acceptedBy', 'name email')
+      .populate('acceptedBy', 'name email totalPoints')
       .sort({ createdAt: -1 });
     
     res.json(requests);
   } catch (error) {
+    console.error('Get requests error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

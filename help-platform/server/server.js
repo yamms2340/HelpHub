@@ -18,6 +18,11 @@ app.use('/api/help', require('./routes/help'));
 app.use('/api/leaderboard', require('./routes/LeaderBoard')); // ✅ Add this line
 app.use('/api', require('./routes/stories'));
 app.use('/api/impact-posts', require('./routes/impactPostsRouter'));
+// server/app.js or server.js
+const donationUpdateRoutes = require('./routes/DonationUpdates');
+
+// Add this line with your other routes
+app.use(donationUpdateRoutes);
 
 // Test route
 app.get('/', (req, res) => {

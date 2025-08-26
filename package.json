@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@date-io/date-fns": "^3.2.1",
+    "@mui/x-date-pickers": "^8.10.2",
+    "date-fns": "^4.1.0",
+    "react-hook-form": "^7.62.0"
+  }
+}

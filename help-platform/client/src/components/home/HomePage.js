@@ -5,7 +5,6 @@ import HeroSection from './HeroSection';
 import FeaturesSection from './FeaturesSection';
 import CTASection from './CTASection';
 import Footer from './Footer';
-
 const HomePage = () => {
   return (
     <Box>
@@ -24,5 +23,4 @@ const HomePage = () => {
     </Box>
   );
 };
-
 export default HomePage;

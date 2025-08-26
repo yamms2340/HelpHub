@@ -5,6 +5,17 @@ import { useNavigate } from 'react-router-dom';
 const HeroSection = () => {
   const navigate = useNavigate();
 
+  // Function to scroll to features section
+  const scrollToFeatures = () => {
+    const featuresSection = document.getElementById('features-section');
+    if (featuresSection) {
+      featuresSection.scrollIntoView({ 
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 10 }}>
       <Box textAlign="center">
@@ -52,61 +63,59 @@ const HeroSection = () => {
           offer assistance, and create positive impact through our platform.
         </Typography>
 
-        {/* Call-to-Action Buttons - SAME STRUCTURE AS FIRST IMAGE */}
-       {/* Call-to-Action Buttons - RECTANGULAR */}
-<Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
-  {/* Primary Button - Blue rectangular */}
-  <Button 
-    variant="contained" 
-    size="large"
-    onClick={() => navigate('/register')}
-    sx={{
-      background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', // Blue gradient
-      textTransform: 'none',
-      fontWeight: 600,
-      borderRadius: '8px', // RECTANGULAR - not rounded
-      px: 4,
-      py: 1.5,
-      fontSize: '1.1rem',
-      boxShadow: '0 4px 15px rgba(33, 150, 243, 0.4)',
-      '&:hover': {
-        background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
-        boxShadow: '0 6px 20px rgba(33, 150, 243, 0.6)',
-        transform: 'translateY(-2px)',
-        transition: 'all 0.3s ease'
-      }
-    }}
-  >
-    Join the Community →
-  </Button>
+        {/* Call-to-Action Buttons - RECTANGULAR */}
+        <Box sx={{ display: 'flex', gap: 3, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {/* Primary Button - Blue rectangular */}
+          <Button 
+            variant="contained" 
+            size="large"
+            onClick={() => navigate('/register')}
+            sx={{
+              background: 'linear-gradient(135deg, #2196F3 0%, #1976D2 100%)', // Blue gradient
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px', // RECTANGULAR - not rounded
+              px: 4,
+              py: 1.5,
+              fontSize: '1.1rem',
+              boxShadow: '0 4px 15px rgba(33, 150, 243, 0.4)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #1976D2 0%, #1565C0 100%)',
+                boxShadow: '0 6px 20px rgba(33, 150, 243, 0.6)',
+                transform: 'translateY(-2px)',
+                transition: 'all 0.3s ease'
+              }
+            }}
+          >
+            Join the Community →
+          </Button>
 
-  {/* Secondary Button - Rectangular outline */}
-  <Button 
-    variant="outlined" 
-    size="large"
-    onClick={() => navigate('/login')}
-    sx={{
-      textTransform: 'none',
-      fontWeight: 600,
-      borderRadius: '8px', // RECTANGULAR - not rounded
-      px: 4,
-      py: 1.5,
-      fontSize: '1.1rem',
-      border: '2px solid #e2e8f0',
-      color: '#64748b',
-      '&:hover': {
-        border: '2px solid #2196F3', // Blue border on hover
-        color: '#2196F3', // Blue text on hover
-        backgroundColor: 'rgba(33, 150, 243, 0.05)',
-        transform: 'translateY(-2px)',
-        transition: 'all 0.3s ease'
-      }
-    }}
-  >
-    Learn More
-  </Button>
-</Box>
-
+          {/* Secondary Button - Rectangular outline - NOW SCROLLS TO FEATURES */}
+          <Button 
+            variant="outlined" 
+            size="large"
+            onClick={scrollToFeatures} // Changed from navigate to scroll function
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              borderRadius: '8px', // RECTANGULAR - not rounded
+              px: 4,
+              py: 1.5,
+              fontSize: '1.1rem',
+              border: '2px solid #e2e8f0',
+              color: '#64748b',
+              '&:hover': {
+                border: '2px solid #2196F3', // Blue border on hover
+                color: '#2196F3', // Blue text on hover
+                backgroundColor: 'rgba(33, 150, 243, 0.05)',
+                transform: 'translateY(-2px)',
+                transition: 'all 0.3s ease'
+              }
+            }}
+          >
+            Learn More
+          </Button>
+        </Box>
       </Box>
     </Container>
   );

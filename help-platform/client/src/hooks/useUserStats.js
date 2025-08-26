@@ -26,20 +26,32 @@ export const useUserStats = () => {
   }, [user]);
 
   const fetchUserStats = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const userId = user?.id || user?._id;
-      const response = await leaderboardAPI.getUserStats(userId);
-      setUserStats(response.data.data);
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-      setError(error);
-      // Keep default stats on error
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    setError(null);
+    const userId = user?.id || user?._id;
+    
+    const response = await leaderboardAPI.getUserStats(userId);
+    
+    // Pretty print the data
+    console.log("hello");
+    console.group('👤 User Stats Fetched');
+    console.log('User ID:', userId);
+    console.log('Total Points:', response.data.data.totalPoints);
+    console.log('Level:', response.data.data.totalPoints < 100 ? 'Beginner' : 
+                        response.data.data.totalPoints < 500 ? 'Helper' : 'Expert');
+    console.log('Completed Requests:', response.data.data.requestsCompleted);
+    console.log('Full Data:', response.data.data);
+    console.groupEnd();
+    
+    setUserStats(response.data.data);
+  } catch (error) {
+    console.error('❌ Error fetching user stats:', error);
+    setError(error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const refreshUserStats = () => {
     if (user?.id || user?._id) {

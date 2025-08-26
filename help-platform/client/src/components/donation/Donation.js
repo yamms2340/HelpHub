@@ -1,4 +1,3 @@
-// src/components/donation/Donation.js
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -21,6 +20,7 @@ import {
   Alert,
   Breadcrumbs,
   Link,
+  MenuItem,
 } from '@mui/material';
 import {
   VolunteerActivism,
@@ -37,87 +37,77 @@ import {
   Park,
   Group,
   NavigateNext,
+  Add,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { impactPostsAPI } from '../../services/api';
 
 function DonationPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  const target = 500000;
+  const [totalCollected, setTotalCollected] = useState(156750);
+  const [postDialogOpen, setPostDialogOpen] = useState(false);
+  const [postSuccessSnackbar, setPostSuccessSnackbar] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
   const [openPayment, setOpenPayment] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(0);
   const [customAmount, setCustomAmount] = useState('');
-  const [paymentComplete, setPaymentComplete] = useState(false);
-  const [totalCollected, setTotalCollected] = useState(156750);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const target = 500000;
+  const [goodDeeds, setGoodDeeds] = useState([]);
+
+  // New state variables for enhanced post dialog
+  const [newPostTitle, setNewPostTitle] = useState('');
+  const [newPostCategory, setNewPostCategory] = useState('User Story');
+  const [newPostAmount, setNewPostAmount] = useState('');
+  const [newPostBeneficiaries, setNewPostBeneficiaries] = useState('');
+  const [newPostAuthor, setNewPostAuthor] = useState('');
 
   const quickAmounts = [100, 500, 1000, 2000, 5000, 10000];
-  const progressPct = (totalCollected / target) * 100;
 
-  const goodDeeds = [
-    {
-      id: 1,
-      title: 'Emergency Medical Support for Families',
-      category: 'Healthcare',
-      icon: <LocalHospital sx={{ color: '#dc2626' }} />,
-      beneficiaries: 45,
-      amount: 25000,
-      date: '2025-08-20',
-      details: 'Covered ambulance services, emergency medicines, and hospital fees for families who could not afford treatment.',
-    },
-    {
-      id: 2,
-      title: 'Education Scholarship Program',
-      category: 'Education',
-      icon: <School sx={{ color: '#4f86ff' }} />,
-      beneficiaries: 30,
-      amount: 18500,
-      date: '2025-08-15',
-      details: 'Funded school fees, textbooks, uniforms, and stationery for an entire academic year.',
-    },
-    {
-      id: 3,
-      title: 'Food Distribution Drive',
-      category: 'Food & Nutrition',
-      icon: <Restaurant sx={{ color: '#f59e0b' }} />,
-      beneficiaries: 85,
-      amount: 12750,
-      date: '2025-08-10',
-      details: 'Provided 500+ nutritious meal kits including rice, lentils, and cooking oil to homeless individuals and struggling families.',
-    },
-    {
-      id: 4,
-      title: 'Housing Support Initiative',
-      category: 'Housing',
-      icon: <HomeIcon sx={{ color: '#10b981' }} />,
-      beneficiaries: 12,
-      amount: 31000,
-      date: '2025-08-05',
-      details: 'Repaired roofs, fixed plumbing, and improved sanitation facilities for low-income households.',
-    },
-    {
-      id: 5,
-      title: 'Environmental Cleanup Project',
-      category: 'Environment',
-      icon: <Park sx={{ color: '#059669' }} />,
-      beneficiaries: 200,
-      amount: 8200,
-      date: '2025-07-28',
-      details: 'Removed plastic waste, planted 50 trees, and installed trash bins in three community parks.',
-    },
-    {
-      id: 6,
-      title: 'Women Empowerment Workshop',
-      category: 'Empowerment',
-      icon: <Group sx={{ color: '#7c3aed' }} />,
-      beneficiaries: 25,
-      amount: 15300,
-      date: '2025-07-20',
-      details: 'Provided sewing-machine training, business-planning workshops, and seed funding for micro-enterprises.',
-    },
-  ];
+  // Load impact posts from backend on mount
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await impactPostsAPI.getAllPosts();
+        const postsData = response.data.posts || response.data;
+        const formattedPosts = postsData.map(post => ({
+          ...post,
+          id: post._id || post.id,
+          date: post.createdAt || post.date,
+          icon: getIconForCategory(post.category)
+        }));
+        setGoodDeeds(formattedPosts);
+      } catch (error) {
+        console.error('Failed to fetch impact posts:', error);
+        // Add some default posts if API fails
+        setGoodDeeds([
+          {
+            id: 1,
+            title: 'Emergency Medical Support for Families',
+            category: 'Healthcare',
+            beneficiaries: 45,
+            amount: 25000,
+            date: '2025-08-20',
+            details: 'Covered ambulance services, emergency medicines, and hospital fees for families who could not afford treatment.',
+          },
+          {
+            id: 2,
+            title: 'Education Scholarship Program',
+            category: 'Education',
+            beneficiaries: 30,
+            amount: 18500,
+            date: '2025-08-15',
+            details: 'Funded school fees, textbooks, uniforms, and stationery for an entire academic year.',
+          }
+        ].map(post => ({ ...post, icon: getIconForCategory(post.category) })));
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   const categoryColor = (cat) =>
     ({
@@ -127,7 +117,27 @@ function DonationPage() {
       Housing: '#10b981',
       Environment: '#059669',
       Empowerment: '#7c3aed',
+      'User Story': '#7c3aed',
     }[cat] || '#64748b');
+
+  const getIconForCategory = (category) => {
+    switch (category) {
+      case 'Healthcare':
+        return <LocalHospital sx={{ color: '#dc2626' }} />;
+      case 'Education':
+        return <School sx={{ color: '#4f86ff' }} />;
+      case 'Food & Nutrition':
+        return <Restaurant sx={{ color: '#f59e0b' }} />;
+      case 'Housing':
+        return <HomeIcon sx={{ color: '#10b981' }} />;
+      case 'Environment':
+        return <Park sx={{ color: '#059669' }} />;
+      default:
+        return <Group sx={{ color: '#7c3aed' }} />;
+    }
+  };
+
+  const progressPct = (totalCollected / target) * 100;
 
   const openDialogWith = (amt) => {
     setSelectedAmount(amt);
@@ -140,29 +150,72 @@ function DonationPage() {
 
   const onPaymentComplete = (amt) => {
     setTotalCollected((prev) => prev + amt);
-    setPaymentComplete(true);
     setSnackbarOpen(true);
-    setTimeout(() => setPaymentComplete(false), 5000);
   };
 
   const handleBreadcrumbClick = (path) => {
     navigate(path);
   };
 
+  const handlePostClick = () => setPostDialogOpen(true);
+
+  const handlePostDialogClose = async (posted) => {
+    if (posted && newPostContent.trim() && newPostTitle.trim()) {
+      try {
+        const postData = {
+          title: newPostTitle.trim(),
+          category: newPostCategory,
+          beneficiaries: parseInt(newPostBeneficiaries) || 0,
+          amount: parseInt(newPostAmount) || 0,
+          details: newPostContent.trim(),
+          authorId: user?.id || null,
+          authorName: newPostAuthor.trim() || user?.name || 'Anonymous',
+          status: 'active',
+          isVerified: false
+        };
+
+        const response = await impactPostsAPI.createPost(postData);
+        
+        const formattedPost = {
+          ...response.data,
+          id: response.data._id || response.data.id,
+          date: response.data.createdAt || response.data.date,
+          icon: getIconForCategory(response.data.category),
+        };
+        
+        setGoodDeeds((prev) => [formattedPost, ...prev]);
+        setPostSuccessSnackbar(true);
+        
+        // Reset all form fields
+        setNewPostContent('');
+        setNewPostTitle('');
+        setNewPostCategory('User Story');
+        setNewPostAmount('');
+        setNewPostBeneficiaries('');
+        setNewPostAuthor('');
+        
+      } catch (error) {
+        console.error('Failed to create post:', error);
+        alert('Failed to post your story. Please try again.');
+      }
+    }
+    setPostDialogOpen(false);
+  };
+
   return (
     <Box sx={{ py: 4 }}>
       <Container maxWidth="lg">
-        {/* Breadcrumb Navigation */}
-        <Box sx={{ mb: 3 }}>
+        {/* Breadcrumb & Post Button */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Breadcrumbs separator={<NavigateNext fontSize="small" />}>
             <Link
               component="button"
               variant="body2"
               onClick={() => handleBreadcrumbClick('/dashboard')}
-              sx={{ 
-                textDecoration: 'none', 
+              sx={{
+                textDecoration: 'none',
                 color: '#64748b',
-                '&:hover': { color: '#4f86ff' }
+                '&:hover': { color: '#4f86ff' },
               }}
             >
               Dashboard
@@ -171,6 +224,33 @@ function DonationPage() {
               Donate
             </Typography>
           </Breadcrumbs>
+
+          {user && (
+            <Button
+              variant="contained"
+              startIcon={<Add />}
+              onClick={handlePostClick}
+              sx={{
+                borderRadius: '12px',
+                px: 3,
+                py: 1.5,
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                fontWeight: 700,
+                fontSize: '16px',
+                textTransform: 'none',
+                boxShadow: '0 4px 12px rgba(59,130,246,0.3)',
+                transition: 'all 0.2s ease',
+                border: 'none',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 6px 16px rgba(59,130,246,0.4)',
+                },
+              }}
+            >
+              Post Story
+            </Button>
+          )}
         </Box>
 
         {/* Hero */}
@@ -231,7 +311,7 @@ function DonationPage() {
 
             <Grid item xs={12} md={4} textAlign="center">
               <Typography variant="h6" fontWeight="bold" color="#10b981">
-                {goodDeeds.reduce((s, d) => s + d.beneficiaries, 0)}+
+                {goodDeeds.reduce((s, d) => s + (d.beneficiaries || 0), 0)}+
               </Typography>
               <Typography variant="body2" color="#64748b" mb={2}>
                 Lives Impacted
@@ -315,7 +395,7 @@ function DonationPage() {
           </Box>
         </Paper>
 
-        {/* Impact Cards */}
+        {/* Recent Impact Stories */}
         <Paper
           elevation={0}
           sx={{
@@ -357,7 +437,7 @@ function DonationPage() {
                           bgcolor: `${categoryColor(d.category)}15`,
                         }}
                       >
-                        {d.icon}
+                        {getIconForCategory(d.category)}
                       </Box>
                       <Box flex={1}>
                         <Typography variant="h6" fontWeight="bold">
@@ -373,24 +453,54 @@ function DonationPage() {
                             fontWeight: 'bold',
                           }}
                         />
+                        {d.authorName && d.authorName !== 'Anonymous' && (
+                          <Typography variant="caption" display="block" color="#64748b">
+                            by {d.authorName}
+                          </Typography>
+                        )}
                       </Box>
-                      <Chip
-                        icon={<CheckCircle />}
-                        label="Completed"
-                        color="success"
-                        size="small"
-                        sx={{ fontWeight: 'bold' }}
-                      />
+                      <Box display="flex" flexDirection="column" gap={1}>
+                        <Chip
+                          icon={<CheckCircle />}
+                          label={d.status === 'completed' ? 'Completed' : 'Active'}
+                          color={d.status === 'completed' ? 'success' : 'primary'}
+                          size="small"
+                          sx={{ fontWeight: 'bold' }}
+                        />
+                        {d.isVerified && (
+                          <Chip
+                            icon={<CheckCircle />}
+                            label="Verified"
+                            size="small"
+                            sx={{ bgcolor: '#10b981', color: 'white' }}
+                          />
+                        )}
+                      </Box>
                     </Box>
 
                     <Typography variant="body2" color="#64748b" mb={2}>
                       {d.details}
                     </Typography>
 
+                    {((d.likes && d.likes > 0) || (d.views && d.views > 0)) && (
+                      <Box display="flex" gap={2} mb={2}>
+                        {d.likes > 0 && (
+                          <Typography variant="caption" color="#64748b">
+                            👍 {d.likes} likes
+                          </Typography>
+                        )}
+                        {d.views > 0 && (
+                          <Typography variant="caption" color="#64748b">
+                            👁️ {d.views} views
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+
                     <Box display="flex" justifyContent="space-between" mb={1}>
                       <Box>
                         <Typography variant="h6" fontWeight="bold" color={categoryColor(d.category)}>
-                          ₹{d.amount.toLocaleString('en-IN')}
+                          ₹{(d.amount || 0).toLocaleString('en-IN')}
                         </Typography>
                         <Typography variant="caption" color="#64748b">
                           Amount Used
@@ -398,7 +508,7 @@ function DonationPage() {
                       </Box>
                       <Box textAlign="right">
                         <Typography variant="h6" fontWeight="bold" color="#10b981">
-                          {d.beneficiaries}
+                          {d.beneficiaries || 0}
                         </Typography>
                         <Typography variant="caption" color="#64748b">
                           People Helped
@@ -407,8 +517,8 @@ function DonationPage() {
                     </Box>
 
                     <Typography variant="caption" color="#64748b">
-                      Completed on{' '}
-                      {new Date(d.date).toLocaleDateString('en-IN', {
+                      Posted on{' '}
+                      {new Date(d.createdAt || d.date).toLocaleDateString('en-IN', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
@@ -438,6 +548,259 @@ function DonationPage() {
           </Box>
         </Paper>
 
+        {/* Post Story Dialog - Enhanced with All Schema Fields */}
+        <Dialog
+          open={postDialogOpen}
+          onClose={() => handlePostDialogClose(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{ 
+            sx: { 
+              borderRadius: '20px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
+              border: 'none',
+              maxHeight: '90vh'
+            }
+          }}
+        >
+          <Box sx={{ p: 4 }}>
+            {/* Header */}
+            <Box mb={3}>
+              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                <Typography 
+                  variant="h4" 
+                  fontWeight={700} 
+                  color="#1e293b"
+                  sx={{ fontSize: '28px' }}
+                >
+                  ✍️ Share Your Impact Story
+                </Typography>
+              </Box>
+              <Typography 
+                variant="body1" 
+                color="#64748b"
+                sx={{ fontSize: '16px', lineHeight: 1.5 }}
+              >
+                Tell the community about your charitable experience or impact story.
+              </Typography>
+            </Box>
+            
+            {/* Form Fields */}
+            <Grid container spacing={3}>
+              {/* Story Title */}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Story Title"
+                  placeholder="Give your story a meaningful title"
+                  value={newPostTitle}
+                  onChange={(e) => setNewPostTitle(e.target.value)}
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Category Selection */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  select
+                  fullWidth
+                  label="Category"
+                  value={newPostCategory}
+                  onChange={(e) => setNewPostCategory(e.target.value)}
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                >
+                  {['Healthcare', 'Education', 'Food & Nutrition', 'Housing', 'Environment', 'Empowerment', 'User Story'].map((category) => (
+                    <MenuItem key={category} value={category}>
+                      {category}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Grid>
+
+              {/* Amount */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Amount (₹)"
+                  type="number"
+                  placeholder="0"
+                  value={newPostAmount}
+                  onChange={(e) => setNewPostAmount(e.target.value)}
+                  variant="outlined"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Beneficiaries */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="People Helped"
+                  type="number"
+                  placeholder="0"
+                  value={newPostBeneficiaries}
+                  onChange={(e) => setNewPostBeneficiaries(e.target.value)}
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Author Name */}
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Your Name"
+                  placeholder="Anonymous"
+                  value={newPostAuthor || user?.name || ''}
+                  onChange={(e) => setNewPostAuthor(e.target.value)}
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+              
+              {/* Story Details */}
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={6}
+                  label="Your Story"
+                  placeholder="Write your story here... Share how you made a difference or experienced help from the community."
+                  value={newPostContent}
+                  onChange={(e) => setNewPostContent(e.target.value)}
+                  variant="outlined"
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              {/* Additional Info */}
+              <Grid item xs={12}>
+                <Box sx={{ 
+                  p: 2, 
+                  bgcolor: '#f8fafc', 
+                  borderRadius: '12px', 
+                  border: '1px solid #e2e8f0' 
+                }}>
+                  <Typography variant="body2" color="#64748b" mb={1}>
+                    📊 Additional Information:
+                  </Typography>
+                  <Typography variant="caption" color="#64748b">
+                    • Your story will be posted on: <strong>{new Date().toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</strong>
+                  </Typography>
+                  <br />
+                  <Typography variant="caption" color="#64748b">
+                    • Status: Will be set to <Chip label="Active" size="small" color="primary" sx={{ fontSize: '10px', height: '16px' }} />
+                  </Typography>
+                  <br />
+                  <Typography variant="caption" color="#64748b">
+                    • Verification: Pending admin review {user?.isVerified && '(You are a verified user)'}
+                  </Typography>
+                </Box>
+              </Grid>
+            </Grid>
+            
+            {/* Buttons */}
+            <Box sx={{ 
+              display: 'flex', 
+              gap: 2, 
+              justifyContent: 'flex-end',
+              mt: 3
+            }}>
+              <Button
+                onClick={() => handlePostDialogClose(false)}
+                sx={{
+                  borderRadius: '12px',
+                  px: 4,
+                  py: 1.5,
+                  color: '#64748b',
+                  fontSize: '16px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  border: 'none',
+                  background: 'transparent',
+                  '&:hover': { 
+                    bgcolor: '#f1f5f9',
+                    border: 'none'
+                  },
+                }}
+              >
+                Cancel
+              </Button>
+              
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => handlePostDialogClose(true)}
+                disabled={!newPostContent.trim() || !newPostTitle.trim()}
+                sx={{
+                  borderRadius: '12px',
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '16px',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  background: (!newPostContent.trim() || !newPostTitle.trim()) 
+                    ? '#9ca3af' 
+                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  color: 'white',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(59,130,246,0.3)',
+                  '&:hover': { 
+                    background: (!newPostContent.trim() || !newPostTitle.trim()) 
+                      ? '#9ca3af' 
+                      : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    boxShadow: '0 4px 12px rgba(59,130,246,0.4)'
+                  },
+                  '&:disabled': { 
+                    bgcolor: '#9ca3af', 
+                    color: 'white',
+                    cursor: 'not-allowed',
+                    boxShadow: 'none'
+                  },
+                }}
+              >
+                Post Story
+              </Button>
+            </Box>
+          </Box>
+        </Dialog>
+
         {/* Payment Dialog */}
         <PaymentDialog
           open={openPayment}
@@ -446,20 +809,37 @@ function DonationPage() {
           onPaymentComplete={onPaymentComplete}
         />
 
-        {/* Success Snackbar */}
+        {/* Donation Success Snackbar */}
         <Snackbar
           open={snackbarOpen}
           autoHideDuration={6000}
           onClose={() => setSnackbarOpen(false)}
           anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-          <Alert 
-            onClose={() => setSnackbarOpen(false)} 
-            severity="success" 
+          <Alert
+            onClose={() => setSnackbarOpen(false)}
+            severity="success"
             variant="filled"
             sx={{ borderRadius: '12px' }}
           >
             Thank you! Your donation of ₹{selectedAmount} was successful! 🎉
+          </Alert>
+        </Snackbar>
+
+        {/* Post Success Snackbar */}
+        <Snackbar
+          open={postSuccessSnackbar}
+          autoHideDuration={4000}
+          onClose={() => setPostSuccessSnackbar(false)}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        >
+          <Alert
+            severity="success"
+            variant="filled"
+            onClose={() => setPostSuccessSnackbar(false)}
+            sx={{ borderRadius: '12px' }}
+          >
+            Your story has been posted successfully! 🎉
           </Alert>
         </Snackbar>
       </Container>
@@ -479,11 +859,14 @@ function PaymentDialog({ open, onClose, amount, onPaymentComplete }) {
   }, [open]);
 
   useEffect(() => {
+    let timer;
     if (step === 1 && count > 0) {
-      const t = setTimeout(() => setCount((c) => c - 1), 1000);
-      return () => clearTimeout(t);
+      timer = setTimeout(() => setCount((c) => c - 1), 1000);
     }
-    if (step === 1 && count === 0) simulateSuccess();
+    if (step === 1 && count === 0) {
+      simulateSuccess();
+    }
+    return () => clearTimeout(timer);
   }, [step, count]);
 
   const simulateSuccess = () => {
@@ -645,5 +1028,4 @@ function PaymentDialog({ open, onClose, amount, onPaymentComplete }) {
   );
 }
 
-// Make sure this export is present
 export default DonationPage;

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import PlatformStats from './PlatformStats';
 import InspiringStories from './InspiringStories';
 
 import {

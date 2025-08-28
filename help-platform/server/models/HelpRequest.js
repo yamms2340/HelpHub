@@ -16,7 +16,6 @@ const helpRequestSchema = new mongoose.Schema({
   location: { type: String, required: true },
   requester: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   
-  // ✅ Simplified status: Open → In Progress → Completed
   status: { 
     type: String, 
     enum: ['Open', 'In Progress', 'Completed', 'Cancelled'], 

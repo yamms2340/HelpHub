@@ -3,7 +3,6 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const router = express.Router();
 
-// ✅ Initialize Razorpay with YOUR credentials
 const razorpay = new Razorpay({
   key_id: 'rzp_test_RAWJZe53MZOrPx',
   key_secret: 'k0UoF2QyAUTjjoc8joMXGwGg',

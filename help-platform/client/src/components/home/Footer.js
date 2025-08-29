@@ -100,9 +100,7 @@ function Footer() {
         }
       }}
     >
-      {/* Newsletter Section */}
       
-
       {/* Main Footer Content */}
       <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
         <Grid container spacing={4}>

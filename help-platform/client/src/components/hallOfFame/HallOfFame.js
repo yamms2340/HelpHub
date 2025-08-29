@@ -1,7 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import PlatformStats from './PlatformStats';
-import InspiringStories from './InspiringStories';
-
 import {
   Container,
   Typography,
@@ -23,20 +20,17 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
-  Collapse,
-  AppBar,
-  Toolbar,
-  Link,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Modal,
   TextField,
   Select,
   MenuItem,
   FormControl,
   InputLabel,
+  Link,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from '@mui/material';
 import {
   EmojiEvents,
@@ -49,33 +43,32 @@ import {
   LocalFireDepartment,
   AutoAwesome,
   Close,
-  ExpandMore,
-  ExpandLess,
   Share,
   PersonAdd,
-  Timeline,
-  Home,
-  Help,
   Create,
-  Menu,
+  Email,
+  Phone,
+  LocationOn,
+  Security,
+  ExpandMore,
+  ExpandLess,
   Facebook,
   Twitter,
   LinkedIn,
   Instagram,
   GitHub,
-  Email,
-  Phone,
-  LocationOn,
-  Security,
-  ReadMore,
+  Send,
+  Help,
+  Description,
+  Group,
 } from '@mui/icons-material';
-import { helpAPI } from '../../services/api';
+import { helpAPI, storiesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
 function HallOfFame() {
   const [topHelpers, setTopHelpers] = useState([]);
   const [stats, setStats] = useState({});
-   const [inspiringStories, setInspiringStories] = useState([]);  
+  const [inspiringStories, setInspiringStories] = useState([]);  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showConfetti, setShowConfetti] = useState(false);
@@ -90,12 +83,17 @@ function HallOfFame() {
     helpType: []
   });
   
-  const navigate = useNavigate();
+  // Stories visibility state for View More/Less
+  const [visibleStoriesCount, setVisibleStoriesCount] = useState(4);
   
+  // Footer newsletter state
+  const [email, setEmail] = useState('');
+  
+  const navigate = useNavigate();
 
   const categories = [
     'Tech Support',
-    'Senior Care',
+    'Senior Care', 
     'Mental Health',
     'Community Building',
     'Emergency Response',
@@ -118,39 +116,155 @@ function HallOfFame() {
   }, []);
 
   const fetchHallOfFameData = async () => {
-  try {
-    setLoading(true);
-    
-    const [helpersResponse, statsResponse, storiesResponse] = await Promise.all([
-      helpAPI.getHallOfFame(),
-      helpAPI.getStats(),
-      helpAPI.getInspiringStories()
-    ]);
-    
-    // DEBUG: Check what your API actually returns
-    console.log('Stories response:', storiesResponse);
-    console.log('Stories data:', storiesResponse.data);
-    
-    // Safe extraction - handle different response structures
-    let storiesArray = [];
-    if (Array.isArray(storiesResponse.data)) {
-      storiesArray = storiesResponse.data;
-    } else if (storiesResponse.data && Array.isArray(storiesResponse.data.data)) {
-      storiesArray = storiesResponse.data.data;
-    }
-    
-    setTopHelpers(helpersResponse.data || []);
-    setStats(statsResponse.data || {});
-    setInspiringStories(storiesArray);
-    setError('');
-  } catch (error) {
-    console.error('Error fetching data:', error);
-    setError('Failed to fetch Hall of Fame data');
-  } finally {
-    setLoading(false);
-  }
-};
+    try {
+      setLoading(true);
+      
+      const [helpersResponse, statsResponse, storiesResponse] = await Promise.all([
+        helpAPI.getHallOfFame(),
+        helpAPI.getStats(),
+        storiesAPI.getInspiringStories(10)
+      ]);
+      
+      console.log('API Responses:', { helpersResponse, statsResponse, storiesResponse });
+      
+      const helpersData = helpersResponse?.data || helpersResponse;
+      setTopHelpers(Array.isArray(helpersData) ? helpersData : []);
+      
+      const statsData = statsResponse?.data || statsResponse;
+      setStats(statsData || {});
+      
+      let storiesArray = [];
+      if (Array.isArray(storiesResponse?.data)) {
+        storiesArray = storiesResponse.data;
+      } else if (storiesResponse?.data?.data && Array.isArray(storiesResponse.data.data)) {
+        storiesArray = storiesResponse.data.data;
+      } else if (Array.isArray(storiesResponse)) {
+        storiesArray = storiesResponse;
+      }
+      
+      setInspiringStories(storiesArray);
+      setError('');
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setError('Failed to fetch Hall of Fame data');
+      
+      // Fallback data with 8+ stories to test View More/Less
+      setTopHelpers([
+        {
+          _id: '1',
+          name: 'Dr. Sarah Johnson',
+          email: 'sarah@example.com',
+          helpCount: 25,
+          rating: 4.8
+        },
+        {
+          _id: '2', 
+          name: 'Maria Rodriguez',
+          email: 'maria@example.com',
+          helpCount: 18,
+          rating: 4.6
+        },
+        {
+          _id: '3',
+          name: 'John Smith',
+          email: 'john@example.com',
+          helpCount: 12,
+          rating: 4.4
+        }
+      ]);
+      
+      setInspiringStories([
+        {
+          id: 1,
+          title: 'The Teacher Who Changed Everything',
+          helper: 'Anonymous Hero',
+          story: 'Started teaching children under a tree with just a blackboard. Today, the initiative has grown into a full school serving 200+ students.',
+          impact: '200+ students educated',
+          category: 'Education',
+          rating: 4.9,
+          location: 'Rural India'
+        },
+        {
+          id: 2,
+          title: 'Coding Mentor Saves Lives',
+          helper: 'Tech Guru',
+          story: 'Late-night coding sessions turned into mentoring dozens of aspiring developers, changing their career paths forever.',
+          impact: '50+ developers trained',
+          category: 'Tech Support',
+          rating: 4.7,
+          location: 'Silicon Valley'
+        },
+        {
+          id: 3,
+          title: 'Community Garden Initiative',
+          helper: 'Green Thumb',
+          story: 'Started a small community garden that now feeds 100 families and brings the neighborhood together.',
+          impact: '100+ families fed',
+          category: 'Community Building',
+          rating: 4.8,
+          location: 'Local Community'
+        },
+        {
+          id: 4,
+          title: 'Emergency Medical Response Team',
+          helper: 'Dr. Emergency',
+          story: 'Built a volunteer medical response team that has saved countless lives during emergencies and natural disasters.',
+          impact: '500+ lives saved',
+          category: 'Emergency Response',
+          rating: 4.9,
+          location: 'Nationwide'
+        },
+        {
+          id: 5,
+          title: 'Senior Care Network',
+          helper: 'Caring Angel',
+          story: 'Created a network of volunteers providing daily care and companionship to elderly residents in our community.',
+          impact: '150+ seniors supported',
+          category: 'Senior Care',
+          rating: 4.8,
+          location: 'Local Community'
+        },
+        {
+          id: 6,
+          title: 'Mental Health First Aid',
+          helper: 'Wellness Warrior',
+          story: 'Trained volunteers to provide mental health first aid and crisis support in schools and workplaces.',
+          impact: '300+ people helped',
+          category: 'Mental Health',
+          rating: 4.7,
+          location: 'Regional'
+        },
+        {
+          id: 7,
+          title: 'Home Repair Heroes',
+          helper: 'Handy Helper',
+          story: 'Organized volunteers to help elderly and disabled residents with home repairs and maintenance.',
+          impact: '80+ homes repaired',
+          category: 'Home Repairs',
+          rating: 4.6,
+          location: 'City Wide'
+        },
+        {
+          id: 8,
+          title: 'Transportation Angels',
+          helper: 'Ride Share Hero',
+          story: 'Created a volunteer network providing free transportation to medical appointments for those in need.',
+          impact: '1000+ rides provided',
+          category: 'Transportation',
+          rating: 4.8,
+          location: 'Metro Area'
+        }
+      ]);
 
+      setStats({
+        totalHelpers: 42,
+        totalHelp: 156,
+        averageRating: 4.6
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Button handlers
   const handleJoinHeroes = () => {
@@ -174,11 +288,8 @@ function HallOfFame() {
       });
     } else {
       navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
     }
-  };
-
-  const handleViewProgress = () => {
-    navigate('/my-impact');
   };
 
   const openStory = (story) => {
@@ -187,25 +298,46 @@ function HallOfFame() {
   };
 
   const handleSubmitStory = async () => {
-  try {
-    const response = await helpAPI.submitStory(storyData);
-    
-    alert('Story submitted successfully!');
-    setShowPostStoryModal(false);
-    setStoryData({ title: '', description: '', category: '', impact: '', helpType: [] });
-    
-    // Refresh stories list
-    fetchHallOfFameData(); // If using Option 1
-    // or trigger re-fetch in container component
-    
-  } catch (error) {
-    console.error('Error submitting story:', error);
-    alert('Error submitting story');
-  }
-};
+    try {
+      if (!storyData.title || !storyData.description || !storyData.category) {
+        alert('Please fill in all required fields');
+        return;
+      }
 
+      await storiesAPI.submitStory(storyData);
+      
+      alert('Story submitted successfully!');
+      setShowPostStoryModal(false);
+      setStoryData({ title: '', description: '', category: '', impact: '', helpType: [] });
+      
+      fetchHallOfFameData();
+      
+    } catch (error) {
+      console.error('Error submitting story:', error);
+      alert('Error submitting story');
+    }
+  };
 
+  // Toggle visible stories function
+  const toggleVisibleStories = () => {
+    if (visibleStoriesCount >= safeInspiringStories.length) {
+      setVisibleStoriesCount(4); // Show less - back to 4
+    } else {
+      setVisibleStoriesCount(safeInspiringStories.length); // Show all
+    }
+  };
 
+  // Footer handlers
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
+
+  const handleNewsletterSubmit = (e) => {
+    e.preventDefault();
+    console.log('Newsletter subscription:', email);
+    alert('Thank you for subscribing to our newsletter!');
+    setEmail('');
+  };
 
   const getRankIcon = (index) => {
     switch (index) {
@@ -264,6 +396,7 @@ function HallOfFame() {
   };
 
   const generateAvatar = (name) => {
+    if (!name) return '#1976d2';
     const gradients = [
       'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
       'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
@@ -320,8 +453,6 @@ function HallOfFame() {
           background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
           borderRadius: 6,
           m: 2,
-          position: 'relative',
-          overflow: 'hidden',
         }}
       >
         <CircularProgress 
@@ -344,13 +475,15 @@ function HallOfFame() {
     );
   }
 
+  const safeTopHelpers = Array.isArray(topHelpers) ? topHelpers : [];
+  const safeInspiringStories = Array.isArray(inspiringStories) ? inspiringStories : [];
+
   return (
     <>
       <Box
         sx={{
           minHeight: '100vh',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          position: 'relative',
           py: 4,
         }}
       >
@@ -364,7 +497,6 @@ function HallOfFame() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   mb: 3,
-                  position: 'relative',
                 }}
               >
                 <Celebration 
@@ -410,34 +542,7 @@ function HallOfFame() {
                   startIcon={<PersonAdd />}
                   onClick={handleJoinHeroes}
                   sx={{
-                    background: '#ffffff',
-                    color: '#1976d2',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 3,
-                    textTransform: 'none',
-                    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.2)',
-                    border: '1px solid rgba(25, 118, 210, 0.1)',
-                    '&:hover': {
-                      background: '#f8fafc',
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.3)',
-                    }
-                  }}
-                >
-                  Join Heroes
-                </Button>
-
-                {/* Post Your Story Button */}
-                <Button
-                  variant="contained"
-                  size="large"
-                  startIcon={<Create />}
-                  onClick={() => setShowPostStoryModal(true)}
-                  sx={{
-                    background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
                     color: 'white',
                     fontWeight: 600,
                     fontSize: '1rem',
@@ -445,12 +550,36 @@ function HallOfFame() {
                     py: 1.5,
                     borderRadius: 3,
                     textTransform: 'none',
-                    boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+                    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
                     '&:hover': {
-                      background:  'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                      background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
                       transform: 'translateY(-1px)',
-                      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)'
+                      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+                    }
+                  }}
+                >
+                  Join Heroes
+                </Button>
 
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<Create />}
+                  onClick={() => setShowPostStoryModal(true)}
+                  sx={{
+                    background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    boxShadow: '0 4px 20px rgba(13, 71, 161, 0.3)',
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #0a3d91 0%, #0d47a1 100%)',
+                      transform: 'translateY(-1px)',
+                      boxShadow: '0 8px 25px rgba(13, 71, 161, 0.4)',
                     }
                   }}
                 >
@@ -494,7 +623,6 @@ function HallOfFame() {
                   borderRadius: 4,
                   background: 'rgba(255, 255, 255, 0.95)',
                   boxShadow: '0 8px 30px rgba(239, 68, 68, 0.2)',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
                 }}
               >
                 {error}
@@ -502,14 +630,123 @@ function HallOfFame() {
             </Grow>
           )}
 
-          {/* Platform Statistics */}
-          {/* <PlatformStats stats={stats} onViewProgress={handleViewProgress} />          */}
-          {/* Inspiring Stories Section - Full Width Cards */}
-          <InspiringStories stories={inspiringStories} onStoryClick={openStory} />
+          {/* ✅ INSPIRING STORIES SECTION - 2 COLUMN MATRIX */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 4,
+              mb: 6,
+              borderRadius: '20px',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              border: '1px solid rgba(25, 118, 210, 0.1)',
+              boxShadow: '0 8px 32px rgba(25, 118, 210, 0.08)',
+            }}
+          >
+            <Typography variant="h4" fontWeight="bold" textAlign="center" mb={4}>
+              🌟 Inspiring Stories
+            </Typography>
+            
+            {safeInspiringStories.length === 0 ? (
+              <Box textAlign="center" py={6}>
+                <Typography variant="h6" color="text.secondary">
+                  No inspiring stories yet. Be the first to share yours!
+                </Typography>
+                <Button
+                  variant="contained"
+                  onClick={() => setShowPostStoryModal(true)}
+                  sx={{ mt: 2 }}
+                >
+                  Share Your Story
+                </Button>
+              </Box>
+            ) : (
+              <>
+                {/* ✅ 2 COLUMN GRID LAYOUT */}
+                <Grid container spacing={3}>
+                  {safeInspiringStories.slice(0, visibleStoriesCount).map((story, index) => (
+                    <Grid item xs={12} sm={6} key={story.id || index}>
+                      <Card
+                        elevation={0}
+                        sx={{
+                          height: '100%',
+                          borderRadius: '16px',
+                          border: '1px solid rgba(25, 118, 210, 0.1)',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 24px rgba(25, 118, 210, 0.15)',
+                          },
+                        }}
+                        onClick={() => openStory(story)}
+                      >
+                        <CardContent sx={{ p: 3 }}>
+                          <Typography variant="h6" fontWeight="bold" mb={2}>
+                            {story.title}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" mb={2}>
+                            {story.story?.substring(0, 150)}...
+                          </Typography>
+                          <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Chip
+                              label={story.category}
+                              size="small"
+                              sx={{
+                                background: '#1976d2',
+                                color: 'white',
+                                fontWeight: 600
+                              }}
+                            />
+                            <Box display="flex" alignItems="center">
+                              <Star sx={{ color: '#ffd700', mr: 0.5, fontSize: 16 }} />
+                              <Typography variant="body2">
+                                {story.rating || '4.5'}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
 
+                {/* View More/View Less Button */}
+                {safeInspiringStories.length > 4 && (
+                  <Box sx={{ textAlign: 'center', mt: 4 }}>
+                    <Button
+                      variant="contained"
+                      onClick={toggleVisibleStories}
+                      startIcon={visibleStoriesCount >= safeInspiringStories.length ? <ExpandLess /> : <ExpandMore />}
+                      sx={{
+                        background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                        color: 'white',
+                        fontWeight: 600,
+                        px: 4,
+                        py: 1.5,
+                        borderRadius: 3,
+                        textTransform: 'none',
+                        boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
+                        '&:hover': {
+                          background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
+                          transform: 'translateY(-1px)',
+                          boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
+                        }
+                      }}
+                    >
+                      {visibleStoriesCount >= safeInspiringStories.length ? 'View Less' : 'View More'}
+                    </Button>
+                    
+                    <Typography variant="body2" sx={{ color: '#64748b', mt: 1 }}>
+                      Showing {Math.min(visibleStoriesCount, safeInspiringStories.length)} of {safeInspiringStories.length} stories
+                    </Typography>
+                  </Box>
+                )}
+              </>
+            )}
+          </Paper>
 
           {/* Top Helpers Section */}
-          {topHelpers.length === 0 ? (
+          {safeTopHelpers.length === 0 ? (
             <Grow in timeout={1200}>
               <Paper 
                 elevation={0} 
@@ -522,14 +759,12 @@ function HallOfFame() {
                   boxShadow: '0 6px 20px rgba(25, 118, 210, 0.08)',
                 }}
               >
-                <Box sx={{ fontSize: 100, mb: 3, filter: 'drop-shadow(0 10px 20px rgba(0, 0, 0, 0.1))' }}>
-                  🌟
-                </Box>
+                <Box sx={{ fontSize: 100, mb: 3 }}>🌟</Box>
                 <Typography variant="h3" sx={{ fontWeight: 700, mb: 3, color: '#1e293b' }}>
                   Be the First Hero!
                 </Typography>
                 <Typography variant="body1" sx={{ color: '#64748b', mb: 4, maxWidth: 500, mx: 'auto' }}>
-                  The Hall of Fame is waiting for its first legendary helper. Start helping others today and claim your throne!
+                  The Hall of Fame is waiting for its first legendary helper. Start helping others today!
                 </Typography>
                 <Button
                   variant="contained"
@@ -537,19 +772,12 @@ function HallOfFame() {
                   startIcon={<LocalFireDepartment />}
                   onClick={handleStartHelping}
                   sx={{
-                    background: '#ffffff',
-                    color: '#1976d2',
+                    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
                     fontWeight: 600,
                     px: 4,
                     py: 1.5,
                     borderRadius: 3,
-                    fontSize: '1rem',
                     textTransform: 'none',
-                    border: '1px solid rgba(25, 118, 210, 0.2)',
-                    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.2)',
-                    '&:hover': {
-                      background: '#f8fafc',
-                    }
                   }}
                 >
                   Start Helping Now
@@ -558,7 +786,6 @@ function HallOfFame() {
             </Grow>
           ) : (
             <>
-              {/* Section Title */}
               <Box textAlign="center" mb={5}>
                 <Typography 
                   variant="h3" 
@@ -575,10 +802,10 @@ function HallOfFame() {
                 </Typography>
               </Box>
               
-              {/* Top 3 Heroes - Special Podium */}
+              {/* Top 3 Heroes */}
               <Grid container spacing={4} sx={{ mb: 6 }} justifyContent="center">
-                {topHelpers.slice(0, 3).map((helper, index) => (
-                  <Grid item xs={12} md={4} key={helper._id}>
+                {safeTopHelpers.slice(0, 3).map((helper, index) => (
+                  <Grid item xs={12} md={4} key={helper._id || index}>
                     <Grow in timeout={1000 + index * 200}>
                       <Card 
                         elevation={0}
@@ -586,19 +813,15 @@ function HallOfFame() {
                           background: getRankGradient(index),
                           color: 'white',
                           textAlign: 'center',
-                          position: 'relative',
-                          overflow: 'visible',
                           borderRadius: 4,
-                          transform: index === 0 ? 'scale(1.05) translateY(-10px)' : 'scale(1)',
-                          border: '3px solid rgba(255, 255, 255, 0.3)',
+                          transform: index === 0 ? 'scale(1.05)' : 'scale(1)',
                           transition: 'all 0.3s ease-out',
                           '&:hover': { 
-                            transform: index === 0 ? 'scale(1.08) translateY(-15px)' : 'scale(1.03) translateY(-5px)',
+                            transform: index === 0 ? 'scale(1.08)' : 'scale(1.03)',
                             boxShadow: '0 15px 35px rgba(0, 0, 0, 0.2)',
                           },
                         }}
                       >
-                        {/* Crown for #1 */}
                         {index === 0 && (
                           <Box 
                             sx={{ 
@@ -607,19 +830,17 @@ function HallOfFame() {
                               left: '50%', 
                               transform: 'translateX(-50%)',
                               fontSize: '2rem',
-                              filter: 'drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3))',
-                              animation: 'gentleGlow 4s ease-in-out infinite alternate'
                             }}
                           >
                             👑
                           </Box>
                         )}
                         
-                        <Box sx={{ position: 'absolute', top: index === 0 ? -5 : -10, left: '50%', transform: 'translateX(-50%)' }}>
+                        <Box sx={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)' }}>
                           {getRankIcon(index)}
                         </Box>
                         
-                        <CardContent sx={{ pt: index === 0 ? 6 : 5, pb: 4 }}>
+                        <CardContent sx={{ pt: 6, pb: 4 }}>
                           <Avatar
                             sx={{
                               width: index === 0 ? 100 : 80,
@@ -629,54 +850,41 @@ function HallOfFame() {
                               background: generateAvatar(helper.name),
                               fontSize: index === 0 ? '2.5rem' : '2rem',
                               fontWeight: 800,
-                              border: '3px solid rgba(255, 255, 255, 0.4)',
-                              boxShadow: '0 8px 25px rgba(0, 0, 0, 0.2)',
                             }}
                           >
-                            {helper.name.charAt(0).toUpperCase()}
+                            {helper.name?.charAt(0)?.toUpperCase() || '?'}
                           </Avatar>
                           
                           <Typography 
                             variant={index === 0 ? "h5" : "h6"} 
-                            sx={{ 
-                              fontWeight: 800, 
-                              mb: 1,
-                            }}
+                            sx={{ fontWeight: 800, mb: 1 }}
                           >
                             {helper.name}
                           </Typography>
                           
-                          <Typography 
-                            variant="body2" 
-                            sx={{ 
-                              mb: 3, 
-                              opacity: 0.9,
-                            }}
-                          >
+                          <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
                             {helper.email}
                           </Typography>
                           
                           <Box display="flex" justifyContent="center" gap={1.5} flexWrap="wrap">
                             <Chip
                               icon={<VolunteerActivism />}
-                              label={`${helper.helpCount}`}
+                              label={`${helper.helpCount || 0}`}
                               size="small"
                               sx={{ 
                                 bgcolor: 'rgba(255,255,255,0.25)', 
                                 color: 'white',
                                 fontWeight: 600,
-                                borderRadius: 2,
                               }}
                             />
                             <Chip
                               icon={<Star />}
-                              label={`${helper.rating.toFixed(1)}`}
+                              label={`${helper.rating?.toFixed(1) || '5.0'}`}
                               size="small"
                               sx={{ 
                                 bgcolor: 'rgba(255,255,255,0.25)', 
                                 color: 'white',
                                 fontWeight: 600,
-                                borderRadius: 2,
                               }}
                             />
                           </Box>
@@ -689,7 +897,6 @@ function HallOfFame() {
                                 fontWeight: 700,
                                 color: '#FFD700',
                                 fontSize: '1rem',
-                                letterSpacing: '0.1em',
                               }}
                             >
                               🏆 CHAMPION 🏆
@@ -702,116 +909,79 @@ function HallOfFame() {
                 ))}
               </Grid>
 
-              {/* Rest of the Heroes */}
-              {topHelpers.length > 3 && (
+              {/* Rest of Heroes */}
+              {safeTopHelpers.length > 3 && (
                 <>
-                  <Divider sx={{ mb: 4, background: 'linear-gradient(90deg, transparent 0%, rgba(25, 118, 210, 0.3) 50%, transparent 100%)', height: 2 }} />
-                  
+                  <Divider sx={{ mb: 4 }} />
                   <Box textAlign="center" mb={3}>
-                    <Typography 
-                      variant="h4" 
-                      sx={{ 
-                        fontWeight: 700, 
-                        color: '#1e293b',
-                      }}
-                    >
+                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
                       🌟 Rising Stars
                     </Typography>
                   </Box>
                   
                   <Grid container spacing={3}>
-                    {topHelpers.slice(3).map((helper, index) => (
-                      <Grid item xs={12} sm={6} md={4} key={helper._id}>
-                        <Grow in timeout={1200 + index * 100}>
-                          <Card 
-                            elevation={0}
-                            sx={{ 
-                              borderRadius: 4,
-                              background: '#ffffff',
-                              border: '1px solid rgba(25, 118, 210, 0.1)',
-                              overflow: 'hidden',
-                              position: 'relative',
-                              transition: 'all 0.3s ease-out',
-                              '&:hover': { 
-                                boxShadow: '0 12px 25px rgba(25, 118, 210, 0.15)', 
-                                transform: 'translateY(-3px)',
-                                borderColor: 'rgba(25, 118, 210, 0.3)',
-                              },
-                              '&::before': {
-                                content: '""',
-                                position: 'absolute',
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                height: '3px',
-                                background: generateAvatar(helper.name),
-                              }
-                            }}
-                          >
-                            <CardContent sx={{ p: 3 }}>
-                              <Box display="flex" alignItems="center" mb={2}>
-                                <Box sx={{ minWidth: 50, textAlign: 'center', mr: 2 }}>
-                                  {getRankIcon(index + 3)}
-                                </Box>
-                                <Avatar
-                                  sx={{
-                                    width: 60,
-                                    height: 60,
-                                    background: generateAvatar(helper.name),
-                                    mr: 2,
-                                    fontWeight: 700,
-                                    fontSize: '1.5rem',
-                                    boxShadow: '0 4px 15px rgba(25, 118, 210, 0.2)',
-                                  }}
-                                >
-                                  {helper.name.charAt(0).toUpperCase()}
-                                </Avatar>
-                                <Box flexGrow={1}>
-                                  <Typography 
-                                    variant="h6" 
-                                    sx={{ 
-                                      fontWeight: 700, 
-                                      color: '#1e293b',
-                                      fontSize: '1.1rem',
-                                      mb: 0.5,
-                                    }}
-                                  >
-                                    {helper.name}
-                                  </Typography>
-                                  <Typography variant="body2" sx={{ color: '#64748b', fontSize: '0.9rem' }}>
-                                    {helper.email}
-                                  </Typography>
-                                </Box>
+                    {safeTopHelpers.slice(3).map((helper, index) => (
+                      <Grid item xs={12} sm={6} md={4} key={helper._id || index}>
+                        <Card 
+                          elevation={0}
+                          sx={{ 
+                            borderRadius: 4,
+                            background: '#ffffff',
+                            border: '1px solid rgba(25, 118, 210, 0.1)',
+                            transition: 'all 0.3s ease-out',
+                            '&:hover': { 
+                              boxShadow: '0 12px 25px rgba(25, 118, 210, 0.15)', 
+                              transform: 'translateY(-3px)',
+                            },
+                          }}
+                        >
+                          <CardContent sx={{ p: 3 }}>
+                            <Box display="flex" alignItems="center" mb={2}>
+                              <Box sx={{ minWidth: 50, textAlign: 'center', mr: 2 }}>
+                                {getRankIcon(index + 3)}
                               </Box>
-                              
-                              <Box display="flex" justifyContent="space-between" alignItems="center">
-                                <Chip
-                                  icon={<VolunteerActivism />}
-                                  label={`${helper.helpCount} helps`}
-                                  sx={{
-                                    background: generateAvatar(helper.name),
-                                    color: 'white',
-                                    fontWeight: 500,
-                                    borderRadius: 2,
-                                    fontSize: '0.8rem',
-                                  }}
-                                  size="small"
-                                />
-                                <Box display="flex" alignItems="center" sx={{ 
-                                  background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
-                                  px: 1.5,
-                                  py: 0.5,
-                                  borderRadius: 2,
-                                }}>
-                                  <Star sx={{ color: '#f57c00', mr: 0.5, fontSize: 18 }} />
-                                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#e65100' }}>
-                                    {helper.rating.toFixed(1)}
-                                  </Typography>
-                                </Box>
+                              <Avatar
+                                sx={{
+                                  width: 60,
+                                  height: 60,
+                                  background: generateAvatar(helper.name),
+                                  mr: 2,
+                                  fontWeight: 700,
+                                  fontSize: '1.5rem',
+                                }}
+                              >
+                                {helper.name?.charAt(0)?.toUpperCase() || '?'}
+                              </Avatar>
+                              <Box flexGrow={1}>
+                                <Typography variant="h6" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                                  {helper.name}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#64748b' }}>
+                                  {helper.email}
+                                </Typography>
                               </Box>
-                            </CardContent>
-                          </Card>
-                        </Grow>
+                            </Box>
+                            
+                            <Box display="flex" justifyContent="space-between" alignItems="center">
+                              <Chip
+                                icon={<VolunteerActivism />}
+                                label={`${helper.helpCount || 0} helps`}
+                                sx={{
+                                  background: '#1976d2',
+                                  color: 'white',
+                                  fontWeight: 500,
+                                }}
+                                size="small"
+                              />
+                              <Box display="flex" alignItems="center">
+                                <Star sx={{ color: '#ffd700', mr: 0.5, fontSize: 18 }} />
+                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                  {helper.rating?.toFixed(1) || '5.0'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </CardContent>
+                        </Card>
                       </Grid>
                     ))}
                   </Grid>
@@ -836,7 +1006,7 @@ function HallOfFame() {
                 Ready to Join Our Heroes? 🚀
               </Typography>
               <Typography variant="body1" sx={{ color: '#64748b', mb: 4, maxWidth: 600, mx: 'auto' }}>
-                Every great helper started with a single act of kindness. Begin your journey today and make a difference in someone's life!
+                Every great helper started with a single act of kindness. Begin your journey today!
               </Typography>
               <Button
                 variant="contained"
@@ -844,20 +1014,18 @@ function HallOfFame() {
                 startIcon={<VolunteerActivism />}
                 onClick={handleStartJourney}
                 sx={{
-                  background: '#ffffff',
-                  color: '#1976d2',
+                  background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
                   fontWeight: 600,
                   fontSize: '1rem',
                   px: 4,
                   py: 2,
                   borderRadius: 3,
                   textTransform: 'none',
-                  border: '1px solid rgba(25, 118, 210, 0.2)',
-                  boxShadow: '0 4px 20px rgba(25, 118, 210, 0.2)',
+                  boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
                   '&:hover': {
-                    background: '#f8fafc',
+                    background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
                     transform: 'translateY(-1px)',
-                    boxShadow: '0 8px 25px rgba(25, 118, 210, 0.3)',
+                    boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
                   }
                 }}
               >
@@ -871,41 +1039,22 @@ function HallOfFame() {
         <Modal 
           open={showPostStoryModal} 
           onClose={() => setShowPostStoryModal(false)}
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <Box sx={{
-            position: 'relative',
             width: { xs: '90%', md: 600 },
             bgcolor: 'background.paper',
             borderRadius: 4,
-            boxShadow: '0 20px 60px rgba(25, 118, 210, 0.2)',
+            boxShadow: 24,
             p: 4,
             maxHeight: '90vh',
             overflow: 'auto'
           }}>
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              mb: 3 
-            }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
                 Share Your Hero Story ✨
               </Typography>
-              <IconButton 
-                onClick={() => setShowPostStoryModal(false)}
-                sx={{
-                  background: 'rgba(25, 118, 210, 0.1)',
-                  color: '#1976d2',
-                  '&:hover': {
-                    background: 'rgba(25, 118, 210, 0.2)',
-                  }
-                }}
-              >
+              <IconButton onClick={() => setShowPostStoryModal(false)}>
                 <Close />
               </IconButton>
             </Box>
@@ -977,46 +1126,32 @@ function HallOfFame() {
                         : [...storyData.helpType, type];
                       setStoryData({...storyData, helpType: newTypes});
                     }}
-                    sx={{ mb: 1 }}
                   />
                 ))}
               </Box>
             </Box>
 
-            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 4 }}>
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button 
                 variant="outlined" 
                 onClick={() => setShowPostStoryModal(false)}
-                sx={{ 
-                  borderRadius: 3, 
-                  textTransform: 'none', 
-                  px: 3,
-                  borderColor: '#1976d2',
-                  color: '#1976d2'
-                }}
+                sx={{ borderRadius: 3, textTransform: 'none', px: 3 }}
               >
                 Cancel
               </Button>
               <Button 
-  variant="contained" 
-  onClick={handleSubmitStory}
-  disabled={!storyData.title || !storyData.description}
-  sx={{ 
-    borderRadius: 3, 
-    textTransform: 'none', 
-    px: 3,
-    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
-    boxShadow: '0 4px 20px rgba(25, 118, 210, 0.3)',
-    '&:hover': {
-      background: 'linear-gradient(135deg, #1565c0 0%, #1976d2 100%)',
-      boxShadow: '0 8px 25px rgba(25, 118, 210, 0.4)',
-    }
-  }}
->
-  Submit Story
-</Button>
-
-
+                variant="contained" 
+                onClick={handleSubmitStory}
+                disabled={!storyData.title || !storyData.description}
+                sx={{ 
+                  borderRadius: 3, 
+                  textTransform: 'none', 
+                  px: 3,
+                  background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                }}
+              >
+                Submit Story
+              </Button>
             </Box>
           </Box>
         </Modal>
@@ -1027,13 +1162,7 @@ function HallOfFame() {
           onClose={() => setOpenStoryDialog(false)}
           maxWidth="md"
           fullWidth
-          PaperProps={{
-            sx: {
-              borderRadius: 4,
-              background: '#ffffff',
-              boxShadow: '0 20px 60px rgba(25, 118, 210, 0.2)',
-            }
-          }}
+          PaperProps={{ sx: { borderRadius: 4 } }}
         >
           {selectedStory && (
             <>
@@ -1041,81 +1170,49 @@ function HallOfFame() {
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
-                pb: 2
+                borderBottom: '1px solid #e0e0e0'
               }}>
                 <Box>
-                  <Typography variant="h5" sx={{ fontWeight: 700, color: '#1e293b' }}>
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>
                     {selectedStory.title}
                   </Typography>
                   <Typography variant="subtitle1" sx={{ color: '#1976d2', fontWeight: 600 }}>
                     {selectedStory.helper} • {selectedStory.location}
                   </Typography>
                 </Box>
-                <IconButton 
-                  onClick={() => setOpenStoryDialog(false)} 
-                  size="small"
-                  sx={{
-                    background: 'rgba(25, 118, 210, 0.1)',
-                    color: '#1976d2',
-                    '&:hover': {
-                      background: 'rgba(25, 118, 210, 0.2)',
-                    }
-                  }}
-                >
+                <IconButton onClick={() => setOpenStoryDialog(false)}>
                   <Close />
                 </IconButton>
               </DialogTitle>
               <DialogContent sx={{ pt: 3 }}>
-                <Typography variant="body1" sx={{ 
-                  lineHeight: 1.8, 
-                  color: '#374151',
-                  fontSize: '1.1rem',
-                  whiteSpace: 'pre-line'
-                }}>
-                  {selectedStory.fullStory}
+                <Typography variant="body1" sx={{ lineHeight: 1.8, whiteSpace: 'pre-line' }}>
+                  {selectedStory.story || selectedStory.fullStory}
                 </Typography>
               </DialogContent>
-              <DialogActions sx={{ p: 3, pt: 1 }}>
+              <DialogActions sx={{ p: 3 }}>
                 <Box display="flex" alignItems="center" gap={3} width="100%">
                   <Box display="flex" alignItems="center">
-                    <Star sx={{ color: '#fbbf24', mr: 1 }} />
+                    <Star sx={{ color: '#ffd700', mr: 1 }} />
                     <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                      {selectedStory.rating} Rating
+                      {selectedStory.rating || '4.5'} Rating
                     </Typography>
                   </Box>
-                  <Box display="flex" alignItems="center">
-                    <Typography variant="body2" sx={{ color: '#64748b' }}>
-                      Impact: <strong>{selectedStory.impact}</strong>
-                    </Typography>
-                  </Box>
-                  <Box sx={{ ml: 'auto' }}>
-                    <Button 
-                      onClick={() => setOpenStoryDialog(false)}
-                      sx={{
-                        background: '#ffffff',
-                        color: '#1976d2',
-                        fontWeight: 500,
-                        px: 3,
-                        py: 1,
-                        borderRadius: 3,
-                        textTransform: 'none',
-                        border: '1px solid rgba(25, 118, 210, 0.2)',
-                        '&:hover': {
-                          background: '#f8fafc',
-                        }
-                      }}
-                    >
-                      Close
-                    </Button>
-                  </Box>
+                  <Typography variant="body2" sx={{ color: '#64748b' }}>
+                    Impact: <strong>{selectedStory.impact}</strong>
+                  </Typography>
+                  <Button 
+                    onClick={() => setOpenStoryDialog(false)}
+                    sx={{ ml: 'auto', textTransform: 'none' }}
+                  >
+                    Close
+                  </Button>
                 </Box>
               </DialogActions>
             </>
           )}
         </Dialog>
 
-        {/* Add custom animations */}
+        {/* Custom animations */}
         <style jsx>{`
           @keyframes sparkle {
             0%, 100% { transform: rotate(0deg) scale(1); opacity: 1; }
@@ -1126,19 +1223,14 @@ function HallOfFame() {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-8px); }
           }
-          
-          @keyframes gentleGlow {
-            0% { filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.6)); }
-            100% { filter: drop-shadow(0 0 12px rgba(255, 215, 0, 0.9)); }
-          }
         `}</style>
       </Box>
 
-      {/* Footer Component - Without Newsletter Section */}
+      {/* ✅ INTEGRATED FOOTER COMPONENT */}
       <Box
         component="footer"
         sx={{
-          background: 'linear-gradient(135deg, #1976d2 0%, #1565c0 50%, #0d47a1 100%)',
+          background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
           color: 'white',
           mt: 0,
           position: 'relative',
@@ -1155,6 +1247,7 @@ function HallOfFame() {
           }
         }}
       >
+
         {/* Main Footer Content */}
         <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
           <Grid container spacing={4}>
@@ -1184,7 +1277,7 @@ function HallOfFame() {
                       color: 'white',
                     }}
                   >
-                    Help<span style={{ color: '#bbdefb' }}>Hub</span>
+                    Help<span style={{ color: '#64b5f6' }}>Hub</span>
                   </Typography>
                 </Box>
                 <Typography
@@ -1274,10 +1367,10 @@ function HallOfFame() {
                           transform: 'translateX(4px)',
                         }
                       }}
-                      onClick={() => navigate(link.path)}
+                      onClick={() => handleNavigation(link.path)}
                     >
                       <ListItemIcon sx={{ minWidth: 36 }}>
-                        <IconComponent sx={{ color: '#bbdefb', fontSize: 20 }} />
+                        <IconComponent sx={{ color: '#64b5f6', fontSize: 20 }} />
                       </ListItemIcon>
                       <ListItemText
                         primary={link.label}
@@ -1322,7 +1415,7 @@ function HallOfFame() {
                         transform: 'translateX(4px)',
                       }
                     }}
-                    onClick={() => navigate(link.path)}
+                    onClick={() => handleNavigation(link.path)}
                   >
                     <ListItemText
                       primary={link.label}
@@ -1355,7 +1448,7 @@ function HallOfFame() {
               {/* Contact Info */}
               <Box sx={{ mb: 3 }}>
                 <Box display="flex" alignItems="center" mb={2}>
-                  <Email sx={{ color: '#bbdefb', fontSize: 18, mr: 2 }} />
+                  <Email sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
                   <Typography
                     variant="body2"
                     sx={{
@@ -1368,7 +1461,7 @@ function HallOfFame() {
                   </Typography>
                 </Box>
                 <Box display="flex" alignItems="center" mb={2}>
-                  <Phone sx={{ color: '#bbdefb', fontSize: 18, mr: 2 }} />
+                  <Phone sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
                   <Typography
                     variant="body2"
                     sx={{
@@ -1381,7 +1474,7 @@ function HallOfFame() {
                   </Typography>
                 </Box>
                 <Box display="flex" alignItems="center" mb={3}>
-                  <LocationOn sx={{ color: '#bbdefb', fontSize: 18, mr: 2 }} />
+                  <LocationOn sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
                   <Typography
                     variant="body2"
                     sx={{
@@ -1411,7 +1504,7 @@ function HallOfFame() {
                         transform: 'translateX(4px)',
                       }
                     }}
-                    onClick={() => navigate(link.path)}
+                    onClick={() => handleNavigation(link.path)}
                   >
                     <ListItemText
                       primary={link.label}
@@ -1458,7 +1551,7 @@ function HallOfFame() {
                   justifyContent={{ xs: 'center', md: 'flex-end' }}
                   mt={{ xs: 2, md: 0 }}
                 >
-                  <Security sx={{ color: '#bbdefb', fontSize: 16, mr: 1 }} />
+                  <Security sx={{ color: '#64b5f6', fontSize: 16, mr: 1 }} />
                   <Typography
                     variant="body2"
                     sx={{

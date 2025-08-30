@@ -75,8 +75,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { impactPostsAPI } from '../../services/api';
-import { campaignAPI } from '../../services/campaignAPI';
+import { impactPostsAPI, campaignAPI, donationsAPI } from '../../services/api';
 
 // Load Razorpay script
 const loadRazorpayScript = () => {
@@ -201,48 +200,35 @@ function DonationPage() {
     fetchCampaignStats();
   }, []);
 
+  // ✅ FIXED: Remove fake stories fallback
   const fetchImpactPosts = async () => {
     try {
+      console.log('🔄 Fetching real impact posts from backend...');
       const response = await impactPostsAPI.getAllPosts();
-      const postsData = response.data.posts || response.data;
-      const formattedPosts = postsData.map(post => ({
-        ...post,
-        id: post._id || post.id,
-        date: post.createdAt || post.date,
-        icon: getIconForCategory(post.category)
-      }));
-      setGoodDeeds(formattedPosts);
-    } catch (error) {
-      console.error('Failed to fetch impact posts:', error);
-      // Fallback data
-      setGoodDeeds([
-        {
-          id: 1,
-          title: 'Emergency Medical Support for Families',
-          category: 'Healthcare',
-          beneficiaries: 45,
-          amount: 25000,
-          date: '2025-08-20',
-          details: 'Covered ambulance services, emergency medicines, and hospital fees for families who could not afford treatment.',
-          authorName: 'Dr. Sarah Johnson',
-          isVerified: true,
-          likes: 124,
-          views: 856
-        },
-        {
-          id: 2,
-          title: 'Education Scholarship Program',
-          category: 'Education',
-          beneficiaries: 30,
-          amount: 18500,
-          date: '2025-08-15',
-          details: 'Funded school fees, textbooks, uniforms, and stationery for an entire academic year.',
-          authorName: 'Maria Rodriguez',
-          isVerified: false,
-          likes: 89,
-          views: 432
+      
+      if (response.success && response.data) {
+        const postsData = response.data.posts || response.data;
+        
+        if (Array.isArray(postsData) && postsData.length > 0) {
+          const formattedPosts = postsData.map(post => ({
+            ...post,
+            id: post._id || post.id,
+            date: post.createdAt || post.date,
+            icon: getIconForCategory(post.category)
+          }));
+          console.log('✅ Real impact posts loaded:', formattedPosts.length, 'posts');
+          setGoodDeeds(formattedPosts);
+        } else {
+          console.log('📝 No impact posts found in database');
+          setGoodDeeds([]);
         }
-      ].map(post => ({ ...post, icon: getIconForCategory(post.category) })));
+      } else {
+        console.log('📝 No impact posts data received');
+        setGoodDeeds([]);
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch impact posts:', error);
+      setGoodDeeds([]); // Empty array instead of fake data
     }
   };
 
@@ -308,7 +294,7 @@ function DonationPage() {
     setPaymentError('');
   };
 
-  // ✅ NEW: Campaign donation with Razorpay
+  // ✅ FIXED: Campaign donation with API service calls
   const handleCampaignDonationPayment = async (amount) => {
     if (!donorName.trim() || !donorEmail.trim()) {
       setPaymentError('Please enter your name and email address');
@@ -336,22 +322,15 @@ function DonationPage() {
         amount: parseFloat(amount)
       });
 
-      const response = await fetch('http://localhost:5000/api/donations/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: parseFloat(amount),
-          donorName: donorName.trim(),
-          donorEmail: donorEmail.trim(),
-          donorPhone: donorPhone.trim(),
-          message: `Donation for ${selectedCampaign.title}`,
-          campaignId: selectedCampaign._id
-        }),
+      // ✅ FIXED: Use API service instead of direct fetch
+      const orderData = await donationsAPI.createOrder({
+        amount: parseFloat(amount),
+        donorName: donorName.trim(),
+        donorEmail: donorEmail.trim(),
+        donorPhone: donorPhone.trim(),
+        message: `Donation for ${selectedCampaign.title}`,
+        campaignId: selectedCampaign._id
       });
-
-      const orderData = await response.json();
       
       if (!orderData.success) {
         setPaymentError(orderData.message || 'Failed to create order');
@@ -372,23 +351,30 @@ function DonationPage() {
           console.log('🎉 Campaign donation payment successful:', response);
           
           try {
-            const verifyResponse = await fetch('http://localhost:5000/api/donations/verify-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                transactionId: orderData.data.transactionId
-              }),
+            // ✅ FIXED: Use API service for payment verification
+            const verifyData = await donationsAPI.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              transactionId: orderData.data.transactionId
             });
-
-            const verifyData = await verifyResponse.json();
             
             if (verifyData.success) {
               console.log('✅ Campaign donation verified successfully');
+              
+              // ✅ CRITICAL: Update campaign with donation
+              try {
+                await campaignAPI.donateToCampaign(selectedCampaign._id, {
+                  amount: parseFloat(amount),
+                  donorName: donorName.trim(),
+                  donorEmail: donorEmail.trim(),
+                  paymentId: response.razorpay_payment_id,
+                  orderId: response.razorpay_order_id
+                });
+                console.log('✅ Campaign donation amount updated');
+              } catch (donationError) {
+                console.error('❌ Error updating campaign donation:', donationError);
+              }
               
               // ✅ REFRESH ALL DATA AFTER SUCCESSFUL DONATION
               await Promise.all([
@@ -482,7 +468,7 @@ function DonationPage() {
     setCampaignToDelete(null);
   };
 
-  // ✅ GENERAL DONATION (WORKING RAZORPAY PAYMENT FUNCTION)
+  // ✅ FIXED: General donation with API service calls
   const handleRazorpayPayment = async (amount) => {
     if (!donorName.trim() || !donorEmail.trim()) {
       setPaymentError('Please enter your name and email address');
@@ -501,22 +487,15 @@ function DonationPage() {
 
       console.log('💰 Creating general donation order for amount:', amount);
 
-      const response = await fetch('http://localhost:5000/api/donations/create-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: parseFloat(amount),
-          donorName: donorName.trim(),
-          donorEmail: donorEmail.trim(),
-          donorPhone: donorPhone.trim(),
-          message: 'General community donation',
-          campaignId: 'general'
-        }),
+      // ✅ FIXED: Use API service instead of direct fetch
+      const orderData = await donationsAPI.createOrder({
+        amount: parseFloat(amount),
+        donorName: donorName.trim(),
+        donorEmail: donorEmail.trim(),
+        donorPhone: donorPhone.trim(),
+        message: 'General community donation',
+        campaignId: 'general'
       });
-
-      const orderData = await response.json();
       
       if (!orderData.success) {
         setPaymentError(orderData.message || 'Failed to create order');
@@ -537,20 +516,13 @@ function DonationPage() {
           console.log('🎉 General donation payment successful:', response);
           
           try {
-            const verifyResponse = await fetch('http://localhost:5000/api/donations/verify-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                transactionId: orderData.data.transactionId
-              }),
+            // ✅ FIXED: Use API service for payment verification
+            const verifyData = await donationsAPI.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              transactionId: orderData.data.transactionId
             });
-
-            const verifyData = await verifyResponse.json();
             
             if (verifyData.success) {
               // ✅ REFRESH CAMPAIGN STATS AFTER GENERAL DONATION
@@ -802,36 +774,6 @@ function DonationPage() {
   const handleBreadcrumbClick = (path) => {
     navigate(path);
   };
-
-  // Footer data
-  const quickLinks = [
-    { label: 'Home', path: '/', icon: HomeIcon },
-    { label: 'Campaigns', path: '/campaigns', icon: EmojiEvents },
-    { label: 'Hall of Fame', path: '/hall-of-fame', icon: AutoAwesome },
-    { label: 'About Us', path: '/about', icon: Help },
-  ];
-
-  const supportLinks = [
-    { label: 'Help Center', path: '/help' },
-    { label: 'Contact Support', path: '/support' },
-    { label: 'Community Guidelines', path: '/guidelines' },
-    { label: 'Safety Tips', path: '/safety' },
-  ];
-
-  const legalLinks = [
-    { label: 'Privacy Policy', path: '/privacy' },
-    { label: 'Terms of Service', path: '/terms' },
-    { label: 'Cookie Policy', path: '/cookies' },
-    { label: 'Accessibility', path: '/accessibility' },
-  ];
-
-  const socialLinks = [
-    { icon: Facebook, url: 'https://facebook.com/helphub', label: 'Facebook' },
-    { icon: Twitter, url: 'https://twitter.com/helphub', label: 'Twitter' },
-    { icon: LinkedIn, url: 'https://linkedin.com/company/helphub', label: 'LinkedIn' },
-    { icon: Instagram, url: 'https://instagram.com/helphub', label: 'Instagram' },
-    { icon: GitHub, url: 'https://github.com/helphub', label: 'GitHub' },
-  ];
 
   return (
     <>
@@ -1529,18 +1471,217 @@ function DonationPage() {
             </Box>
           </Paper>
 
-          {/* Professional Impact Stories Section */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: 5,
-              borderRadius: '32px',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-              border: '1px solid rgba(37, 99, 235, 0.1)',
-              boxShadow: '0 20px 40px rgba(37, 99, 235, 0.08)',
-            }}
-          >
-            <Box textAlign="center" mb={5}>
+          {/* ✅ IMPACT STORIES SECTION - NO FAKE DATA */}
+          {goodDeeds.length > 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 5,
+                borderRadius: '32px',
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                border: '1px solid rgba(37, 99, 235, 0.1)',
+                boxShadow: '0 20px 40px rgba(37, 99, 235, 0.08)',
+              }}
+            >
+              <Box textAlign="center" mb={5}>
+                <Avatar
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    mx: 'auto',
+                    mb: 2,
+                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  }}
+                >
+                  <AutoAwesome sx={{ fontSize: 32 }} />
+                </Avatar>
+                <Typography variant="h4" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
+                  Impact Stories
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 600, mx: 'auto' }}>
+                  Real stories from our community showing how your contributions create lasting change.
+                </Typography>
+              </Box>
+
+              <Grid container spacing={4}>
+                {goodDeeds.map((story, index) => (
+                  <Grid item xs={12} md={6} key={story.id}>
+                    <Fade in timeout={1000 + index * 200}>
+                      <Card
+                        elevation={0}
+                        sx={{
+                          height: '100%',
+                          borderRadius: '24px',
+                          border: '1px solid rgba(37, 99, 235, 0.1)',
+                          transition: 'all 0.3s ease',
+                          background: 'linear-gradient(135deg, #ffffff 0%, #fafbff 100%)',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          '&:hover': {
+                            transform: 'translateY(-8px)',
+                            boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
+                            borderColor: '#2563eb',
+                          },
+                          '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: '4px',
+                            background: `linear-gradient(90deg, ${categoryColor(story.category)}, #3b82f6)`,
+                          }
+                        }}
+                      >
+                        <CardContent sx={{ p: 4 }}>
+                          <Box display="flex" gap={3} mb={3}>
+                            <Avatar
+                              sx={{
+                                width: 56,
+                                height: 56,
+                                background: `linear-gradient(135deg, ${categoryColor(story.category)}, #3b82f6)`,
+                              }}
+                            >
+                              {getIconForCategory(story.category)}
+                            </Avatar>
+                            <Box flex={1}>
+                              <Typography variant="h6" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
+                                {story.title}
+                              </Typography>
+                              <Box display="flex" alignItems="center" gap={1} mb={1}>
+                                <Chip
+                                  label={story.category}
+                                  size="small"
+                                  sx={{
+                                    background: `linear-gradient(135deg, ${categoryColor(story.category)}, #3b82f6)`,
+                                    color: 'white',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    borderRadius: '8px'
+                                  }}
+                                />
+                                {story.isVerified && (
+                                  <Chip
+                                    icon={<Verified sx={{ fontSize: 16 }} />}
+                                    label="Verified"
+                                    size="small"
+                                    sx={{
+                                      background: 'linear-gradient(135deg, #059669, #10b981)',
+                                      color: 'white',
+                                      fontSize: '0.75rem',
+                                      fontWeight: 600,
+                                      borderRadius: '8px'
+                                    }}
+                                  />
+                                )}
+                              </Box>
+                              {story.authorName && story.authorName !== 'Anonymous' && (
+                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                                  by {story.authorName}
+                                </Typography>
+                              )}
+                            </Box>
+                          </Box>
+
+                          <Typography variant="body2" sx={{ color: '#64748b', mb: 3, lineHeight: 1.6 }}>
+                            {story.details}
+                          </Typography>
+
+                          {((story.likes && story.likes > 0) || (story.views && story.views > 0)) && (
+                            <Box display="flex" gap={3} mb={3}>
+                              {story.likes > 0 && (
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <Heart sx={{ fontSize: 16, color: '#ef4444' }} />
+                                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                                    {story.likes} likes
+                                  </Typography>
+                                </Box>
+                              )}
+                              {story.views > 0 && (
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                                    👁️ {story.views} views
+                                  </Typography>
+                                </Box>
+                              )}
+                            </Box>
+                          )}
+
+                          <Divider sx={{ my: 2, borderColor: 'rgba(37, 99, 235, 0.1)' }} />
+
+                          <Box display="flex" justifyContent="space-between" alignItems="center">
+                            <Box>
+                              <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
+                                ₹{(story.amount || 0).toLocaleString('en-IN')}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                Funds Utilized
+                              </Typography>
+                            </Box>
+                            <Box textAlign="right">
+                              <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
+                                {story.beneficiaries || 0}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#64748b' }}>
+                                Lives Touched
+                              </Typography>
+                            </Box>
+                          </Box>
+
+                          <Typography variant="caption" sx={{ color: '#94a3b8', mt: 2, display: 'block' }}>
+                            {new Date(story.createdAt || story.date).toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Fade>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Box textAlign="center" mt={5}>
+                <Button
+                  variant="outlined"
+                  endIcon={<ArrowForward />}
+                  sx={{
+                    borderRadius: '20px',
+                    px: 5,
+                    py: 1.5,
+                    border: '2px solid #2563eb',
+                    color: '#2563eb',
+                    fontWeight: 700,
+                    textTransform: 'none',
+                    '&:hover': { 
+                      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                      borderColor: '#2563eb',
+                      color: 'white',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)',
+                    },
+                  }}
+                >
+                  View All Success Stories
+                </Button>
+              </Box>
+            </Paper>
+          )}
+
+          {/* ✅ EMPTY STATE MESSAGE WHEN NO IMPACT STORIES */}
+          {goodDeeds.length === 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 5,
+                borderRadius: '32px',
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                border: '1px solid rgba(37, 99, 235, 0.1)',
+                boxShadow: '0 20px 40px rgba(37, 99, 235, 0.08)',
+                textAlign: 'center'
+              }}
+            >
               <Avatar
                 sx={{
                   width: 64,
@@ -1555,175 +1696,34 @@ function DonationPage() {
               <Typography variant="h4" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
                 Impact Stories
               </Typography>
-              <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 600, mx: 'auto' }}>
-                Real stories from our community showing how your contributions create lasting change.
+              <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 600, mx: 'auto', mb: 3 }}>
+                Be the first to share your impact story and inspire others in our community!
               </Typography>
-            </Box>
-
-            <Grid container spacing={4}>
-              {goodDeeds.map((story, index) => (
-                <Grid item xs={12} md={6} key={story.id}>
-                  <Fade in timeout={1000 + index * 200}>
-                    <Card
-                      elevation={0}
-                      sx={{
-                        height: '100%',
-                        borderRadius: '24px',
-                        border: '1px solid rgba(37, 99, 235, 0.1)',
-                        transition: 'all 0.3s ease',
-                        background: 'linear-gradient(135deg, #ffffff 0%, #fafbff 100%)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&:hover': {
-                          transform: 'translateY(-8px)',
-                          boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
-                          borderColor: '#2563eb',
-                        },
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: '4px',
-                          background: `linear-gradient(90deg, ${categoryColor(story.category)}, #3b82f6)`,
-                        }
-                      }}
-                    >
-                      <CardContent sx={{ p: 4 }}>
-                        <Box display="flex" gap={3} mb={3}>
-                          <Avatar
-                            sx={{
-                              width: 56,
-                              height: 56,
-                              background: `linear-gradient(135deg, ${categoryColor(story.category)}, #3b82f6)`,
-                            }}
-                          >
-                            {getIconForCategory(story.category)}
-                          </Avatar>
-                          <Box flex={1}>
-                            <Typography variant="h6" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
-                              {story.title}
-                            </Typography>
-                            <Box display="flex" alignItems="center" gap={1} mb={1}>
-                              <Chip
-                                label={story.category}
-                                size="small"
-                                sx={{
-                                  background: `linear-gradient(135deg, ${categoryColor(story.category)}, #3b82f6)`,
-                                  color: 'white',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 600,
-                                  borderRadius: '8px'
-                                }}
-                              />
-                              {story.isVerified && (
-                                <Chip
-                                  icon={<Verified sx={{ fontSize: 16 }} />}
-                                  label="Verified"
-                                  size="small"
-                                  sx={{
-                                    background: 'linear-gradient(135deg, #059669, #10b981)',
-                                    color: 'white',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 600,
-                                    borderRadius: '8px'
-                                  }}
-                                />
-                              )}
-                            </Box>
-                            {story.authorName && story.authorName !== 'Anonymous' && (
-                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                                by {story.authorName}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Box>
-
-                        <Typography variant="body2" sx={{ color: '#64748b', mb: 3, lineHeight: 1.6 }}>
-                          {story.details}
-                        </Typography>
-
-                        {((story.likes && story.likes > 0) || (story.views && story.views > 0)) && (
-                          <Box display="flex" gap={3} mb={3}>
-                            {story.likes > 0 && (
-                              <Box display="flex" alignItems="center" gap={1}>
-                                <Heart sx={{ fontSize: 16, color: '#ef4444' }} />
-                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                                  {story.likes} likes
-                                </Typography>
-                              </Box>
-                            )}
-                            {story.views > 0 && (
-                              <Box display="flex" alignItems="center" gap={1}>
-                                <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
-                                  👁️ {story.views} views
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        )}
-
-                        <Divider sx={{ my: 2, borderColor: 'rgba(37, 99, 235, 0.1)' }} />
-
-                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                          <Box>
-                            <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
-                              ₹{(story.amount || 0).toLocaleString('en-IN')}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#64748b' }}>
-                              Funds Utilized
-                            </Typography>
-                          </Box>
-                          <Box textAlign="right">
-                            <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
-                              {story.beneficiaries || 0}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: '#64748b' }}>
-                              Lives Touched
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Typography variant="caption" sx={{ color: '#94a3b8', mt: 2, display: 'block' }}>
-                          {new Date(story.createdAt || story.date).toLocaleDateString('en-IN', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Fade>
-                </Grid>
-              ))}
-            </Grid>
-
-            <Box textAlign="center" mt={5}>
-              <Button
-                variant="outlined"
-                endIcon={<ArrowForward />}
-                sx={{
-                  borderRadius: '20px',
-                  px: 5,
-                  py: 1.5,
-                  border: '2px solid #2563eb',
-                  color: '#2563eb',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  '&:hover': { 
-                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                    borderColor: '#2563eb',
-                    color: 'white',
-                    transform: 'translateY(-2px)',
+              {user && (
+                <Button
+                  variant="contained"
+                  startIcon={<Add />}
+                  onClick={handlePostClick}
+                  sx={{
+                    borderRadius: '16px',
+                    px: 4,
+                    py: 1.5,
+                    background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                    fontWeight: 700,
+                    textTransform: 'none',
                     boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)',
-                  },
-                }}
-              >
-                View All Success Stories
-              </Button>
-            </Box>
-          </Paper>
+                    '&:hover': {
+                      background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 12px 32px rgba(37, 99, 235, 0.35)',
+                    },
+                  }}
+                >
+                  Share Your Story
+                </Button>
+              )}
+            </Paper>
+          )}
         </Container>
 
         <style jsx>{`

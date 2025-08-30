@@ -101,7 +101,7 @@ try {
 
 // ✅ IMPACT POSTS ROUTES (ENHANCED WITH FALLBACK)
 try {
-  const impactPostsRoutes = require('./routes/impactPosts');
+  const impactPostsRoutes = require('./routes/impactPostsRouter');
   app.use('/api/impact-posts', impactPostsRoutes);
   console.log('✅ Impact posts routes loaded at /api/impact-posts');
   console.log('   GET  /api/impact-posts (Get all posts)');

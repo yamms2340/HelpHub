@@ -96,12 +96,10 @@ const impactPostSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  // Engagement tracking
   likedBy: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }],
-  // Admin/Moderation fields
   moderatedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
@@ -157,17 +155,15 @@ impactPostSchema.index({ title: 'text', details: 'text' }, {
 
 // ✅ Pre-save middleware
 impactPostSchema.pre('save', function(next) {
-  // Automatically set moderation timestamp
   if (this.isModified('status') && this.status !== 'active') {
     this.moderatedAt = new Date();
   }
   
-  // Clean up tags
   if (this.tags) {
     this.tags = this.tags
       .filter(tag => tag.trim().length > 0)
       .map(tag => tag.trim().toLowerCase())
-      .slice(0, 10); // Max 10 tags
+      .slice(0, 10);
   }
   
   next();

@@ -29,7 +29,14 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
     message: 'HelpHub API is running!',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    routes: {
+      'POST /api/impact-posts': 'Create impact post',
+      'GET /api/impact-posts': 'Get all impact posts',
+      'GET /api/campaigns': 'Get campaigns',
+      'POST /api/donations/create-order': 'Create donation order',
+      'POST /api/donations/verify-payment': 'Verify payment'
+    }
   });
 });
 
@@ -42,7 +49,7 @@ app.get('/', (req, res) => {
   });
 });
 
-// ✅ MOUNT ALL ROUTES WITH ERROR HANDLING
+// ✅ MOUNT ALL ROUTES WITH ENHANCED ERROR HANDLING
 try {
   const authRoutes = require('./routes/auth');
   app.use('/api/auth', authRoutes);
@@ -92,21 +99,76 @@ try {
   console.log('⚠️ Help routes not found:', error.message);
 }
 
-// ✅ IMPACT POSTS ROUTES (Fixed)
+// ✅ IMPACT POSTS ROUTES (ENHANCED WITH FALLBACK)
 try {
   const impactPostsRoutes = require('./routes/impactPosts');
   app.use('/api/impact-posts', impactPostsRoutes);
   console.log('✅ Impact posts routes loaded at /api/impact-posts');
+  console.log('   GET  /api/impact-posts (Get all posts)');
+  console.log('   POST /api/impact-posts (Create post)');
+  console.log('   GET  /api/impact-posts/:id (Get single post)');
+  console.log('   PUT  /api/impact-posts/:id (Update post)');
+  console.log('   DELETE /api/impact-posts/:id (Delete post)');
 } catch (error) {
-  console.log('⚠️ Impact posts routes not found - creating fallback');
-  // Fallback route
+  console.error('❌ Failed to load impact posts routes:', error.message);
+  
+  // ✅ CREATE FALLBACK ROUTES
+  console.log('🔧 Creating fallback impact posts routes...');
+  
+  // Mock data for fallback
+  const mockPosts = [
+    {
+      _id: '1',
+      title: 'Emergency Medical Support',
+      category: 'Healthcare',
+      beneficiaries: 25,
+      amount: 15000,
+      details: 'Provided emergency medical assistance to families in need.',
+      authorName: 'Dr. Smith',
+      status: 'active',
+      isVerified: true,
+      likes: 45,
+      views: 230,
+      createdAt: new Date()
+    }
+  ];
+  
   app.get('/api/impact-posts', (req, res) => {
     res.json({
       success: true,
-      data: { posts: [] },
-      message: 'Impact posts service temporarily unavailable'
+      data: { posts: mockPosts },
+      total: mockPosts.length,
+      message: 'Impact posts service (fallback mode)'
     });
   });
+  
+  app.post('/api/impact-posts', (req, res) => {
+    console.log('📝 Fallback: Creating impact post with data:', req.body);
+    const newPost = {
+      _id: Date.now().toString(),
+      ...req.body,
+      createdAt: new Date(),
+      status: 'active',
+      likes: 0,
+      views: 0
+    };
+    mockPosts.unshift(newPost);
+    res.status(201).json({
+      success: true,
+      data: newPost,
+      message: 'Impact post created successfully (fallback mode)'
+    });
+  });
+  
+  app.get('/api/impact-posts/:id', (req, res) => {
+    const post = mockPosts.find(p => p._id === req.params.id);
+    if (!post) {
+      return res.status(404).json({ success: false, error: 'Post not found' });
+    }
+    res.json({ success: true, data: post });
+  });
+  
+  console.log('✅ Fallback impact posts routes created');
 }
 
 try {
@@ -117,8 +179,8 @@ try {
   console.log('⚠️ Leaderboard routes not found:', error.message);
 }
 
-// ✅ CAMPAIGN STATISTICS ENDPOINT
-app.get('/api/campaign-stats', async (req, res) => {
+// ✅ CAMPAIGN STATISTICS ENDPOINT (FIXED URL)
+app.get('/api/campaigns/stats', async (req, res) => {
   try {
     const Campaign = require('./models/Campaign');
     
@@ -130,7 +192,8 @@ app.get('/api/campaign-stats', async (req, res) => {
           totalCampaigns: { $sum: 1 },
           totalTargetAmount: { $sum: '$targetAmount' },
           totalCurrentAmount: { $sum: '$currentAmount' },
-          totalDonors: { $sum: { $size: '$donors' } }
+          totalDonors: { $sum: { $size: '$donors' } },
+          totalDonatedAllTime: { $sum: '$currentAmount' }
         }
       }
     ]);
@@ -139,7 +202,8 @@ app.get('/api/campaign-stats', async (req, res) => {
       totalCampaigns: 0,
       totalTargetAmount: 0,
       totalCurrentAmount: 0,
-      totalDonors: 0
+      totalDonors: 0,
+      totalDonatedAllTime: 0
     };
 
     res.json({
@@ -155,8 +219,13 @@ app.get('/api/campaign-stats', async (req, res) => {
   }
 });
 
-// ✅ EXPRESS V5 COMPATIBLE 404 HANDLER (FIXED)
-app.use('/(.*)', (req, res) => {
+// ✅ LEGACY SUPPORT FOR OLD ENDPOINT
+app.get('/api/campaign-stats', (req, res) => {
+  res.redirect(301, '/api/campaigns/stats');
+});
+
+// ✅ EXPRESS V4 COMPATIBLE CATCH-ALL ROUTE
+app.use('*', (req, res) => {
   console.log(`❌ Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
@@ -167,9 +236,14 @@ app.use('/(.*)', (req, res) => {
       'POST /api/auth/register',
       'GET /api/campaigns',
       'POST /api/campaigns',
+      'GET /api/campaigns/stats',
       'POST /api/donations/create-order',
       'POST /api/donations/verify-payment',
-      'GET /api/donations/test-razorpay'
+      'GET /api/impact-posts',
+      'POST /api/impact-posts',
+      'GET /api/impact-posts/:id',
+      'PUT /api/impact-posts/:id',
+      'DELETE /api/impact-posts/:id'
     ],
     timestamp: new Date().toISOString()
   });
@@ -191,10 +265,12 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📋 Available endpoints:`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
+  console.log(`   GET  http://localhost:${PORT}/api/impact-posts`);
+  console.log(`   POST http://localhost:${PORT}/api/impact-posts`);
+  console.log(`   GET  http://localhost:${PORT}/api/campaigns`);
+  console.log(`   GET  http://localhost:${PORT}/api/campaigns/stats`);
   console.log(`   POST http://localhost:${PORT}/api/donations/create-order`);
   console.log(`   POST http://localhost:${PORT}/api/donations/verify-payment`);
-  console.log(`   GET  http://localhost:${PORT}/api/campaigns`);
-  console.log(`   GET  http://localhost:${PORT}/api/campaign-stats`);
 });
 
 module.exports = app;

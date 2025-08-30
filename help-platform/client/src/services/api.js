@@ -2,16 +2,16 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Create axios instance with enhanced configuration
+// Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
-// Request interceptor with enhanced logging
+// Request interceptor
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -30,15 +30,17 @@ api.interceptors.request.use(
   }
 );
 
-// Enhanced response interceptor
+// Response interceptor
 api.interceptors.response.use(
   (response) => {
-    const duration = new Date() - response.config.metadata.startTime;
+    const duration = response.config.metadata ? 
+      new Date() - response.config.metadata.startTime : 0;
     console.log(`✅ API Response: ${response.config.url} (${duration}ms) - Status: ${response.status}`);
     return response;
   },
   (error) => {
-    const duration = error.config?.metadata ? new Date() - error.config.metadata.startTime : 0;
+    const duration = error.config?.metadata ? 
+      new Date() - error.config.metadata.startTime : 0;
     console.error(`❌ API Error: ${error.config?.url} (${duration}ms) - ${error.response?.status || 'Network Error'}`);
     
     if (error.response?.status === 401) {
@@ -48,12 +50,6 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
-    } else if (error.response?.status === 403) {
-      console.warn('🚫 Forbidden - Insufficient permissions');
-    } else if (error.response?.status >= 500) {
-      console.error('🔥 Server Error - Please try again later');
-    } else if (error.code === 'ECONNABORTED') {
-      console.error('⏰ Request timeout - Server is taking too long');
     }
     
     return Promise.reject(error);
@@ -61,7 +57,7 @@ api.interceptors.response.use(
 );
 
 /**
- * Authentication API endpoints
+ * ✅ AUTH API - Returns full response for login components
  */
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
@@ -73,80 +69,126 @@ export const authAPI = {
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    return Promise.resolve({ success: true });
+    return Promise.resolve({ data: { success: true } });
   }
 };
 
 /**
- * ✅ Stories API endpoints (MongoDB-based Hall of Fame)
- */
-export const storiesAPI = {
-  // Get all stories (hall of fame)
-  getAllStories: (params = {}) => api.get('/stories', { params }),
-  
-  // Get inspiring stories with limit
-  getInspiringStories: (limit = 10) => api.get('/stories/inspiring-stories', { params: { limit } }),
-  
-  // Get story statistics
-  getStats: () => api.get('/stories/stats'),
-  
-  // Submit new story
-  submitStory: (storyData) => api.post('/stories/submit', storyData),
-  
-  // Get story by ID
-  getStoryById: (id) => api.get(`/stories/${id}`),
-  
-  // Search stories
-  searchStories: (query) => api.get('/stories/search', { params: { q: query } })
-};
-
-/**
- * ✅ Help API endpoints (User/Help model-based)
- */
-export const helpAPI = {
-  // Hall of fame (User model-based)
-  getHallOfFame: () => api.get('/help/hall-of-fame'),
-  
-  // User help history
-  getUserHistory: (userId, limit = 20) => api.get(`/help/history/${userId}`, { params: { limit } }),
-  
-  // Platform statistics
-  getStats: () => api.get('/help/stats'),
-  
-  // Inspiring stories from help route
-  getInspiringStories: (limit = 10) => api.get('/help/inspiring-stories', { params: { limit } }),
-  
-  // Submit story (alias to stories API)
-  submitStory: (storyData) => api.post('/stories/submit', storyData)
-};
-
-/**
- * Impact Posts API endpoints
+ * ✅ IMPACT POSTS API - Returns data directly for impact stories
  */
 export const impactPostsAPI = {
-  // Basic CRUD operations
-  getAllPosts: (params = {}) => api.get('/impact-posts', { params }),
-  getPostById: (id) => api.get(`/impact-posts/${id}`),
-  createPost: (postData) => api.post('/impact-posts', postData),
-  updatePost: (id, updateData) => api.put(`/impact-posts/${id}`, updateData),
-  deletePost: (id) => api.delete(`/impact-posts/${id}`),
+  getAllPosts: async (params = {}) => {
+    try {
+      console.log('🔄 Fetching impact posts with params:', params);
+      const response = await api.get('/impact-posts', { params });
+      
+      // Handle both success response formats for impact stories compatibility
+      if (response.data.success) {
+        return response.data;
+      } else {
+        // Legacy format support for older components
+        return {
+          success: true,
+          data: { posts: response.data.posts || response.data },
+          total: response.data.total || response.data.length
+        };
+      }
+    } catch (error) {
+      console.error('❌ Error fetching impact posts:', error);
+      throw error;
+    }
+  },
   
-  // Post interactions
-  likePost: (id) => api.post(`/impact-posts/${id}/like`),
-  unlikePost: (id) => api.delete(`/impact-posts/${id}/like`),
-  incrementViews: (id) => api.put(`/impact-posts/${id}/views`),
+  createPost: async (postData) => {
+    try {
+      console.log('🔄 Creating impact post with data:', postData);
+      
+      if (!postData.title || !postData.category || !postData.details) {
+        throw new Error('Title, category, and details are required');
+      }
+      
+      const response = await api.post('/impact-posts', postData);
+      console.log('✅ Impact post created successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error creating impact post:', error);
+      throw error;
+    }
+  },
   
-  // Filtering and search
-  getPostsByCategory: (category) => api.get(`/impact-posts/category/${category}`),
-  getPostsByAuthor: (authorId) => api.get(`/impact-posts/author/${authorId}`),
-  searchPosts: (query) => api.get('/impact-posts/search', { params: { q: query } }),
+  getPostById: async (postId) => {
+    try {
+      const response = await api.get(`/impact-posts/${postId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching impact post:', error);
+      throw error;
+    }
+  },
   
-  // Statistics
-  getPostStats: () => api.get('/impact-posts/stats'),
+  updatePost: async (postId, updateData) => {
+    try {
+      const response = await api.put(`/impact-posts/${postId}`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating impact post:', error);
+      throw error;
+    }
+  },
+  
+  deletePost: async (postId) => {
+    try {
+      const response = await api.delete(`/impact-posts/${postId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error deleting impact post:', error);
+      throw error;
+    }
+  },
+  
+  likePost: async (postId) => {
+    try {
+      const response = await api.post(`/impact-posts/${postId}/like`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error liking impact post:', error);
+      throw error;
+    }
+  },
+  
+  unlikePost: async (postId) => {
+    try {
+      const response = await api.delete(`/impact-posts/${postId}/like`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error unliking impact post:', error);
+      throw error;
+    }
+  },
+  
+  getPostsByCategory: async (category) => {
+    try {
+      const response = await api.get(`/impact-posts/category/${category}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching posts by category:', error);
+      throw error;
+    }
+  },
+  
+  getStats: async () => {
+    try {
+      const response = await api.get('/impact-posts/stats/summary');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching impact post stats:', error);
+      throw error;
+    }
+  }
 };
 
 /**
- * Help Requests API endpoints
+ * ✅ REQUESTS API - Returns full response for requests components
  */
 export const requestsAPI = {
   createRequest: (requestData) => api.post('/requests', requestData),
@@ -173,7 +215,7 @@ export const requestsAPI = {
 };
 
 /**
- * Leaderboard API endpoints
+ * ✅ LEADERBOARD API - Returns full response for leaderboard components
  */
 export const leaderboardAPI = {
   getLeaderboard: (timeframe = 'all', limit = 10) => 
@@ -184,115 +226,216 @@ export const leaderboardAPI = {
   getStatsOverview: () => api.get('/leaderboard/stats/overview'),
   awardPoints: (pointsData) => api.post('/leaderboard/award-points', pointsData),
   getUserPointsHistory: (userId, limit = 20) => 
-    api.get(`/leaderboard/user/${userId}/points-history`, { params: { limit } }),
+    api.get(`/leaderboard/user/${userId}/points-history`, { params: { limit } })
 };
 
 /**
- * ✅ Donation Updates API
+ * ✅ CAMPAIGNS API - Returns data directly for donation pages
  */
-export const donationUpdateAPI = {
-  getAll: async (params = {}) => {
+export const campaignAPI = {
+  getAllCampaigns: async (params = {}) => {
     try {
-      const queryString = new URLSearchParams(params).toString();
-      const response = await api.get(`/donation-updates${queryString ? '?' + queryString : ''}`);
+      const response = await api.get('/campaigns', { params });
       return response.data;
     } catch (error) {
-      console.error('Error fetching donation updates:', error);
+      console.error('❌ Error fetching campaigns:', error);
       throw error;
     }
   },
-  
-  getById: async (id) => {
+  getCampaignStats: async () => {
     try {
-      const response = await api.get(`/donation-updates/${id}`);
+      const response = await api.get('/campaigns/stats');
       return response.data;
     } catch (error) {
-      console.error('Error fetching donation update:', error);
+      console.error('❌ Error fetching campaign stats:', error);
       throw error;
     }
   },
-  
-  create: async (data) => {
+  getCampaign: async (campaignId) => {
     try {
-      console.log('Creating donation update with data:', data);
-      const response = await api.post('/donation-updates', data);
+      const response = await api.get(`/campaigns/${campaignId}`);
       return response.data;
     } catch (error) {
-      console.error('Error creating donation update:', error);
+      console.error('❌ Error fetching campaign:', error);
       throw error;
     }
   },
-  
-  update: async (id, data) => {
+  createCampaign: async (campaignData) => {
     try {
-      console.log('Updating donation update:', { id, data });
-      const response = await api.put(`/donation-updates/${id}`, data);
+      const response = await api.post('/campaigns', campaignData);
       return response.data;
     } catch (error) {
-      console.error('Error updating donation update:', error);
+      console.error('❌ Error creating campaign:', error);
       throw error;
     }
   },
-  
-  delete: async (id) => {
+  donateToCampaign: async (campaignId, donationData) => {
     try {
-      const response = await api.delete(`/donation-updates/${id}`);
+      const response = await api.post(`/campaigns/${campaignId}/donate`, donationData);
       return response.data;
     } catch (error) {
-      console.error('Error deleting donation update:', error);
+      console.error('❌ Error donating to campaign:', error);
+      throw error;
+    }
+  },
+  deleteCampaign: async (campaignId) => {
+    try {
+      const response = await api.delete(`/campaigns/${campaignId}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error deleting campaign:', error);
       throw error;
     }
   }
 };
 
 /**
- * User Management API endpoints
+ * ✅ DONATIONS API
  */
-export const userAPI = {
-  getProfile: (userId) => api.get(`/users/${userId}`),
-  updateProfile: (userId, profileData) => api.put(`/users/${userId}`, profileData),
-  uploadProfilePicture: (userId, formData) => api.post(`/users/${userId}/avatar`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  }),
-  getUserRequests: (userId, status = 'all') => 
-    api.get(`/users/${userId}/requests`, { params: { status } }),
-  getUserDashboard: (userId) => api.get(`/users/${userId}/dashboard`)
+export const donationsAPI = {
+  createOrder: async (orderData) => {
+    try {
+      const response = await api.post('/donations/create-order', orderData);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error creating donation order:', error);
+      throw error;
+    }
+  },
+  verifyPayment: async (paymentData) => {
+    try {
+      const response = await api.post('/donations/verify-payment', paymentData);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error verifying payment:', error);
+      throw error;
+    }
+  },
+  testRazorpay: async () => {
+    try {
+      const response = await api.get('/donations/test-razorpay');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error testing Razorpay:', error);
+      throw error;
+    }
+  }
 };
 
 /**
- * Notifications API endpoints
+ * ✅ STORIES API
  */
-export const notificationAPI = {
-  getNotifications: (userId, limit = 20) => 
-    api.get(`/notifications/${userId}`, { params: { limit } }),
-  markAsRead: (notificationId) => api.put(`/notifications/${notificationId}/read`),
-  markAllAsRead: (userId) => api.put(`/notifications/${userId}/read-all`),
-  deleteNotification: (notificationId) => api.delete(`/notifications/${notificationId}`),
-  getUnreadCount: (userId) => api.get(`/notifications/${userId}/unread-count`)
+export const storiesAPI = {
+  getAllStories: async (params = {}) => {
+    try {
+      const response = await api.get('/stories', { params });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching stories:', error);
+      throw error;
+    }
+  },
+  getInspiringStories: async (limit = 10) => {
+    try {
+      const response = await api.get('/stories/inspiring-stories', { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching inspiring stories:', error);
+      throw error;
+    }
+  },
+  getStats: async () => {
+    try {
+      const response = await api.get('/stories/stats');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching story stats:', error);
+      throw error;
+    }
+  },
+  submitStory: async (storyData) => {
+    try {
+      const response = await api.post('/stories/submit', storyData);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error submitting story:', error);
+      throw error;
+    }
+  },
+  getStoryById: async (id) => {
+    try {
+      const response = await api.get(`/stories/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching story by ID:', error);
+      throw error;
+    }
+  },
+  searchStories: async (query) => {
+    try {
+      const response = await api.get('/stories/search', { params: { q: query } });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error searching stories:', error);
+      throw error;
+    }
+  }
 };
 
 /**
- * Search API endpoints
+ * ✅ HELP API
  */
-export const searchAPI = {
-  searchRequests: (query, filters = {}) => 
-    api.get('/search/requests', { params: { q: query, ...filters } }),
-  searchUsers: (query, filters = {}) => 
-    api.get('/search/users', { params: { q: query, ...filters } }),
-  searchStories: (query) => api.get('/search/stories', { params: { q: query } }),
-  globalSearch: (query, types = ['requests', 'users', 'stories']) => 
-    api.get('/search/global', { params: { q: query, types: types.join(',') } })
+export const helpAPI = {
+  getHallOfFame: async () => {
+    try {
+      const response = await api.get('/help/hall-of-fame');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching hall of fame:', error);
+      throw error;
+    }
+  },
+  getUserHistory: async (userId, limit = 20) => {
+    try {
+      const response = await api.get(`/help/history/${userId}`, { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching user history:', error);
+      throw error;
+    }
+  },
+  getStats: async () => {
+    try {
+      const response = await api.get('/help/stats');
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching help stats:', error);
+      throw error;
+    }
+  },
+  getInspiringStories: async (limit = 10) => {
+    try {
+      const response = await api.get('/help/inspiring-stories', { params: { limit } });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching inspiring stories from help:', error);
+      throw error;
+    }
+  },
+  submitStory: async (storyData) => {
+    return await storiesAPI.submitStory(storyData);
+  }
 };
 
 /**
- * ✅ FIXED: Utility functions for API usage (Single export)
+ * ✅ UTILITY FUNCTIONS
  */
 export const apiUtils = {
   handleApiError: (error) => {
     if (error.response) {
       return {
         status: error.response.status,
-        message: error.response.data?.message || 'An error occurred',
+        message: error.response.data?.error || error.response.data?.message || 'An error occurred',
         data: error.response.data
       };
     } else if (error.request) {
@@ -309,14 +452,12 @@ export const apiUtils = {
       };
     }
   },
-  
   formatResponse: (response) => ({
     success: true,
     data: response.data,
     status: response.status,
     message: response.data?.message || 'Success'
   }),
-  
   retryRequest: async (requestFn, maxRetries = 3, delay = 1000) => {
     for (let i = 0; i < maxRetries; i++) {
       try {
@@ -332,7 +473,7 @@ export const apiUtils = {
 // Default export
 export default api;
 
-// ✅ FIXED: Named exports (removed duplicate apiUtils)
+// Named exports
 export {
   api,
   API_BASE_URL

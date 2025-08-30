@@ -26,8 +26,6 @@ import {
   Avatar,
   Divider,
   Fade,
-  Slide,
-  Backdrop,
   List,
   ListItem,
   ListItemIcon,
@@ -35,6 +33,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Tooltip,
 } from '@mui/material';
 import {
   VolunteerActivism,
@@ -69,11 +68,15 @@ import {
   LocationOn,
   Send,
   Help,
+  CampaignOutlined,
+  CalendarToday,
+  Delete as DeleteIcon,
+  Warning,
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { impactPostsAPI, donationUpdateAPI } from '../../services/api';
-import DonationUpdateForm from './DonationUpdate';
+import { impactPostsAPI } from '../../services/api';
+import { campaignAPI } from '../../services/campaignAPI';
 
 // Load Razorpay script
 const loadRazorpayScript = () => {
@@ -96,8 +99,15 @@ function DonationPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const target = 500000;
-  const [totalCollected, setTotalCollected] = useState(156750);
+  // ✅ REAL-TIME CAMPAIGN PROGRESS STATES (UNLIMITED TOTAL)
+  const [campaignStats, setCampaignStats] = useState({
+    totalCampaigns: 0,
+    totalTargetAmount: 0,
+    totalCurrentAmount: 0,
+    totalDonors: 0,
+    totalDonatedAllTime: 0
+  });
+
   const [postDialogOpen, setPostDialogOpen] = useState(false);
   const [postSuccessSnackbar, setPostSuccessSnackbar] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
@@ -107,6 +117,11 @@ function DonationPage() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [goodDeeds, setGoodDeeds] = useState([]);
 
+  // ✅ NEW: Campaign-specific donation states
+  const [campaignDonationOpen, setCampaignDonationOpen] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState(null);
+  const [campaignDonationAmount, setCampaignDonationAmount] = useState('');
+
   // Razorpay payment states
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [paymentError, setPaymentError] = useState('');
@@ -114,10 +129,16 @@ function DonationPage() {
   const [donorEmail, setDonorEmail] = useState(user?.email || '');
   const [donorPhone, setDonorPhone] = useState('');
 
-  // Donation Update states
-  const [donationUpdateDialogOpen, setDonationUpdateDialogOpen] = useState(false);
-  const [editingDonationUpdateId, setEditingDonationUpdateId] = useState(null);
-  const [donationUpdates, setDonationUpdates] = useState([]);
+  // Campaign states
+  const [campaignDialogOpen, setCampaignDialogOpen] = useState(false);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loadingCampaigns, setLoadingCampaigns] = useState(false);
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  // DELETE CAMPAIGN STATES
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [campaignToDelete, setCampaignToDelete] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Post dialog states
   const [newPostTitle, setNewPostTitle] = useState('');
@@ -126,12 +147,23 @@ function DonationPage() {
   const [newPostBeneficiaries, setNewPostBeneficiaries] = useState('');
   const [newPostAuthor, setNewPostAuthor] = useState('');
 
-  // Footer newsletter state
-  const [newsletterEmail, setNewsletterEmail] = useState('');
+  // Campaign form states
+  const [campaignFormData, setCampaignFormData] = useState({
+    title: '',
+    description: '',
+    targetAmount: '',
+    category: '',
+    urgency: 'Medium',
+    location: '',
+    endDate: ''
+  });
+  const [campaignLoading, setCampaignLoading] = useState(false);
+  const [campaignError, setCampaignError] = useState('');
 
   const quickAmounts = [100, 500, 1000, 2000, 5000, 10000];
+  const campaignQuickAmounts = [500, 1000, 2000, 5000];
 
-  // Categories for the post form
+  // Categories for both post form and campaign form
   const categories = [
     'User Story',
     'Healthcare',
@@ -144,10 +176,29 @@ function DonationPage() {
     'Other'
   ];
 
+  const campaignCategories = [
+    'Healthcare',
+    'Education', 
+    'Food & Nutrition',
+    'Housing',
+    'Environment',
+    'Emergency',
+    'Community',
+    'Other'
+  ];
+
+  const urgencyLevels = [
+    'Low',
+    'Medium', 
+    'High',
+    'Critical'
+  ];
+
   // Load data on mount
   useEffect(() => {
     fetchImpactPosts();
-    fetchDonationUpdates();
+    fetchCampaigns();
+    fetchCampaignStats();
   }, []);
 
   const fetchImpactPosts = async () => {
@@ -195,22 +246,77 @@ function DonationPage() {
     }
   };
 
-  const fetchDonationUpdates = async () => {
+  // ✅ FETCH REAL-TIME CAMPAIGN STATISTICS (UNLIMITED TOTAL)
+  const fetchCampaignStats = async () => {
+    setLoadingStats(true);
     try {
-      const response = await donationUpdateAPI.getAll({ limit: 6, status: 'active' });
+      console.log('🔄 Fetching campaign statistics from database...');
+      const response = await campaignAPI.getCampaignStats();
+      console.log('✅ Campaign stats fetched:', response);
       if (response.success) {
-        setDonationUpdates(response.data.updates || []);
+        setCampaignStats(response.data);
+        console.log('📊 Campaign stats updated:', response.data);
       }
     } catch (error) {
-      console.error('Failed to fetch donation updates:', error);
-      setDonationUpdates([]);
+      console.error('❌ Failed to fetch campaign stats:', error);
+      setCampaignStats({
+        totalCampaigns: 0,
+        totalTargetAmount: 0,
+        totalCurrentAmount: 0,
+        totalDonors: 0,
+        totalDonatedAllTime: 0
+      });
+    } finally {
+      setLoadingStats(false);
     }
   };
 
-  // ✅ WORKING RAZORPAY PAYMENT FUNCTION - DON'T CHANGE
-  const handleRazorpayPayment = async (amount) => {
+  const fetchCampaigns = async () => {
+    setLoadingCampaigns(true);
+    try {
+      console.log('🔄 Fetching campaigns from database...');
+      const response = await campaignAPI.getAllCampaigns();
+      console.log('✅ Campaigns fetched:', response);
+      if (response.success) {
+        setCampaigns(response.data || []);
+        console.log('📝 Campaigns state updated with', (response.data || []).length, 'campaigns');
+      }
+    } catch (error) {
+      console.error('❌ Failed to fetch campaigns:', error);
+      setCampaigns([]);
+    } finally {
+      setLoadingCampaigns(false);
+    }
+  };
+
+  // ✅ NEW: Campaign-specific donation functions
+  const handleCampaignDonate = (campaign) => {
+    if (!user) {
+      alert('Please login to donate');
+      return;
+    }
+    setSelectedCampaign(campaign);
+    setCampaignDonationOpen(true);
+    setCampaignDonationAmount('');
+    setPaymentError('');
+  };
+
+  const handleCampaignDonationClose = () => {
+    setCampaignDonationOpen(false);
+    setSelectedCampaign(null);
+    setCampaignDonationAmount('');
+    setPaymentError('');
+  };
+
+  // ✅ NEW: Campaign donation with Razorpay
+  const handleCampaignDonationPayment = async (amount) => {
     if (!donorName.trim() || !donorEmail.trim()) {
       setPaymentError('Please enter your name and email address');
+      return;
+    }
+
+    if (!selectedCampaign) {
+      setPaymentError('No campaign selected');
       return;
     }
 
@@ -224,7 +330,11 @@ function DonationPage() {
         return;
       }
 
-      console.log('💰 Creating order for amount:', amount);
+      console.log('💰 Creating campaign donation order:', {
+        campaignId: selectedCampaign._id,
+        campaignTitle: selectedCampaign.title,
+        amount: parseFloat(amount)
+      });
 
       const response = await fetch('http://localhost:5000/api/donations/create-order', {
         method: 'POST',
@@ -236,8 +346,8 @@ function DonationPage() {
           donorName: donorName.trim(),
           donorEmail: donorEmail.trim(),
           donorPhone: donorPhone.trim(),
-          message: 'Community donation',
-          campaignId: 'main-campaign'
+          message: `Donation for ${selectedCampaign.title}`,
+          campaignId: selectedCampaign._id
         }),
       });
 
@@ -248,18 +358,18 @@ function DonationPage() {
         return;
       }
 
-      console.log('✅ Order created:', orderData.data.orderId);
+      console.log('✅ Campaign donation order created:', orderData.data.orderId);
 
       const options = {
         key: 'rzp_test_RAWJZe53MZOrPx',
         amount: orderData.data.amount * 100,
         currency: orderData.data.currency,
         name: 'HelpHub Community',
-        description: 'Community Donation',
+        description: `Donation for ${selectedCampaign.title}`,
         image: '/logo192.png',
         order_id: orderData.data.orderId,
         handler: async function (response) {
-          console.log('🎉 Payment successful:', response);
+          console.log('🎉 Campaign donation payment successful:', response);
           
           try {
             const verifyResponse = await fetch('http://localhost:5000/api/donations/verify-payment', {
@@ -278,7 +388,173 @@ function DonationPage() {
             const verifyData = await verifyResponse.json();
             
             if (verifyData.success) {
-              setTotalCollected(prev => prev + parseFloat(amount));
+              console.log('✅ Campaign donation verified successfully');
+              
+              // ✅ REFRESH ALL DATA AFTER SUCCESSFUL DONATION
+              await Promise.all([
+                fetchCampaigns(),
+                fetchCampaignStats()
+              ]);
+              
+              setSnackbarOpen(true);
+              setCampaignDonationOpen(false);
+              setCampaignDonationAmount('');
+              setSelectedCampaign(null);
+              
+              console.log('✅ Campaign data refreshed after donation');
+            } else {
+              setPaymentError('Payment verification failed. Please contact support if amount was deducted.');
+            }
+          } catch (verifyError) {
+            console.error('Verification error:', verifyError);
+            setPaymentError('Payment verification failed. Please contact support.');
+          }
+        },
+        prefill: {
+          name: donorName,
+          email: donorEmail,
+          contact: donorPhone
+        },
+        theme: {
+          color: '#2563eb'
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Payment modal closed');
+            setPaymentLoading(false);
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      
+      razorpay.on('payment.failed', function (response) {
+        console.error('Payment failed:', response);
+        setPaymentError(`Payment failed: ${response.error.description}`);
+        setPaymentLoading(false);
+      });
+
+      razorpay.open();
+      
+    } catch (error) {
+      console.error('Campaign donation error:', error);
+      setPaymentError('Something went wrong. Please try again.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  // DELETE CAMPAIGN FUNCTIONS
+  const handleDeleteCampaign = (campaign) => {
+    setCampaignToDelete(campaign);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCampaign = async () => {
+    if (!campaignToDelete) return;
+
+    setDeleteLoading(true);
+    try {
+      console.log('🗑️ Deleting campaign:', campaignToDelete._id);
+      const response = await campaignAPI.deleteCampaign(campaignToDelete._id);
+      
+      if (response.success) {
+        console.log('✅ Campaign deleted successfully');
+        // Refresh data
+        await fetchCampaigns();
+        await fetchCampaignStats();
+        setDeleteDialogOpen(false);
+        setCampaignToDelete(null);
+        setPostSuccessSnackbar(true);
+      } else {
+        throw new Error(response.message || 'Failed to delete campaign');
+      }
+    } catch (error) {
+      console.error('❌ Error deleting campaign:', error);
+      alert(`Failed to delete campaign: ${error.message}`);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const cancelDeleteCampaign = () => {
+    setDeleteDialogOpen(false);
+    setCampaignToDelete(null);
+  };
+
+  // ✅ GENERAL DONATION (WORKING RAZORPAY PAYMENT FUNCTION)
+  const handleRazorpayPayment = async (amount) => {
+    if (!donorName.trim() || !donorEmail.trim()) {
+      setPaymentError('Please enter your name and email address');
+      return;
+    }
+
+    try {
+      setPaymentLoading(true);
+      setPaymentError('');
+      
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setPaymentError('Failed to load payment gateway. Please try again.');
+        return;
+      }
+
+      console.log('💰 Creating general donation order for amount:', amount);
+
+      const response = await fetch('http://localhost:5000/api/donations/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(amount),
+          donorName: donorName.trim(),
+          donorEmail: donorEmail.trim(),
+          donorPhone: donorPhone.trim(),
+          message: 'General community donation',
+          campaignId: 'general'
+        }),
+      });
+
+      const orderData = await response.json();
+      
+      if (!orderData.success) {
+        setPaymentError(orderData.message || 'Failed to create order');
+        return;
+      }
+
+      console.log('✅ General donation order created:', orderData.data.orderId);
+
+      const options = {
+        key: 'rzp_test_RAWJZe53MZOrPx',
+        amount: orderData.data.amount * 100,
+        currency: orderData.data.currency,
+        name: 'HelpHub Community',
+        description: 'General Community Donation',
+        image: '/logo192.png',
+        order_id: orderData.data.orderId,
+        handler: async function (response) {
+          console.log('🎉 General donation payment successful:', response);
+          
+          try {
+            const verifyResponse = await fetch('http://localhost:5000/api/donations/verify-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                transactionId: orderData.data.transactionId
+              }),
+            });
+
+            const verifyData = await verifyResponse.json();
+            
+            if (verifyData.success) {
+              // ✅ REFRESH CAMPAIGN STATS AFTER GENERAL DONATION
+              await fetchCampaignStats();
               setSnackbarOpen(true);
               setOpenPayment(false);
               setCustomAmount('');
@@ -324,19 +600,18 @@ function DonationPage() {
     }
   };
 
-  // ✅ FIXED: Button click handlers
+  // Button click handlers
   const handlePostClick = () => {
     console.log('Opening post dialog...');
     setPostDialogOpen(true);
   };
 
-  const handleCreateDonationUpdate = () => {
+  const handleCreateCampaign = () => {
     console.log('Opening campaign dialog...');
-    setEditingDonationUpdateId(null);
-    setDonationUpdateDialogOpen(true);
+    setCampaignDialogOpen(true);
   };
 
-  // ✅ FIXED: Dialog close handlers  
+  // Dialog close handlers  
   const handlePostDialogClose = async (shouldSubmit) => {
     if (shouldSubmit && newPostContent.trim() && newPostTitle.trim()) {
       try {
@@ -380,32 +655,103 @@ function DonationPage() {
     setPostDialogOpen(false);
   };
 
-  const handleDonationUpdateSave = (savedUpdate) => {
-    if (editingDonationUpdateId) {
-      setDonationUpdates(prev => 
-        prev.map(update => 
-          update._id === editingDonationUpdateId ? savedUpdate : update
-        )
-      );
-    } else {
-      setDonationUpdates(prev => [savedUpdate, ...prev]);
+  const handleCampaignSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!campaignFormData.title.trim()) {
+      setCampaignError('Campaign title is required');
+      return;
     }
-    setDonationUpdateDialogOpen(false);
-    setEditingDonationUpdateId(null);
+    
+    if (!campaignFormData.description.trim()) {
+      setCampaignError('Campaign description is required');
+      return;
+    }
+    
+    if (!campaignFormData.targetAmount || parseFloat(campaignFormData.targetAmount) <= 0) {
+      setCampaignError('Valid target amount is required');
+      return;
+    }
+    
+    if (!campaignFormData.category) {
+      setCampaignError('Campaign category is required');
+      return;
+    }
+
+    setCampaignLoading(true);
+    setCampaignError('');
+
+    try {
+      console.log('🚀 Creating campaign with data:', campaignFormData);
+      
+      const response = await campaignAPI.createCampaign({
+        ...campaignFormData,
+        targetAmount: parseFloat(campaignFormData.targetAmount)
+      });
+
+      console.log('✅ Campaign created successfully:', response);
+
+      if (response.success) {
+        console.log('🔄 Refreshing campaigns and stats from database...');
+        // ✅ REFRESH BOTH CAMPAIGNS AND STATS
+        await Promise.all([
+          fetchCampaigns(),
+          fetchCampaignStats()
+        ]);
+        
+        // Reset form
+        setCampaignFormData({
+          title: '',
+          description: '',
+          targetAmount: '',
+          category: '',
+          urgency: 'Medium',
+          location: '',
+          endDate: ''
+        });
+
+        setCampaignDialogOpen(false);
+        setPostSuccessSnackbar(true);
+        console.log('✅ Campaign successfully created and data refreshed!');
+      } else {
+        setCampaignError(response.message || 'Failed to create campaign');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error creating campaign:', error);
+      setCampaignError('Failed to create campaign. Please try again.');
+    } finally {
+      setCampaignLoading(false);
+    }
+  };
+
+  const handleCampaignChange = (e) => {
+    setCampaignFormData({
+      ...campaignFormData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  const handleCampaignClose = () => {
+    if (!campaignLoading) {
+      setCampaignFormData({
+        title: '',
+        description: '',
+        targetAmount: '',
+        category: '',
+        urgency: 'Medium',
+        location: '',
+        endDate: ''
+      });
+      setCampaignError('');
+      setCampaignDialogOpen(false);
+    }
   };
 
   // Footer handlers
   const handleNavigation = (path) => {
     navigate(path);
-  };
-
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    if (newsletterEmail.trim()) {
-      console.log('Newsletter subscription:', newsletterEmail);
-      alert('Thank you for subscribing to our newsletter!');
-      setNewsletterEmail('');
-    }
   };
 
   // Utility functions
@@ -441,7 +787,8 @@ function DonationPage() {
     }
   };
 
-  const progressPct = (totalCollected / target) * 100;
+  // ✅ UNLIMITED TOTAL DONATION PROGRESS (NO LIMITS)
+  const totalDonatedAmount = campaignStats.totalDonatedAllTime || campaignStats.totalCurrentAmount || 0;
 
   const openDialogWith = (amt) => {
     setSelectedAmount(amt);
@@ -539,7 +886,7 @@ function DonationPage() {
               <Button
                 variant="contained"
                 startIcon={<Add sx={{ fontSize: 20 }} />}
-                onClick={handlePostClick} // ✅ FIXED: Now properly calls handlePostClick
+                onClick={handlePostClick}
                 sx={{
                   borderRadius: '16px',
                   px: 4,
@@ -602,7 +949,7 @@ function DonationPage() {
             </Fade>
           </Box>
 
-          {/* Professional Campaign Progress Card */}
+          {/* ✅ REAL-TIME PROGRESS TRACKER (UNLIMITED TOTAL) */}
           <Paper
             elevation={0}
             sx={{
@@ -634,14 +981,14 @@ function DonationPage() {
                     background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
                   }}
                 >
-                  <EmojiEvents sx={{ fontSize: 28 }} />
+                  <Timeline sx={{ fontSize: 28 }} />
                 </Avatar>
                 <Box>
                   <Typography variant="h4" fontWeight="700" sx={{ color: '#1e293b' }}>
-                    Campaign Progress
+                    Community Impact Tracker
                   </Typography>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    Building a better future together
+                    Real-time donations and campaign progress (unlimited total)
                   </Typography>
                 </Box>
               </Box>
@@ -650,7 +997,7 @@ function DonationPage() {
                 <Button
                   variant="outlined"
                   startIcon={<Add />}
-                  onClick={handleCreateDonationUpdate} // ✅ FIXED: Now properly calls handleCreateDonationUpdate
+                  onClick={handleCreateCampaign}
                   sx={{
                     borderRadius: '16px',
                     px: 3,
@@ -670,130 +1017,372 @@ function DonationPage() {
               )}
             </Box>
 
-            <Grid container spacing={4} alignItems="center">
-              <Grid item xs={12} md={8}>
-                <Box mb={3}>
-                  <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
-                    <Typography 
-                      variant="h3" 
-                      sx={{ 
-                        fontWeight: 800, 
-                        color: '#2563eb',
-                        fontSize: { xs: '2rem', md: '2.5rem' }
-                      }}
-                    >
-                      ₹{totalCollected.toLocaleString('en-IN')}
-                    </Typography>
-                    <Typography variant="h6" sx={{ color: '#64748b', fontWeight: 500 }}>
-                      of ₹{target.toLocaleString('en-IN')}
-                    </Typography>
-                  </Box>
+            {loadingStats ? (
+              <Box display="flex" justifyContent="center" p={4}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <Grid container spacing={4} alignItems="center">
+                <Grid item xs={12} md={8}>
+                  <Box mb={3}>
+                    <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
+                      <Typography 
+                        variant="h3" 
+                        sx={{ 
+                          fontWeight: 800, 
+                          color: '#2563eb',
+                          fontSize: { xs: '2rem', md: '2.5rem' }
+                        }}
+                      >
+                        ₹{(totalDonatedAmount || 0).toLocaleString('en-IN')}
+                      </Typography>
+                      <Typography variant="h6" sx={{ color: '#64748b', fontWeight: 500 }}>
+                        Total Donated
+                      </Typography>
+                    </Box>
 
-                  <Box sx={{ position: 'relative', mb: 3 }}>
-                    <LinearProgress
-                      variant="determinate"
-                      value={progressPct}
-                      sx={{
-                        height: 16,
+                    <Box sx={{ mb: 3 }}>
+                      <Typography variant="body1" sx={{ color: '#64748b', mb: 1 }}>
+                        Unlimited donation progress - every contribution counts!
+                      </Typography>
+                      <Box sx={{ 
+                        height: 16, 
                         borderRadius: 8,
-                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                        '& .MuiLinearProgress-bar': {
-                          background: 'linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa)',
-                          borderRadius: 8,
-                          position: 'relative',
-                          '&::after': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'linear-gradient(90deg, rgba(255,255,255,0.3), transparent, rgba(255,255,255,0.3))',
-                            animation: 'shimmer 2s infinite',
-                          }
-                        },
-                      }}
-                    />
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        position: 'absolute', 
-                        right: 8, 
-                        top: '50%', 
-                        transform: 'translateY(-50%)',
-                        color: 'white',
-                        fontWeight: 600,
-                        fontSize: '0.75rem'
-                      }}
-                    >
-                      {Math.round(progressPct)}%
-                    </Typography>
-                  </Box>
-
-                  <Box display="flex" gap={4}>
-                    <Box>
-                      <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
-                        {Math.round(progressPct)}%
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#64748b' }}>
-                        Completed
-                      </Typography>
+                        background: 'linear-gradient(90deg, #2563eb, #3b82f6, #60a5fa)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&::after': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          background: 'linear-gradient(90deg, rgba(255,255,255,0.3), transparent, rgba(255,255,255,0.3))',
+                          animation: 'shimmer 2s infinite',
+                        }
+                      }} />
                     </Box>
-                    <Box>
-                      <Typography variant="h6" sx={{ color: '#64748b', fontWeight: 700 }}>
-                        ₹{Math.round((target - totalCollected) / 1000)}k
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#64748b' }}>
-                        Remaining
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              </Grid>
 
-              <Grid item xs={12} md={4}>
-                <Box 
-                  sx={{ 
-                    textAlign: 'center',
-                    p: 3,
-                    borderRadius: '24px',
-                    background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-                    border: '1px solid rgba(37, 99, 235, 0.1)'
-                  }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 64,
-                      height: 64,
-                      mx: 'auto',
-                      mb: 2,
-                      background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                    <Grid container spacing={3}>
+                      <Grid item xs={6} sm={3}>
+                        <Box textAlign="center">
+                          <Typography variant="h6" sx={{ color: '#059669', fontWeight: 700 }}>
+                            {(campaignStats.totalCampaigns || 0)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#64748b' }}>
+                            Active Campaigns
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Box textAlign="center">
+                          <Typography variant="h6" sx={{ color: '#dc2626', fontWeight: 700 }}>
+                            {(campaignStats.totalDonors || 0)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#64748b' }}>
+                            Total Donors
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Box textAlign="center">
+                          <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
+                            ₹{Math.round((campaignStats.totalCurrentAmount || 0) / 1000)}k
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#64748b' }}>
+                            Raised This Month
+                          </Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6} sm={3}>
+                        <Box textAlign="center">
+                          <Typography variant="h6" sx={{ color: '#7c3aed', fontWeight: 700 }}>
+                            {goodDeeds.reduce((s, d) => s + (d.beneficiaries || 0), 0)}+
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: '#64748b' }}>
+                            Lives Impacted
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <Box 
+                    sx={{ 
+                      textAlign: 'center',
+                      p: 3,
+                      borderRadius: '24px',
+                      background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                      border: '1px solid rgba(37, 99, 235, 0.1)'
                     }}
                   >
-                    <Timeline sx={{ fontSize: 32 }} />
-                  </Avatar>
-                  <Typography variant="h4" sx={{ color: '#2563eb', fontWeight: 800, mb: 1 }}>
-                    {goodDeeds.reduce((s, d) => s + (d.beneficiaries || 0), 0)}+
-                  </Typography>
-                  <Typography variant="body1" sx={{ color: '#64748b', fontWeight: 600, mb: 2 }}>
-                    Lives Impacted
-                  </Typography>
-                  <Chip
-                    icon={<AutoAwesome />}
-                    label={`${goodDeeds.length} Success Stories`}
-                    sx={{ 
-                      background: 'linear-gradient(135deg, #2563eb, #3b82f6)', 
-                      color: 'white', 
-                      fontWeight: 600,
-                      borderRadius: '12px'
-                    }}
-                  />
-                </Box>
+                    <Avatar
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        mx: 'auto',
+                        mb: 2,
+                        background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                      }}
+                    >
+                      <EmojiEvents sx={{ fontSize: 32 }} />
+                    </Avatar>
+                    <Typography variant="h4" sx={{ color: '#2563eb', fontWeight: 800, mb: 1 }}>
+                      Growing
+                    </Typography>
+                    <Typography variant="body1" sx={{ color: '#64748b', fontWeight: 600, mb: 2 }}>
+                      Impact Every Day
+                    </Typography>
+                    <Chip
+                      icon={<AutoAwesome />}
+                      label={`${goodDeeds.length} Success Stories`}
+                      sx={{ 
+                        background: 'linear-gradient(135deg, #2563eb, #3b82f6)', 
+                        color: 'white', 
+                        fontWeight: 600,
+                        borderRadius: '12px'
+                      }}
+                    />
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
+            )}
           </Paper>
 
-          {/* Professional Donation Amount Selection */}
+          {/* ✅ ACTIVE CAMPAIGNS WITH DONATE BUTTONS */}
+          {campaigns.length > 0 && (
+            <Paper
+              elevation={0}
+              sx={{
+                p: 5,
+                mb: 5,
+                borderRadius: '32px',
+                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                border: '1px solid rgba(37, 99, 235, 0.1)',
+                boxShadow: '0 20px 40px rgba(37, 99, 235, 0.08)',
+              }}
+            >
+              <Box textAlign="center" mb={4}>
+                <Avatar
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    mx: 'auto',
+                    mb: 2,
+                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                  }}
+                >
+                  <CampaignOutlined sx={{ fontSize: 32 }} />
+                </Avatar>
+                <Typography variant="h4" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
+                  Active Campaigns ({campaigns.length})
+                </Typography>
+                <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 600, mx: 'auto' }}>
+                  Support these ongoing campaigns and help make a difference in our community.
+                </Typography>
+              </Box>
+
+              {loadingCampaigns ? (
+                <Box display="flex" justifyContent="center" p={4}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <Grid container spacing={4}>
+                  {campaigns.map((campaign) => (
+                    <Grid item xs={12} md={6} key={campaign._id || campaign.id}>
+                      <Card
+                        elevation={0}
+                        sx={{
+                          height: '100%',
+                          borderRadius: '20px',
+                          border: '1px solid rgba(37, 99, 235, 0.1)',
+                          transition: 'all 0.3s ease',
+                          position: 'relative',
+                          '&:hover': {
+                            transform: 'translateY(-4px)',
+                            boxShadow: '0 12px 32px rgba(37, 99, 235, 0.15)',
+                            borderColor: '#2563eb',
+                          },
+                        }}
+                      >
+                        {/* DELETE BUTTON FOR CAMPAIGN CREATORS */}
+                        {user && campaign.creator && campaign.creator._id === user.id && (
+                          <Tooltip title="Delete Campaign">
+                            <IconButton
+                              onClick={() => handleDeleteCampaign(campaign)}
+                              sx={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#dc2626',
+                                '&:hover': {
+                                  background: 'rgba(239, 68, 68, 0.2)',
+                                  transform: 'scale(1.1)',
+                                },
+                                zIndex: 1,
+                              }}
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        <CardContent sx={{ p: 4 }}>
+                          <Box display="flex" gap={3} mb={3}>
+                            <Avatar
+                              sx={{
+                                width: 48,
+                                height: 48,
+                                background: `linear-gradient(135deg, ${categoryColor(campaign.category)}, #3b82f6)`,
+                              }}
+                            >
+                              {getIconForCategory(campaign.category)}
+                            </Avatar>
+                            <Box flex={1}>
+                              <Typography variant="h6" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
+                                {campaign.title}
+                              </Typography>
+                              <Chip
+                                label={campaign.category}
+                                size="small"
+                                sx={{
+                                  background: `linear-gradient(135deg, ${categoryColor(campaign.category)}, #3b82f6)`,
+                                  color: 'white',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  borderRadius: '8px'
+                                }}
+                              />
+                              {campaign.urgency && (
+                                <Chip
+                                  label={`${campaign.urgency} Priority`}
+                                  size="small"
+                                  sx={{
+                                    ml: 1,
+                                    background: campaign.urgency === 'Critical' ? '#ef4444' : 
+                                               campaign.urgency === 'High' ? '#f97316' : 
+                                               campaign.urgency === 'Medium' ? '#eab308' : '#22c55e',
+                                    color: 'white',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 600,
+                                    borderRadius: '8px'
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
+
+                          <Typography variant="body2" sx={{ color: '#64748b', mb: 3, lineHeight: 1.6 }}>
+                            {campaign.description}
+                          </Typography>
+
+                          <Box mb={3}>
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                              <Typography variant="h6" sx={{ color: '#2563eb', fontWeight: 700 }}>
+                                ₹{(campaign.currentAmount || 0).toLocaleString('en-IN')}
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: '#64748b' }}>
+                                of ₹{campaign.targetAmount.toLocaleString('en-IN')}
+                              </Typography>
+                            </Box>
+                            <LinearProgress
+                              variant="determinate"
+                              value={Math.min(((campaign.currentAmount || 0) / campaign.targetAmount) * 100, 100)}
+                              sx={{
+                                height: 8,
+                                borderRadius: 4,
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                '& .MuiLinearProgress-bar': {
+                                  background: `linear-gradient(90deg, ${categoryColor(campaign.category)}, #3b82f6)`,
+                                  borderRadius: 4,
+                                },
+                              }}
+                            />
+                            <Typography variant="caption" sx={{ color: '#64748b', mt: 1, display: 'block' }}>
+                              {Math.round(((campaign.currentAmount || 0) / campaign.targetAmount) * 100)}% funded
+                              {campaign.donors && campaign.donors.length > 0 && (
+                                <span> • {campaign.donors.length} donors</span>
+                              )}
+                            </Typography>
+                          </Box>
+
+                          {/* ✅ DONATE BUTTON FOR EACH CAMPAIGN */}
+                          <Box mb={3}>
+                            <Button
+                              fullWidth
+                              variant="contained"
+                              startIcon={<Heart />}
+                              onClick={() => handleCampaignDonate(campaign)}
+                              disabled={!user || campaign.status !== 'active'}
+                              sx={{
+                                borderRadius: '12px',
+                                py: 1.5,
+                                background: `linear-gradient(135deg, ${categoryColor(campaign.category)}, #3b82f6)`,
+                                fontWeight: 700,
+                                fontSize: '1rem',
+                                textTransform: 'none',
+                                boxShadow: `0 8px 24px ${categoryColor(campaign.category)}40`,
+                                '&:hover': {
+                                  background: `linear-gradient(135deg, ${categoryColor(campaign.category)}, #2563eb)`,
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: `0 12px 32px ${categoryColor(campaign.category)}50`,
+                                },
+                                '&:disabled': {
+                                  background: '#e2e8f0',
+                                  color: '#94a3b8'
+                                }
+                              }}
+                            >
+                              {!user ? 'Login to Donate' : 
+                               campaign.status !== 'active' ? 'Campaign Ended' : 
+                               'Donate Now'}
+                            </Button>
+                          </Box>
+
+                          <Divider sx={{ my: 2, borderColor: 'rgba(37, 99, 235, 0.1)' }} />
+
+                          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                            <Box>
+                              <Typography variant="body2" sx={{ color: '#64748b' }}>
+                                Created by
+                              </Typography>
+                              <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                                {campaign.creator?.name || 'Anonymous'}
+                              </Typography>
+                            </Box>
+                            {campaign.location && (
+                              <Box textAlign="right">
+                                <Typography variant="body2" sx={{ color: '#64748b' }}>
+                                  Location
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 600 }}>
+                                  {campaign.location}
+                                </Typography>
+                              </Box>
+                            )}
+                          </Box>
+
+                          <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+                            Created on {new Date(campaign.createdAt || campaign.date).toLocaleDateString('en-IN', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+            </Paper>
+          )}
+
+          {/* Professional General Donation Section */}
           <Paper
             elevation={0}
             sx={{
@@ -818,10 +1407,10 @@ function DonationPage() {
                 <AccountBalance sx={{ fontSize: 32 }} />
               </Avatar>
               <Typography variant="h4" fontWeight="700" sx={{ color: '#1e293b', mb: 1 }}>
-                Choose Your Impact
+                General Community Donation
               </Typography>
               <Typography variant="body1" sx={{ color: '#64748b', maxWidth: 500, mx: 'auto' }}>
-                Select an amount that feels right for you. Every contribution makes a difference.
+                Support our overall community efforts with a general donation.
               </Typography>
             </Box>
 
@@ -1135,91 +1724,134 @@ function DonationPage() {
               </Button>
             </Box>
           </Paper>
+        </Container>
 
-          {/* Professional Payment Dialog */}
-          <Dialog
-            open={openPayment}
-            onClose={() => setOpenPayment(false)}
-            maxWidth="sm"
-            fullWidth
-            PaperProps={{ 
-              sx: { 
-                borderRadius: '32px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-                boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
-                overflow: 'hidden'
-              }
-            }}
-            BackdropComponent={Backdrop}
-            BackdropProps={{
-              sx: { backgroundColor: 'rgba(37, 99, 235, 0.1)', backdropFilter: 'blur(8px)' }
+        <style jsx>{`
+          @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+          }
+        `}</style>
+      </Box>
+
+      {/* ✅ CAMPAIGN-SPECIFIC DONATION DIALOG */}
+      <Dialog
+        open={campaignDonationOpen}
+        onClose={handleCampaignDonationClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ 
+          sx: { 
+            borderRadius: '32px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
+            overflow: 'hidden'
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: selectedCampaign ? `linear-gradient(135deg, ${categoryColor(selectedCampaign.category)}, #3b82f6)` : 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+            color: 'white',
+            py: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, rgba(255,255,255,0.3), transparent, rgba(255,255,255,0.3))',
+            }
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <Avatar sx={{ background: 'rgba(255,255,255,0.2)' }}>
+              {selectedCampaign ? getIconForCategory(selectedCampaign.category) : <Heart />}
+            </Avatar>
+            <Box>
+              <Typography variant="h6" fontWeight="700">
+                Donate to Campaign
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                {selectedCampaign ? selectedCampaign.title : 'Loading...'}
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton 
+            onClick={handleCampaignDonationClose} 
+            sx={{ 
+              color: 'white',
+              background: 'rgba(255,255,255,0.1)',
+              '&:hover': { background: 'rgba(255,255,255,0.2)' }
             }}
           >
-            <DialogTitle
-              sx={{
-                background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
-                color: 'white',
-                py: 3,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                position: 'relative',
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  height: '4px',
-                  background: 'linear-gradient(90deg, rgba(255,255,255,0.3), transparent, rgba(255,255,255,0.3))',
-                }
-              }}
-            >
-              <Box display="flex" alignItems="center" gap={2}>
-                <Avatar sx={{ background: 'rgba(255,255,255,0.2)' }}>
-                  <Security />
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" fontWeight="700">
-                    Secure Donation
-                  </Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                    Powered by Razorpay
-                  </Typography>
-                </Box>
-              </Box>
-              <IconButton 
-                onClick={() => setOpenPayment(false)} 
-                sx={{ 
-                  color: 'white',
-                  background: 'rgba(255,255,255,0.1)',
-                  '&:hover': { background: 'rgba(255,255,255,0.2)' }
-                }}
-              >
-                <Close />
-              </IconButton>
-            </DialogTitle>
+            <Close />
+          </IconButton>
+        </DialogTitle>
 
-            <DialogContent sx={{ p: 5 }}>
+        <DialogContent sx={{ p: 5 }}>
+          {selectedCampaign && (
+            <>
               <Box textAlign="center" mb={4}>
-                <Avatar
-                  sx={{
-                    width: 80,
-                    height: 80,
-                    mx: 'auto',
-                    mb: 2,
-                    background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                    fontSize: '2rem'
+                <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 700, mb: 2 }}>
+                  {selectedCampaign.title}
+                </Typography>
+                <Box display="flex" justifyContent="center" gap={2} mb={3}>
+                  <Chip label={selectedCampaign.category} size="small" />
+                  <Chip
+                    label={`₹${(selectedCampaign.currentAmount || 0).toLocaleString('en-IN')} raised`}
+                    size="small"
+                    sx={{ background: '#e0f2fe', color: '#0277bd' }}
+                  />
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={Math.min(((selectedCampaign.currentAmount || 0) / selectedCampaign.targetAmount) * 100, 100)}
+                  sx={{ mb: 2 }}
+                />
+                <Typography variant="body2" sx={{ color: '#64748b' }}>
+                  {Math.round(((selectedCampaign.currentAmount || 0) / selectedCampaign.targetAmount) * 100)}% of ₹{selectedCampaign.targetAmount.toLocaleString('en-IN')} goal
+                </Typography>
+              </Box>
+
+              <Box mb={4}>
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600 }}>
+                  Choose Amount
+                </Typography>
+                <Grid container spacing={2} mb={3}>
+                  {campaignQuickAmounts.map((amt) => (
+                    <Grid item xs={6} key={amt}>
+                      <Button
+                        fullWidth
+                        variant={campaignDonationAmount === amt.toString() ? 'contained' : 'outlined'}
+                        onClick={() => setCampaignDonationAmount(amt.toString())}
+                        sx={{ py: 1.5, borderRadius: '12px' }}
+                      >
+                        ₹{amt.toLocaleString('en-IN')}
+                      </Button>
+                    </Grid>
+                  ))}
+                </Grid>
+                <TextField
+                  fullWidth
+                  label="Custom Amount"
+                  type="number"
+                  value={campaignDonationAmount}
+                  onChange={(e) => setCampaignDonationAmount(e.target.value)}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CurrencyRupee />
+                      </InputAdornment>
+                    ),
                   }}
-                >
-                  ₹
-                </Avatar>
-                <Typography variant="h3" sx={{ color: '#2563eb', fontWeight: 800, mb: 1 }}>
-                  ₹{selectedAmount.toLocaleString('en-IN')}
-                </Typography>
-                <Typography variant="body1" sx={{ color: '#64748b' }}>
-                  Your generous contribution
-                </Typography>
+                  sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                />
               </Box>
 
               {paymentError && (
@@ -1227,7 +1859,7 @@ function DonationPage() {
                   severity="error" 
                   sx={{ 
                     mb: 3, 
-                    borderRadius: '16px',
+                    borderRadius: '12px',
                     border: '1px solid rgba(239, 68, 68, 0.2)'
                   }}
                 >
@@ -1239,18 +1871,11 @@ function DonationPage() {
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="Full Name"
+                    label="Your Name"
                     value={donorName}
                     onChange={(e) => setDonorName(e.target.value)}
                     required
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': { 
-                        borderRadius: '16px',
-                        backgroundColor: 'rgba(37, 99, 235, 0.02)',
-                        '&:hover fieldset': { borderColor: '#2563eb' },
-                        '&.Mui-focused fieldset': { borderColor: '#2563eb' }
-                      }
-                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -1261,14 +1886,7 @@ function DonationPage() {
                     value={donorEmail}
                     onChange={(e) => setDonorEmail(e.target.value)}
                     required
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': { 
-                        borderRadius: '16px',
-                        backgroundColor: 'rgba(37, 99, 235, 0.02)',
-                        '&:hover fieldset': { borderColor: '#2563eb' },
-                        '&.Mui-focused fieldset': { borderColor: '#2563eb' }
-                      }
-                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -1277,14 +1895,7 @@ function DonationPage() {
                     label="Phone Number (Optional)"
                     value={donorPhone}
                     onChange={(e) => setDonorPhone(e.target.value)}
-                    sx={{ 
-                      '& .MuiOutlinedInput-root': { 
-                        borderRadius: '16px',
-                        backgroundColor: 'rgba(37, 99, 235, 0.02)',
-                        '&:hover fieldset': { borderColor: '#2563eb' },
-                        '&.Mui-focused fieldset': { borderColor: '#2563eb' }
-                      }
-                    }}
+                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
                   />
                 </Grid>
               </Grid>
@@ -1293,20 +1904,20 @@ function DonationPage() {
                 fullWidth
                 variant="contained"
                 size="large"
-                onClick={() => handleRazorpayPayment(selectedAmount)}
-                disabled={paymentLoading || !donorName.trim() || !donorEmail.trim()}
+                onClick={() => handleCampaignDonationPayment(campaignDonationAmount)}
+                disabled={paymentLoading || !donorName.trim() || !donorEmail.trim() || !campaignDonationAmount || parseFloat(campaignDonationAmount) <= 0}
                 startIcon={paymentLoading ? <CircularProgress size={20} color="inherit" /> : <Heart />}
                 sx={{
-                  background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                  background: selectedCampaign ? `linear-gradient(135deg, ${categoryColor(selectedCampaign.category)}, #3b82f6)` : 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
                   color: 'white',
                   fontWeight: 700,
                   fontSize: '1.1rem',
                   py: 2,
-                  borderRadius: '20px',
+                  borderRadius: '16px',
                   textTransform: 'none',
                   boxShadow: '0 12px 32px rgba(37, 99, 235, 0.25)',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                    background: selectedCampaign ? `linear-gradient(135deg, ${categoryColor(selectedCampaign.category)}, #2563eb)` : 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
                     boxShadow: '0 16px 40px rgba(37, 99, 235, 0.35)',
                     transform: 'translateY(-2px)',
                   },
@@ -1317,89 +1928,331 @@ function DonationPage() {
                   }
                 }}
               >
-                {paymentLoading ? 'Processing Payment...' : `Complete Donation of ₹${selectedAmount}`}
+                {paymentLoading ? 'Processing...' : `Donate ₹${campaignDonationAmount || 0} to Campaign`}
               </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
-              <Box 
-                sx={{ 
-                  textAlign: 'center', 
-                  mt: 3,
-                  p: 2,
-                  borderRadius: '16px',
-                  background: 'rgba(37, 99, 235, 0.04)',
-                  border: '1px solid rgba(37, 99, 235, 0.1)'
-                }}
-              >
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    color: '#64748b',
-                    fontSize: '0.9rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 1
-                  }}
-                >
-                  <Security sx={{ fontSize: 16, color: '#2563eb' }} />
-                  Your donation is secured with 256-bit SSL encryption
-                </Typography>
-              </Box>
-            </DialogContent>
-          </Dialog>
-
-          {/* Professional Success Snackbar */}
-          <Snackbar
-            open={snackbarOpen}
-            autoHideDuration={6000}
-            onClose={() => setSnackbarOpen(false)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          >
-            <Alert
-              onClose={() => setSnackbarOpen(false)}
-              severity="success"
-              variant="filled"
-              sx={{ 
-                borderRadius: '16px',
-                background: 'linear-gradient(135deg, #059669, #10b981)',
-                boxShadow: '0 8px 24px rgba(5, 150, 105, 0.25)'
-              }}
-            >
-              🎉 Thank you! Your donation of ₹{selectedAmount} was successful!
-            </Alert>
-          </Snackbar>
-
-          {/* Post Success Snackbar */}
-          <Snackbar
-            open={postSuccessSnackbar}
-            autoHideDuration={4000}
-            onClose={() => setPostSuccessSnackbar(false)}
-            anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-          >
-            <Alert
-              severity="success"
-              variant="filled"
-              onClose={() => setPostSuccessSnackbar(false)}
-              sx={{ 
-                borderRadius: '16px',
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-                boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)'
-              }}
-            >
-              Your story has been shared successfully! 🎉
-            </Alert>
-          </Snackbar>
-        </Container>
-
-        <style jsx>{`
-          @keyframes shimmer {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(100%); }
+      {/* General Payment Dialog */}
+      <Dialog
+        open={openPayment}
+        onClose={() => setOpenPayment(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ 
+          sx: { 
+            borderRadius: '32px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
+            overflow: 'hidden'
           }
-        `}</style>
-      </Box>
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+            color: 'white',
+            py: 3,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            position: 'relative',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, rgba(255,255,255,0.3), transparent, rgba(255,255,255,0.3))',
+            }
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <Avatar sx={{ background: 'rgba(255,255,255,0.2)' }}>
+              <Security />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" fontWeight="700">
+                General Donation
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                Community support
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton 
+            onClick={() => setOpenPayment(false)} 
+            sx={{ 
+              color: 'white',
+              background: 'rgba(255,255,255,0.1)',
+              '&:hover': { background: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
 
-      {/* ✅ FIXED: SHARE YOUR STORY DIALOG */}
+        <DialogContent sx={{ p: 5 }}>
+          <Box textAlign="center" mb={4}>
+            <Avatar
+              sx={{
+                width: 80,
+                height: 80,
+                mx: 'auto',
+                mb: 2,
+                background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+                fontSize: '2rem'
+              }}
+            >
+              ₹
+            </Avatar>
+            <Typography variant="h3" sx={{ color: '#2563eb', fontWeight: 800, mb: 1 }}>
+              ₹{selectedAmount.toLocaleString('en-IN')}
+            </Typography>
+            <Typography variant="body1" sx={{ color: '#64748b' }}>
+              Your generous contribution
+            </Typography>
+          </Box>
+
+          {paymentError && (
+            <Alert 
+              severity="error" 
+              sx={{ 
+                mb: 3, 
+                borderRadius: '16px',
+                border: '1px solid rgba(239, 68, 68, 0.2)'
+              }}
+            >
+              {paymentError}
+            </Alert>
+          )}
+
+          <Grid container spacing={3} mb={4}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Full Name"
+                value={donorName}
+                onChange={(e) => setDonorName(e.target.value)}
+                required
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { 
+                    borderRadius: '16px',
+                    backgroundColor: 'rgba(37, 99, 235, 0.02)',
+                    '&:hover fieldset': { borderColor: '#2563eb' },
+                    '&.Mui-focused fieldset': { borderColor: '#2563eb' }
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Email Address"
+                type="email"
+                value={donorEmail}
+                onChange={(e) => setDonorEmail(e.target.value)}
+                required
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { 
+                    borderRadius: '16px',
+                    backgroundColor: 'rgba(37, 99, 235, 0.02)',
+                    '&:hover fieldset': { borderColor: '#2563eb' },
+                    '&.Mui-focused fieldset': { borderColor: '#2563eb' }
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Phone Number (Optional)"
+                value={donorPhone}
+                onChange={(e) => setDonorPhone(e.target.value)}
+                sx={{ 
+                  '& .MuiOutlinedInput-root': { 
+                    borderRadius: '16px',
+                    backgroundColor: 'rgba(37, 99, 235, 0.02)',
+                    '&:hover fieldset': { borderColor: '#2563eb' },
+                    '&.Mui-focused fieldset': { borderColor: '#2563eb' }
+                  }
+                }}
+              />
+            </Grid>
+          </Grid>
+
+          <Button
+            fullWidth
+            variant="contained"
+            size="large"
+            onClick={() => handleRazorpayPayment(selectedAmount)}
+            disabled={paymentLoading || !donorName.trim() || !donorEmail.trim()}
+            startIcon={paymentLoading ? <CircularProgress size={20} color="inherit" /> : <Heart />}
+            sx={{
+              background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+              color: 'white',
+              fontWeight: 700,
+              fontSize: '1.1rem',
+              py: 2,
+              borderRadius: '20px',
+              textTransform: 'none',
+              boxShadow: '0 12px 32px rgba(37, 99, 235, 0.25)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                boxShadow: '0 16px 40px rgba(37, 99, 235, 0.35)',
+                transform: 'translateY(-2px)',
+              },
+              '&:disabled': {
+                background: 'linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)',
+                color: '#94a3b8',
+                boxShadow: 'none'
+              }
+            }}
+          >
+            {paymentLoading ? 'Processing Payment...' : `Complete Donation of ₹${selectedAmount}`}
+          </Button>
+
+          <Box 
+            sx={{ 
+              textAlign: 'center', 
+              mt: 3,
+              p: 2,
+              borderRadius: '16px',
+              background: 'rgba(37, 99, 235, 0.04)',
+              border: '1px solid rgba(37, 99, 235, 0.1)'
+            }}
+          >
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: '#64748b',
+                fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 1
+              }}
+            >
+              <Security sx={{ fontSize: 16, color: '#2563eb' }} />
+              Your donation is secured with 256-bit SSL encryption
+            </Typography>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* DELETE CONFIRMATION DIALOG */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={cancelDeleteCampaign}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #fef7f7 100%)',
+            boxShadow: '0 20px 40px rgba(239, 68, 68, 0.15)',
+          }
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+            color: 'white',
+            py: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+          }}
+        >
+          <Avatar sx={{ background: 'rgba(255,255,255,0.2)' }}>
+            <Warning />
+          </Avatar>
+          <Box>
+            <Typography variant="h5" fontWeight="700">
+              Delete Campaign
+            </Typography>
+            <Typography variant="caption" sx={{ opacity: 0.9 }}>
+              This action cannot be undone
+            </Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 4 }}>
+          <Typography variant="h6" sx={{ mb: 2, color: '#1e293b' }}>
+            Are you sure you want to delete this campaign?
+          </Typography>
+          
+          {campaignToDelete && (
+            <Box
+              sx={{
+                p: 3,
+                borderRadius: '16px',
+                background: 'rgba(239, 68, 68, 0.05)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                mb: 3
+              }}
+            >
+              <Typography variant="subtitle1" fontWeight="600" sx={{ mb: 1 }}>
+                {campaignToDelete.title}
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
+                Target: ₹{campaignToDelete.targetAmount.toLocaleString('en-IN')}
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#64748b' }}>
+                Current Amount: ₹{(campaignToDelete.currentAmount || 0).toLocaleString('en-IN')}
+              </Typography>
+            </Box>
+          )}
+
+          <Alert severity="warning" sx={{ borderRadius: '12px' }}>
+            {campaignToDelete && (campaignToDelete.currentAmount > 0) ? 
+              'This campaign has received donations and cannot be deleted. Consider marking it as completed instead.' :
+              'This will permanently delete the campaign and all associated data.'
+            }
+          </Alert>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={cancelDeleteCampaign}
+            disabled={deleteLoading}
+            sx={{
+              borderRadius: '12px',
+              textTransform: 'none',
+              px: 4,
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={confirmDeleteCampaign}
+            disabled={deleteLoading || (campaignToDelete && campaignToDelete.currentAmount > 0)}
+            startIcon={deleteLoading ? <CircularProgress size={20} color="inherit" /> : <DeleteIcon />}
+            sx={{
+              borderRadius: '12px',
+              textTransform: 'none',
+              px: 4,
+              background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #b91c1c 0%, #dc2626 100%)',
+              },
+              '&:disabled': {
+                background: '#e5e7eb',
+                color: '#9ca3af',
+              }
+            }}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete Campaign'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* SHARE YOUR STORY DIALOG */}
       <Dialog
         open={postDialogOpen}
         onClose={() => handlePostDialogClose(false)}
@@ -1548,360 +2401,303 @@ function DonationPage() {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ FIXED: CREATE CAMPAIGN DIALOG */}
-      {donationUpdateDialogOpen && (
-        <DonationUpdateForm 
-          open={donationUpdateDialogOpen}
-          onClose={() => setDonationUpdateDialogOpen(false)}
-          onSave={handleDonationUpdateSave}
-          editingId={editingDonationUpdateId}
-        />
-      )}
-
-      {/* ✅ INTEGRATED PROFESSIONAL FOOTER */}
-      <Box
-        component="footer"
-        sx={{
-          background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 50%, #1976d2 100%)',
-          color: 'white',
-          mt: 0,
-          position: 'relative',
-          overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, transparent 50%, rgba(255,255,255,0.02) 100%)',
-            pointerEvents: 'none',
+      {/* CAMPAIGN CREATION DIALOG */}
+      <Dialog
+        open={campaignDialogOpen}
+        onClose={handleCampaignClose}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '24px',
+            background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+            boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
           }
         }}
       >
-        {/* Newsletter Section */}
-
-
-        {/* Main Footer Content */}
-        <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
-          <Grid container spacing={4}>
-            {/* Company Info */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Box sx={{ mb: 3 }}>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: '12px',
-                      background: 'rgba(255, 255, 255, 0.15)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mr: 2,
-                    }}
-                  >
-                    <Heart sx={{ color: 'white', fontSize: 24 }} />
-                  </Box>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: 800,
-                      color: 'white',
-                    }}
-                  >
-                    Help<span style={{ color: '#64b5f6' }}>Hub</span>
-                  </Typography>
-                </Box>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: 'Inter, sans-serif',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    lineHeight: 1.6,
-                    mb: 3,
-                  }}
-                >
-                  Connecting communities through compassion. Making donations transparent, impactful, and meaningful.
-                </Typography>
-                
-                {/* Social Media Icons */}
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      fontWeight: 600,
-                      color: 'white',
-                      mb: 2,
-                    }}
-                  >
-                    Follow Us
-                  </Typography>
-                  <Box display="flex" gap={1}>
-                    {socialLinks.map((social, index) => {
-                      const IconComponent = social.icon;
-                      return (
-                        <IconButton
-                          key={index}
-                          href={social.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{
-                            color: 'rgba(255, 255, 255, 0.8)',
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '10px',
-                            width: 40,
-                            height: 40,
-                            transition: 'all 0.3s ease',
-                            '&:hover': {
-                              background: 'rgba(255, 255, 255, 0.2)',
-                              color: 'white',
-                              transform: 'translateY(-2px)',
-                            }
-                          }}
-                        >
-                          <IconComponent fontSize="small" />
-                        </IconButton>
-                      );
-                    })}
-                  </Box>
-                </Box>
-              </Box>
-            </Grid>
-
-            {/* Quick Links */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  color: 'white',
-                  mb: 3,
-                }}
-              >
-                Quick Links
-              </Typography>
-              <List sx={{ p: 0 }}>
-                {quickLinks.map((link, index) => {
-                  const IconComponent = link.icon;
-                  return (
-                    <ListItem
-                      key={index}
-                      disablePadding
-                      sx={{
-                        mb: 1,
-                        cursor: 'pointer',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          background: 'rgba(255, 255, 255, 0.1)',
-                          transform: 'translateX(4px)',
-                        }
-                      }}
-                      onClick={() => handleNavigation(link.path)}
-                    >
-                      <ListItemIcon sx={{ minWidth: 36 }}>
-                        <IconComponent sx={{ color: '#64b5f6', fontSize: 20 }} />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={link.label}
-                        primaryTypographyProps={{
-                          fontFamily: 'Inter, sans-serif',
-                          color: 'rgba(255, 255, 255, 0.9)',
-                          fontSize: '0.9rem',
-                          fontWeight: 500,
-                        }}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </List>
-            </Grid>
-
-            {/* Support */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  color: 'white',
-                  mb: 3,
-                }}
-              >
-                Support
-              </Typography>
-              <List sx={{ p: 0 }}>
-                {supportLinks.map((link, index) => (
-                  <ListItem
-                    key={index}
-                    disablePadding
-                    sx={{
-                      mb: 1,
-                      cursor: 'pointer',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        transform: 'translateX(4px)',
-                      }
-                    }}
-                    onClick={() => handleNavigation(link.path)}
-                  >
-                    <ListItemText
-                      primary={link.label}
-                      primaryTypographyProps={{
-                        fontFamily: 'Inter, sans-serif',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Grid>
-
-            {/* Contact & Legal */}
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: 'Inter, sans-serif',
-                  fontWeight: 700,
-                  color: 'white',
-                  mb: 3,
-                }}
-              >
-                Contact & Legal
-              </Typography>
-              
-              {/* Contact Info */}
-              <Box sx={{ mb: 3 }}>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Email sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    support@helphub.com
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" mb={2}>
-                  <Phone sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    1-800-HELP-HUB
-                  </Typography>
-                </Box>
-                <Box display="flex" alignItems="center" mb={3}>
-                  <LocationOn sx={{ color: '#64b5f6', fontSize: 18, mr: 2 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    San Francisco, CA
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* Legal Links */}
-              <List sx={{ p: 0 }}>
-                {legalLinks.map((link, index) => (
-                  <ListItem
-                    key={index}
-                    disablePadding
-                    sx={{
-                      mb: 1,
-                      cursor: 'pointer',
-                      borderRadius: '8px',
-                      transition: 'all 0.2s ease',
-                      '&:hover': {
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        transform: 'translateX(4px)',
-                      }
-                    }}
-                    onClick={() => handleNavigation(link.path)}
-                  >
-                    <ListItemText
-                      primary={link.label}
-                      primaryTypographyProps={{
-                        fontFamily: 'Inter, sans-serif',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        fontSize: '0.9rem',
-                        fontWeight: 500,
-                      }}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Grid>
-          </Grid>
-        </Container>
-
-        {/* Bottom Bar */}
-        <Box
+        <DialogTitle
           sx={{
-            background: 'rgba(0, 0, 0, 0.2)',
+            background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+            color: 'white',
             py: 3,
-            borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
           }}
         >
-          <Container maxWidth="lg">
-            <Grid container alignItems="center" justifyContent="space-between">
-              <Grid item xs={12} md={6}>
-                <Typography
-                  variant="body2"
+          <Box display="flex" alignItems="center" gap={2}>
+            <Avatar sx={{ background: 'rgba(255,255,255,0.2)' }}>
+              <CampaignOutlined />
+            </Avatar>
+            <Box>
+              <Typography variant="h5" fontWeight="700">
+                Create New Campaign ✨
+              </Typography>
+              <Typography variant="caption" sx={{ opacity: 0.9 }}>
+                Launch your fundraising initiative
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
+            onClick={handleCampaignClose}
+            disabled={campaignLoading}
+            sx={{
+              color: 'white',
+              background: 'rgba(255,255,255,0.1)',
+              '&:hover': { background: 'rgba(255,255,255,0.2)' }
+            }}
+          >
+            <Close />
+          </IconButton>
+        </DialogTitle>
+
+        <form onSubmit={handleCampaignSubmit}>
+          <DialogContent sx={{ p: 4 }}>
+            {campaignError && (
+              <Alert 
+                severity="error" 
+                sx={{ mb: 3, borderRadius: '12px' }}
+                onClose={() => setCampaignError('')}
+              >
+                {campaignError}
+              </Alert>
+            )}
+
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Campaign Title"
+                  name="title"
+                  value={campaignFormData.title}
+                  onChange={handleCampaignChange}
+                  placeholder="e.g., Help Build a Community Center"
+                  disabled={campaignLoading}
                   sx={{
-                    fontFamily: 'Inter, sans-serif',
-                    color: 'rgba(255, 255, 255, 0.8)',
-                    textAlign: { xs: 'center', md: 'left' },
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
                   }}
-                >
-                  © 2025 HelpHub. All rights reserved. Built with ❤️ for communities worldwide.
-                </Typography>
+                />
               </Grid>
-              <Grid item xs={12} md={6}>
-                <Box 
-                  display="flex" 
-                  alignItems="center" 
-                  justifyContent={{ xs: 'center', md: 'flex-end' }}
-                  mt={{ xs: 2, md: 0 }}
-                >
-                  <Security sx={{ color: '#64b5f6', fontSize: 16, mr: 1 }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: 'Inter, sans-serif',
-                      color: 'rgba(255, 255, 255, 0.8)',
-                      fontSize: '0.8rem',
-                    }}
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={4}
+                  label="Campaign Description"
+                  name="description"
+                  value={campaignFormData.description}
+                  onChange={handleCampaignChange}
+                  placeholder="Describe your campaign, its goals, and the impact it will make..."
+                  disabled={campaignLoading}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Target Amount"
+                  name="targetAmount"
+                  type="number"
+                  value={campaignFormData.targetAmount}
+                  onChange={handleCampaignChange}
+                  placeholder="50000"
+                  disabled={campaignLoading}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CurrencyRupee sx={{ color: '#2563eb' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth disabled={campaignLoading}>
+                  <InputLabel>Category</InputLabel>
+                  <Select
+                    name="category"
+                    value={campaignFormData.category}
+                    label="Category"
+                    onChange={handleCampaignChange}
+                    sx={{ borderRadius: '12px' }}
                   >
-                    Trusted • Secure • Transparent
-                  </Typography>
-                </Box>
+                    {campaignCategories.map((category) => (
+                      <MenuItem key={category} value={category}>
+                        {category}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <FormControl fullWidth disabled={campaignLoading}>
+                  <InputLabel>Urgency Level</InputLabel>
+                  <Select
+                    name="urgency"
+                    value={campaignFormData.urgency}
+                    label="Urgency Level"
+                    onChange={handleCampaignChange}
+                    sx={{ borderRadius: '12px' }}
+                  >
+                    {urgencyLevels.map((level) => (
+                      <MenuItem key={level} value={level}>
+                        {level}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Location (Optional)"
+                  name="location"
+                  value={campaignFormData.location}
+                  onChange={handleCampaignChange}
+                  placeholder="e.g., Mumbai, India"
+                  disabled={campaignLoading}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <LocationOn sx={{ color: '#2563eb' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="End Date (Optional)"
+                  name="endDate"
+                  type="date"
+                  value={campaignFormData.endDate}
+                  onChange={handleCampaignChange}
+                  disabled={campaignLoading}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <CalendarToday sx={{ color: '#2563eb' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: '12px',
+                    }
+                  }}
+                />
               </Grid>
             </Grid>
-          </Container>
-        </Box>
-      </Box>
+          </DialogContent>
+
+          <DialogActions sx={{ p: 3, gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={handleCampaignClose}
+              disabled={campaignLoading}
+              sx={{
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 4,
+                borderColor: '#e5e7eb',
+                color: '#6b7280',
+                '&:hover': {
+                  borderColor: '#d1d5db',
+                  background: '#f9fafb',
+                }
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={campaignLoading}
+              startIcon={
+                campaignLoading ? <CircularProgress size={20} color="inherit" /> : <CampaignOutlined />
+              }
+              sx={{
+                borderRadius: '12px',
+                textTransform: 'none',
+                px: 4,
+                background: 'linear-gradient(135deg, #2563eb 0%, #3b82f6 100%)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)',
+                }
+              }}
+            >
+              {campaignLoading ? 'Creating Campaign...' : 'Create Campaign'}
+            </Button>
+          </DialogActions>
+        </form>
+      </Dialog>
+
+      {/* SUCCESS SNACKBARS */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          onClose={() => setSnackbarOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ 
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #059669, #10b981)',
+            boxShadow: '0 8px 24px rgba(5, 150, 105, 0.25)'
+          }}
+        >
+          🎉 Thank you! Your donation was successful!
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={postSuccessSnackbar}
+        autoHideDuration={4000}
+        onClose={() => setPostSuccessSnackbar(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Alert
+          severity="success"
+          variant="filled"
+          onClose={() => setPostSuccessSnackbar(false)}
+          sx={{ 
+            borderRadius: '16px',
+            background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
+            boxShadow: '0 8px 24px rgba(37, 99, 235, 0.25)'
+          }}
+        >
+          Success! 🎉
+        </Alert>
+      </Snackbar>
     </>
   );
 }

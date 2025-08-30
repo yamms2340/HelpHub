@@ -1,131 +1,299 @@
 const express = require('express');
 const router = express.Router();
 
-// Try to use actual model, fallback gracefully
+// ✅ CRITICAL: Improved model loading with better error handling
 let ImpactPost;
 try {
   ImpactPost = require('../models/ImpactPost');
-  console.log('✅ ImpactPost model loaded successfully');
+  console.log('✅ ImpactPost model loaded successfully from:', require.resolve('../models/ImpactPost'));
 } catch (error) {
-  console.log('⚠️ ImpactPost model not found, using fallback mode');
+  console.error('❌ Failed to load ImpactPost model:', error.message);
+  console.log('⚠️ Falling back to mock mode');
   ImpactPost = null;
 }
 
-// Mock data for fallback mode
+// Enhanced mock data with more realistic entries
 const mockPosts = [
   {
-    _id: '1',
+    _id: '66d1234567890abcdef12345',
     title: 'Emergency Medical Support for Families',
     category: 'Healthcare',
     beneficiaries: 45,
     amount: 25000,
-    details: 'Covered ambulance services, emergency medicines, and hospital fees for families who could not afford treatment.',
+    details: 'Provided emergency medical assistance including ambulance services, medicines, and hospital fees for families who could not afford treatment during the monsoon season.',
     authorName: 'Dr. Sarah Johnson',
+    authorId: null,
     isVerified: true,
     likes: 124,
     views: 856,
     status: 'active',
-    createdAt: new Date('2025-08-20')
+    createdAt: new Date('2025-08-25T10:30:00.000Z'),
+    updatedAt: new Date('2025-08-25T10:30:00.000Z'),
+    location: 'Mumbai, Maharashtra',
+    tags: ['emergency', 'healthcare', 'medical']
   },
   {
-    _id: '2',
+    _id: '66d1234567890abcdef12346',
     title: 'Education Scholarship Program',
     category: 'Education',
     beneficiaries: 30,
     amount: 18500,
-    details: 'Funded school fees, textbooks, uniforms, and stationery for an entire academic year.',
+    details: 'Funded school fees, textbooks, uniforms, and stationery for underprivileged children for an entire academic year. This initiative helped increase school enrollment in rural areas.',
     authorName: 'Maria Rodriguez',
+    authorId: null,
     isVerified: false,
     likes: 89,
     views: 432,
     status: 'active',
-    createdAt: new Date('2025-08-15')
+    createdAt: new Date('2025-08-22T14:15:00.000Z'),
+    updatedAt: new Date('2025-08-22T14:15:00.000Z'),
+    location: 'Bangalore, Karnataka',
+    tags: ['education', 'scholarship', 'children']
+  },
+  {
+    _id: '66d1234567890abcdef12347',
+    title: 'Community Food Distribution Drive',
+    category: 'Food & Nutrition',
+    beneficiaries: 150,
+    amount: 35000,
+    details: 'Organized weekly food distribution for homeless and underprivileged families. Provided nutritious meals and grocery kits to ensure no one goes hungry.',
+    authorName: 'Volunteer Team Delhi',
+    authorId: null,
+    isVerified: true,
+    likes: 256,
+    views: 1203,
+    status: 'active',
+    createdAt: new Date('2025-08-20T09:00:00.000Z'),
+    updatedAt: new Date('2025-08-20T09:00:00.000Z'),
+    location: 'New Delhi',
+    tags: ['food', 'nutrition', 'community', 'hunger']
+  },
+  {
+    _id: '66d1234567890abcdef12348',
+    title: 'Clean Water Initiative',
+    category: 'Environment',
+    beneficiaries: 80,
+    amount: 42000,
+    details: 'Installed water purification systems in rural villages and conducted awareness programs about water conservation and hygiene practices.',
+    authorName: 'Green Earth Foundation',
+    authorId: null,
+    isVerified: true,
+    likes: 178,
+    views: 634,
+    status: 'active',
+    createdAt: new Date('2025-08-18T16:45:00.000Z'),
+    updatedAt: new Date('2025-08-18T16:45:00.000Z'),
+    location: 'Rajasthan',
+    tags: ['water', 'environment', 'rural', 'health']
   }
 ];
 
-// ✅ GET all posts with filtering and pagination
+// ✅ GET all posts with enhanced filtering and error handling
 router.get('/', async (req, res) => {
   try {
-    console.log('📖 GET /api/impact-posts - Fetching posts...');
-    const { page = 1, limit = 50, category, status, author } = req.query;
+    console.log('📖 GET /api/impact-posts - Request received');
+    console.log('📖 Query parameters:', req.query);
+    
+    const { 
+      page = 1, 
+      limit = 50, 
+      category, 
+      status = 'active', 
+      author, 
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
     
     if (ImpactPost) {
-      // Use database
-      let query = { status: { $in: ['active', 'completed'] } };
+      console.log('🔄 Using MongoDB database');
       
-      // Add filters
-      if (category && category !== 'all') {
-        query.category = category;
-      }
+      // Build filter object
+      let filter = {};
+      
+      // Status filter - allow multiple statuses
       if (status && status !== 'all') {
-        query.status = status;
+        if (status.includes(',')) {
+          filter.status = { $in: status.split(',') };
+        } else {
+          filter.status = status;
+        }
+      } else {
+        filter.status = { $in: ['active', 'completed'] };
       }
-      if (author) {
-        query.authorId = author;
-      }
-
-      const posts = await ImpactPost.find(query)
-        .sort({ createdAt: -1 })
-        .limit(limit * 1)
-        .skip((page - 1) * limit)
-        .populate('authorId', 'name email');
-
-      const total = await ImpactPost.countDocuments(query);
       
-      res.json({
+      // Category filter
+      if (category && category !== 'all') {
+        filter.category = category;
+      }
+      
+      // Author filter
+      if (author) {
+        filter.authorId = author;
+      }
+      
+      // Search filter
+      if (search) {
+        filter.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { details: { $regex: search, $options: 'i' } },
+          { authorName: { $regex: search, $options: 'i' } }
+        ];
+      }
+      
+      console.log('🔍 Database filter:', JSON.stringify(filter, null, 2));
+      
+      // Sort object
+      const sort = {};
+      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+      
+      // Execute query with pagination
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+      
+      const posts = await ImpactPost.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate('authorId', 'name email avatar')
+        .lean(); // Use lean() for better performance
+      
+      const total = await ImpactPost.countDocuments(filter);
+      
+      console.log(`✅ Found ${posts.length} posts out of ${total} total`);
+      
+      // ✅ CRITICAL: Ensure consistent response format
+      const response = {
         success: true,
-        data: { posts },
-        totalPages: Math.ceil(total / limit),
-        currentPage: parseInt(page),
-        total
-      });
+        data: {
+          posts: posts || []
+        },
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / parseInt(limit)),
+          totalPosts: total,
+          hasNext: skip + posts.length < total,
+          hasPrev: parseInt(page) > 1
+        }
+      };
+      
+      console.log('📤 Sending response with', posts.length, 'posts');
+      res.json(response);
+      
     } else {
-      // Use mock data
+      console.log('🔄 Using mock data (database unavailable)');
+      
+      // Filter mock data
       let filteredPosts = [...mockPosts];
       
       if (category && category !== 'all') {
         filteredPosts = filteredPosts.filter(post => post.category === category);
       }
+      
       if (status && status !== 'all') {
-        filteredPosts = filteredPosts.filter(post => post.status === status);
+        const statusArray = status.includes(',') ? status.split(',') : [status];
+        filteredPosts = filteredPosts.filter(post => statusArray.includes(post.status));
       }
       
-      res.json({
-        success: true,
-        data: { posts: filteredPosts },
-        totalPages: 1,
-        currentPage: 1,
-        total: filteredPosts.length
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filteredPosts = filteredPosts.filter(post => 
+          post.title.toLowerCase().includes(searchLower) ||
+          post.details.toLowerCase().includes(searchLower) ||
+          post.authorName.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      // Sort mock data
+      filteredPosts.sort((a, b) => {
+        if (sortBy === 'createdAt') {
+          return sortOrder === 'desc' ? 
+            new Date(b.createdAt) - new Date(a.createdAt) : 
+            new Date(a.createdAt) - new Date(b.createdAt);
+        }
+        return 0;
       });
+      
+      // Paginate mock data
+      const startIndex = (parseInt(page) - 1) * parseInt(limit);
+      const endIndex = startIndex + parseInt(limit);
+      const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
+      
+      console.log(`✅ Mock: Found ${paginatedPosts.length} posts out of ${filteredPosts.length} total`);
+      
+      const response = {
+        success: true,
+        data: {
+          posts: paginatedPosts
+        },
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(filteredPosts.length / parseInt(limit)),
+          totalPosts: filteredPosts.length,
+          hasNext: endIndex < filteredPosts.length,
+          hasPrev: parseInt(page) > 1
+        }
+      };
+      
+      res.json(response);
     }
+    
   } catch (error) {
-    console.error('❌ Error fetching posts:', error);
+    console.error('❌ Error fetching impact posts:', error);
+    console.error('Stack trace:', error.stack);
+    
     res.status(500).json({ 
       success: false,
-      error: 'Failed to fetch posts',
-      details: error.message 
+      error: 'Failed to fetch impact posts',
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
+      data: {
+        posts: [] // ✅ Always return posts array even on error
+      }
     });
   }
 });
 
-// ✅ POST a new post (CREATE) - FIXED RESPONSE FORMAT
+// ✅ POST a new post (CREATE) with enhanced validation
 router.post('/', async (req, res) => {
   try {
-    console.log('📝 POST /api/impact-posts - Creating post with data:', req.body);
+    console.log('📝 POST /api/impact-posts - Creating new post');
+    console.log('📝 Request body:', req.body);
     
-    const { title, category, beneficiaries, amount, details, authorId, authorName } = req.body;
+    const { 
+      title, 
+      category, 
+      beneficiaries = 0, 
+      amount = 0, 
+      details, 
+      authorId, 
+      authorName = 'Anonymous',
+      location,
+      tags = []
+    } = req.body;
 
-    // Validation
-    if (!title || !category || !details) {
-      console.log('❌ Validation failed: Missing required fields');
+    // Enhanced validation
+    const errors = [];
+    if (!title || title.trim().length === 0) {
+      errors.push('Title is required');
+    }
+    if (!category) {
+      errors.push('Category is required');
+    }
+    if (!details || details.trim().length < 10) {
+      errors.push('Details must be at least 10 characters long');
+    }
+    
+    if (errors.length > 0) {
+      console.log('❌ Validation errors:', errors);
       return res.status(400).json({ 
         success: false,
-        error: 'Missing required fields: title, category, details' 
+        error: 'Validation failed',
+        details: errors
       });
     }
 
     if (ImpactPost) {
-      // Use database
+      console.log('💾 Saving to MongoDB database');
+      
       const newPost = new ImpactPost({
         title: title.trim(),
         category,
@@ -133,17 +301,20 @@ router.post('/', async (req, res) => {
         amount: parseInt(amount) || 0,
         details: details.trim(),
         authorId: authorId || null,
-        authorName: authorName?.trim() || 'Anonymous',
+        authorName: authorName.trim() || 'Anonymous',
         status: 'active',
         isVerified: false,
         likes: 0,
-        views: 0
+        views: 0,
+        location: location?.trim() || '',
+        tags: Array.isArray(tags) ? tags : []
       });
 
       const savedPost = await newPost.save();
       
+      // Populate author if exists
       if (authorId) {
-        await savedPost.populate('authorId', 'name email');
+        await savedPost.populate('authorId', 'name email avatar');
       }
       
       console.log('✅ Post created successfully with ID:', savedPost._id);
@@ -153,21 +324,27 @@ router.post('/', async (req, res) => {
         data: savedPost,
         message: 'Impact post created successfully'
       });
+      
     } else {
-      // Use mock data (fallback)
+      console.log('💾 Saving to mock data');
+      
       const newPost = {
-        _id: Date.now().toString(),
+        _id: `mock_${Date.now()}`,
         title: title.trim(),
         category,
         beneficiaries: parseInt(beneficiaries) || 0,
         amount: parseInt(amount) || 0,
         details: details.trim(),
-        authorName: authorName?.trim() || 'Anonymous',
+        authorId: authorId || null,
+        authorName: authorName.trim() || 'Anonymous',
         status: 'active',
         isVerified: false,
         likes: 0,
         views: 0,
-        createdAt: new Date()
+        location: location?.trim() || '',
+        tags: Array.isArray(tags) ? tags : [],
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       mockPosts.unshift(newPost);
@@ -180,46 +357,50 @@ router.post('/', async (req, res) => {
         message: 'Impact post created successfully (mock mode)'
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error creating post:', error);
+    console.error('❌ Error creating impact post:', error);
+    console.error('Stack trace:', error.stack);
+    
     res.status(500).json({ 
       success: false,
-      error: 'Failed to create post', 
-      details: error.message 
+      error: 'Failed to create impact post', 
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   }
 });
 
-// ✅ GET single post by ID
+// ✅ GET single post by ID with view increment
 router.get('/:id', async (req, res) => {
   try {
     console.log('📖 GET /api/impact-posts/:id - Fetching post:', req.params.id);
     
     if (ImpactPost) {
       const post = await ImpactPost.findById(req.params.id)
-        .populate('authorId', 'name email');
+        .populate('authorId', 'name email avatar');
         
       if (!post) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
-      // Increment view count
-      await ImpactPost.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } });
+      // Increment view count asynchronously
+      ImpactPost.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } }).exec();
       
       res.json({
         success: true,
         data: post
       });
+      
     } else {
-      // Use mock data
+      // Mock data lookup
       const post = mockPosts.find(p => p._id === req.params.id);
       if (!post) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
@@ -231,11 +412,12 @@ router.get('/:id', async (req, res) => {
         data: post
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error fetching post:', error);
+    console.error('❌ Error fetching impact post:', error);
     res.status(500).json({ 
       success: false,
-      error: 'Failed to fetch post',
+      error: 'Failed to fetch impact post',
       details: error.message 
     });
   }
@@ -245,49 +427,56 @@ router.get('/:id', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     console.log('✏️ PUT /api/impact-posts/:id - Updating post:', req.params.id);
+    console.log('✏️ Update data:', req.body);
     
     if (ImpactPost) {
       const updatedPost = await ImpactPost.findByIdAndUpdate(
         req.params.id,
-        req.body,
+        { ...req.body, updatedAt: new Date() },
         { new: true, runValidators: true }
-      ).populate('authorId', 'name email');
+      ).populate('authorId', 'name email avatar');
       
       if (!updatedPost) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
       res.json({
         success: true,
         data: updatedPost,
-        message: 'Post updated successfully'
+        message: 'Impact post updated successfully'
       });
+      
     } else {
       // Mock update
       const postIndex = mockPosts.findIndex(p => p._id === req.params.id);
       if (postIndex === -1) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
-      mockPosts[postIndex] = { ...mockPosts[postIndex], ...req.body };
+      mockPosts[postIndex] = { 
+        ...mockPosts[postIndex], 
+        ...req.body, 
+        updatedAt: new Date() 
+      };
       
       res.json({
         success: true,
         data: mockPosts[postIndex],
-        message: 'Post updated successfully (mock mode)'
+        message: 'Impact post updated successfully (mock mode)'
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error updating post:', error);
+    console.error('❌ Error updating impact post:', error);
     res.status(500).json({ 
       success: false,
-      error: 'Failed to update post',
+      error: 'Failed to update impact post',
       details: error.message 
     });
   }
@@ -303,34 +492,37 @@ router.delete('/:id', async (req, res) => {
       if (!deletedPost) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
+      
       res.json({ 
         success: true,
-        message: 'Post deleted successfully' 
+        message: 'Impact post deleted successfully' 
       });
+      
     } else {
       // Mock delete
       const postIndex = mockPosts.findIndex(p => p._id === req.params.id);
       if (postIndex === -1) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
       mockPosts.splice(postIndex, 1);
       res.json({ 
         success: true,
-        message: 'Post deleted successfully (mock mode)' 
+        message: 'Impact post deleted successfully (mock mode)' 
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error deleting post:', error);
+    console.error('❌ Error deleting impact post:', error);
     res.status(500).json({ 
       success: false,
-      error: 'Failed to delete post',
+      error: 'Failed to delete impact post',
       details: error.message 
     });
   }
@@ -351,7 +543,7 @@ router.post('/:id/like', async (req, res) => {
       if (!post) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
@@ -360,13 +552,14 @@ router.post('/:id/like', async (req, res) => {
         message: 'Post liked successfully', 
         data: { likes: post.likes }
       });
+      
     } else {
       // Mock like
       const post = mockPosts.find(p => p._id === req.params.id);
       if (!post) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
@@ -377,8 +570,9 @@ router.post('/:id/like', async (req, res) => {
         data: { likes: post.likes }
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error liking post:', error);
+    console.error('❌ Error liking impact post:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to like post',
@@ -402,7 +596,7 @@ router.delete('/:id/like', async (req, res) => {
       if (!post) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
@@ -417,13 +611,14 @@ router.delete('/:id/like', async (req, res) => {
         message: 'Post unliked successfully', 
         data: { likes: post.likes }
       });
+      
     } else {
       // Mock unlike
       const post = mockPosts.find(p => p._id === req.params.id);
       if (!post) {
         return res.status(404).json({ 
           success: false,
-          error: 'Post not found' 
+          error: 'Impact post not found' 
         });
       }
       
@@ -434,8 +629,9 @@ router.delete('/:id/like', async (req, res) => {
         data: { likes: post.likes }
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error unliking post:', error);
+    console.error('❌ Error unliking impact post:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to unlike post',
@@ -455,12 +651,13 @@ router.get('/category/:category', async (req, res) => {
         status: { $in: ['active', 'completed'] }
       })
       .sort({ createdAt: -1 })
-      .populate('authorId', 'name email');
+      .populate('authorId', 'name email avatar');
       
       res.json({
         success: true,
-        data: posts
+        data: posts || []
       });
+      
     } else {
       // Mock category filter
       const posts = mockPosts.filter(p => 
@@ -473,12 +670,14 @@ router.get('/category/:category', async (req, res) => {
         data: posts
       });
     }
+    
   } catch (error) {
     console.error('❌ Error fetching posts by category:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch posts by category',
-      details: error.message 
+      details: error.message,
+      data: []
     });
   }
 });
@@ -486,23 +685,30 @@ router.get('/category/:category', async (req, res) => {
 // ✅ GET post statistics
 router.get('/stats/summary', async (req, res) => {
   try {
-    console.log('📊 GET /api/impact-posts/stats/summary - Fetching stats...');
+    console.log('📊 GET /api/impact-posts/stats/summary - Fetching statistics...');
     
     if (ImpactPost) {
-      const totalPosts = await ImpactPost.countDocuments();
-      const activePosts = await ImpactPost.countDocuments({ status: 'active' });
-      const completedPosts = await ImpactPost.countDocuments({ status: 'completed' });
-      
-      const totalBeneficiaries = await ImpactPost.aggregate([
-        { $group: { _id: null, total: { $sum: '$beneficiaries' } } }
-      ]);
-      
-      const totalAmount = await ImpactPost.aggregate([
-        { $group: { _id: null, total: { $sum: '$amount' } } }
-      ]);
-      
-      const categoryStats = await ImpactPost.aggregate([
-        { $group: { _id: '$category', count: { $sum: 1 } } }
+      const [
+        totalPosts,
+        activePosts,
+        completedPosts,
+        beneficiariesResult,
+        amountResult,
+        categoryStats
+      ] = await Promise.all([
+        ImpactPost.countDocuments(),
+        ImpactPost.countDocuments({ status: 'active' }),
+        ImpactPost.countDocuments({ status: 'completed' }),
+        ImpactPost.aggregate([
+          { $group: { _id: null, total: { $sum: '$beneficiaries' } } }
+        ]),
+        ImpactPost.aggregate([
+          { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]),
+        ImpactPost.aggregate([
+          { $group: { _id: '$category', count: { $sum: 1 }, totalAmount: { $sum: '$amount' } } },
+          { $sort: { count: -1 } }
+        ])
       ]);
       
       res.json({
@@ -511,18 +717,34 @@ router.get('/stats/summary', async (req, res) => {
           totalPosts,
           activePosts,
           completedPosts,
-          totalBeneficiaries: totalBeneficiaries[0]?.total || 0,
-          totalAmount: totalAmount[0]?.total || 0,
-          categoryStats
+          totalBeneficiaries: beneficiariesResult[0]?.total || 0,
+          totalAmount: amountResult[0]?.total || 0,
+          categoryStats: categoryStats || []
         }
       });
+      
     } else {
-      // Mock stats
+      // Mock statistics
       const totalPosts = mockPosts.length;
       const activePosts = mockPosts.filter(p => p.status === 'active').length;
       const completedPosts = mockPosts.filter(p => p.status === 'completed').length;
       const totalBeneficiaries = mockPosts.reduce((sum, post) => sum + (post.beneficiaries || 0), 0);
       const totalAmount = mockPosts.reduce((sum, post) => sum + (post.amount || 0), 0);
+      
+      // Mock category stats
+      const categoryMap = {};
+      mockPosts.forEach(post => {
+        if (!categoryMap[post.category]) {
+          categoryMap[post.category] = { count: 0, totalAmount: 0 };
+        }
+        categoryMap[post.category].count++;
+        categoryMap[post.category].totalAmount += post.amount || 0;
+      });
+      
+      const categoryStats = Object.entries(categoryMap).map(([category, data]) => ({
+        _id: category,
+        ...data
+      }));
       
       res.json({
         success: true,
@@ -532,12 +754,13 @@ router.get('/stats/summary', async (req, res) => {
           completedPosts,
           totalBeneficiaries,
           totalAmount,
-          categoryStats: []
+          categoryStats
         }
       });
     }
+    
   } catch (error) {
-    console.error('❌ Error fetching stats:', error);
+    console.error('❌ Error fetching statistics:', error);
     res.status(500).json({ 
       success: false,
       error: 'Failed to fetch statistics',

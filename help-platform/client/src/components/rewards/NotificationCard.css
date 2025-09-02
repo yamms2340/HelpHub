@@ -1,0 +1,246 @@
+/* ================================
+   BEAUTIFUL NOTIFICATION CARD
+   Replaces Chrome Popups
+================================ */
+
+.notification-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+  padding: 1rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.notification-overlay.visible {
+  opacity: 1;
+}
+
+.notification-card {
+  background: white;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 500px;
+  box-shadow: 
+    0 25px 50px rgba(59, 130, 246, 0.25),
+    0 10px 25px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.1);
+  overflow: hidden;
+  transform: scale(0.9) translateY(20px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.notification-card.show {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.notification-card.success {
+  border-left: 4px solid #10b981;
+}
+
+.notification-card.error {
+  border-left: 4px solid #ef4444;
+}
+
+.notification-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 2rem 2rem 1rem 2rem;
+}
+
+.notification-icon {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.notification-icon.success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.notification-icon.error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.notification-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-content h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+}
+
+.notification-content p {
+  font-size: 1rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.close-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(107, 114, 128, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b7280;
+}
+
+.close-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  transform: scale(1.1);
+}
+
+.close-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.notification-details {
+  padding: 0 2rem 1rem 2rem;
+  margin-top: 1rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+}
+
+.detail-item:not(:last-child) {
+  border-bottom: 1px solid #f8fafc;
+}
+
+.detail-label {
+  font-size: 0.9rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 0.9rem;
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.detail-value.code {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.notification-actions {
+  padding: 1rem 2rem 2rem 2rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.action-btn {
+  padding: 0.75rem 2rem;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.action-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 768px) {
+  .notification-overlay {
+    padding: 0.5rem;
+  }
+  
+  .notification-card {
+    max-width: calc(100vw - 1rem);
+  }
+  
+  .notification-header {
+    padding: 1.5rem;
+  }
+  
+  .notification-details {
+    padding: 0 1.5rem 1rem 1.5rem;
+  }
+  
+  .notification-actions {
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .detail-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .detail-value.code {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ================================
+   ACCESSIBILITY
+================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-card {
+    transition: opacity 0.2s ease;
+  }
+  
+  .notification-card.show {
+    transform: none;
+  }
+}

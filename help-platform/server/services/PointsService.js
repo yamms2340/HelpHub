@@ -1,7 +1,11 @@
 const User = require('../models/User');
 const UserScore = require('../models/UserScore');
+const UserCoins = require('../models/UserCoins');
 
 class PointsService {
+  // 🎯 DEFINE CONVERSION RATE (1 point = 1 coin)
+  static POINTS_TO_COINS_RATIO = 1;
+
   static calculateBasePoints(category, urgency) {
     const categoryPoints = {
       'Technology': 80,
@@ -27,14 +31,91 @@ class PointsService {
   static calculateBonusPoints(rating, completedEarly) {
     let bonus = 0;
     
-    // Rating bonus
     if (rating === 5) bonus += 25;
     else if (rating === 4) bonus += 15;
     
-    // Early completion bonus
     if (completedEarly) bonus += 15;
     
     return bonus;
+  }
+
+  // 🔥 MAIN FUNCTION: Award points AND coins together (atomic operation)
+  static async awardPointsAndCoins(userId, pointsToAdd, reason = 'Points earned', relatedId = null, relatedModel = null) {
+    try {
+      console.log(`🪙 Awarding ${pointsToAdd} points and coins to user ${userId}`);
+
+      const session = await User.startSession();
+      session.startTransaction();
+
+      try {
+        // 1. Add points to User (permanent achievement)
+        const updatedUser = await User.findByIdAndUpdate(
+          userId,
+          { $inc: { totalPoints: pointsToAdd } },
+          { session, new: true }
+        );
+
+        if (!updatedUser) {
+          throw new Error('User not found');
+        }
+
+        // 2. Calculate coins from points (1:1 ratio)
+        const coinsToAdd = Math.floor(pointsToAdd * this.POINTS_TO_COINS_RATIO);
+
+        // 3. Add coins to UserCoins (spendable currency)
+        const updatedCoins = await UserCoins.findOneAndUpdate(
+          { userId },
+          {
+            $inc: { 
+              totalCoins: coinsToAdd, 
+              lifetimeEarned: coinsToAdd 
+            },
+            $push: {
+              transactions: {
+                type: 'earned',
+                amount: coinsToAdd,
+                reason,
+                relatedId,
+                relatedModel,
+                pointsEquivalent: pointsToAdd
+              }
+            },
+            $set: { lastSyncDate: new Date() }
+          },
+          { upsert: true, new: true, session }
+        );
+
+        // 4. Update level based on lifetime earned
+        const newLevel = UserCoins.calculateLevel(updatedCoins.lifetimeEarned);
+        if (newLevel !== updatedCoins.level) {
+          await UserCoins.findByIdAndUpdate(
+            updatedCoins._id,
+            { level: newLevel },
+            { session }
+          );
+        }
+
+        await session.commitTransaction();
+        console.log(`✅ Awarded ${pointsToAdd} points + ${coinsToAdd} coins`);
+        console.log(`📊 User now has ${updatedUser.totalPoints} points, ${updatedCoins.totalCoins} coins`);
+        
+        return { 
+          points: pointsToAdd, 
+          coins: coinsToAdd, 
+          totalPoints: updatedUser.totalPoints,
+          totalCoins: updatedCoins.totalCoins,
+          newLevel 
+        };
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (error) {
+      console.error('❌ Error awarding points and coins:', error);
+      throw error;
+    }
   }
 
   static async awardPoints(userId, requestData, completionData) {
@@ -76,7 +157,6 @@ class PointsService {
 
       let updateData = {
         $inc: {
-          totalPoints: totalPoints,
           requestsCompleted: 1,
           helpCount: 1
         }
@@ -99,8 +179,17 @@ class PointsService {
         updateData.lastPointsReset = now;
       }
 
-      // Update user points and stats
+      // Update user stats (without totalPoints - handled by awardPointsAndCoins)
       const updatedUser = await User.findByIdAndUpdate(userId, updateData, { new: true });
+
+      // 🔥 AWARD POINTS AND COINS TOGETHER
+      const coinsResult = await this.awardPointsAndCoins(
+        userId,
+        totalPoints,
+        `Completed ${requestData.category} request`,
+        requestData.id,
+        'Request'
+      );
 
       // Update rating if provided
       if (completionData.rating) {
@@ -115,8 +204,9 @@ class PointsService {
       }
 
       // Check for new badges/achievements
-      const newBadges = await this.checkForNewBadges(updatedUser);
-      const newAchievements = await this.checkForNewAchievements(updatedUser);
+      const finalUser = await User.findById(userId);
+      const newBadges = await this.checkForNewBadges(finalUser);
+      const newAchievements = await this.checkForNewAchievements(finalUser);
 
       // Update user with new badges/achievements
       if (newBadges.length > 0 || newAchievements.length > 0) {
@@ -130,8 +220,12 @@ class PointsService {
 
       return {
         points: totalPoints,
+        coins: coinsResult.coins,
+        totalPoints: coinsResult.totalPoints,
+        totalCoins: coinsResult.totalCoins,
         badges: newBadges,
-        achievements: newAchievements
+        achievements: newAchievements,
+        level: coinsResult.newLevel
       };
 
     } catch (error) {

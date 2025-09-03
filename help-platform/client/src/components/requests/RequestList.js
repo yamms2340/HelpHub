@@ -296,8 +296,37 @@ function RequestList() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
+          position: 'relative',
+          overflow: 'hidden'
         }}
       >
+        {/* Beautiful Floating Background Icons - Same as Rewards Page */}
+        <div style={beautifulFloatingStyles.floatingBackground}>
+          {[...Array(30)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                ...beautifulFloatingStyles.floatingIcon,
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${i * 0.3}s`,
+                animationDuration: `${12 + Math.random() * 8}s`
+              }}
+            >
+              <svg style={beautifulFloatingStyles.iconSvg} viewBox="0 0 24 24" fill="currentColor">
+                {i % 8 === 0 && <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>}
+                {i % 8 === 1 && <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>}
+                {i % 8 === 2 && <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>}
+                {i % 8 === 3 && <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>}
+                {i % 8 === 4 && <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>}
+                {i % 8 === 5 && <path d="M9 11H7v9h2v-9zm4 0h-2v9h2v-9zm4 0h-2v9h2v-9zm2-7H3v2h2v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h2V4zm-4.5-1H8.5l1-1h5l1 1z"/>}
+                {i % 8 === 6 && <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 1v2h2v2c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V3h2V1H4zm8 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>}
+                {i % 8 === 7 && <path d="M15.55 13c.75 0 1.41-.41 1.75-1.03L21.7 4H19l-1.1 2.2L16.8 4h-2.7l4.4 9h-2.7L12 7.4 8.2 13h-2.7l4.4-9H7.2L6.1 6.2 5 4H2.3l4.4 7.97C7.14 12.59 7.8 13 8.55 13H15.55z"/>}
+              </svg>
+            </div>
+          ))}
+        </div>
+        
         <Paper
           elevation={0}
           sx={{
@@ -307,6 +336,8 @@ function RequestList() {
             background: '#ffffff',
             boxShadow: '0 10px 25px rgba(79, 134, 255, 0.1)',
             border: '1px solid rgba(79, 134, 255, 0.1)',
+            position: 'relative',
+            zIndex: 5
           }}
         >
           <CircularProgress size={40} sx={{ mb: 2, color: '#4f86ff' }} />
@@ -320,14 +351,43 @@ function RequestList() {
 
   return (
     <>
+      {/* 🌟 BEAUTIFUL FLOATING ICONS - EXACT SAME STYLE AS REWARDS PAGE */}
+      <div style={beautifulFloatingStyles.floatingBackground}>
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={i}
+            style={{
+              ...beautifulFloatingStyles.floatingIcon,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${i * 0.3}s`,
+              animationDuration: `${12 + Math.random() * 8}s`
+            }}
+          >
+            <svg style={beautifulFloatingStyles.iconSvg} viewBox="0 0 24 24" fill="currentColor">
+              {i % 8 === 0 && <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>}
+              {i % 8 === 1 && <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>}
+              {i % 8 === 2 && <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>}
+              {i % 8 === 3 && <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>}
+              {i % 8 === 4 && <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>}
+              {i % 8 === 5 && <path d="M9 11H7v9h2v-9zm4 0h-2v9h2v-9zm4 0h-2v9h2v-9zm2-7H3v2h2v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h2V4zm-4.5-1H8.5l1-1h5l1 1z"/>}
+              {i % 8 === 6 && <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 1v2h2v2c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V3h2V1H4zm8 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>}
+              {i % 8 === 7 && <path d="M15.55 13c.75 0 1.41-.41 1.75-1.03L21.7 4H19l-1.1 2.2L16.8 4h-2.7l4.4 9h-2.7L12 7.4 8.2 13h-2.7l4.4-9H7.2L6.1 6.2 5 4H2.3l4.4 7.97C7.14 12.59 7.8 13 8.55 13H15.55z"/>}
+            </svg>
+          </div>
+        ))}
+      </div>
+
       <Box sx={{ 
         background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', 
         minHeight: '100vh',
-        py: 4
+        py: 4,
+        position: 'relative',
+        zIndex: 1
       }}>
         <Container maxWidth="lg">
           {/* Header */}
-          <Box textAlign="center" mb={4}>
+          <Box textAlign="center" mb={4} sx={{ position: 'relative', zIndex: 3 }}>
             <Typography 
               variant="h3" 
               component="h1" 
@@ -377,7 +437,9 @@ function RequestList() {
                 borderRadius: '16px',
                 border: 'none',
                 boxShadow: '0 8px 25px rgba(76, 175, 80, 0.15)',
-                whiteSpace: 'pre-line'
+                whiteSpace: 'pre-line',
+                position: 'relative',
+                zIndex: 3
               }}
               onClose={() => setSuccess('')}
             >
@@ -393,7 +455,9 @@ function RequestList() {
                 borderRadius: '16px',
                 border: 'none',
                 boxShadow: '0 8px 25px rgba(211, 47, 47, 0.15)',
-                whiteSpace: 'pre-line'
+                whiteSpace: 'pre-line',
+                position: 'relative',
+                zIndex: 3
               }}
               onClose={() => setError('')}
             >
@@ -408,7 +472,9 @@ function RequestList() {
               justifyContent: 'center', 
               alignItems: 'center',
               width: '100%',
-              mb: 6
+              mb: 6,
+              position: 'relative',
+              zIndex: 3
             }}
           >
             <Paper 
@@ -636,8 +702,8 @@ function RequestList() {
           </Box>
 
           {/* REQUEST LIST SECTION */}
-          <Container maxWidth="xl">
-            <Box mb={3} textAlign="center" id="requests-section">
+          <Container maxWidth="xl" sx={{ position: 'relative' }}>
+            <Box mb={3} textAlign="center" id="requests-section" sx={{ position: 'relative', zIndex: 3 }}>
               <Typography 
                 variant="h5" 
                 sx={{ 
@@ -654,7 +720,7 @@ function RequestList() {
             </Box>
 
             {requests.length === 0 ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', position: 'relative', zIndex: 3 }}>
                 <Paper 
                   elevation={0} 
                   sx={{ 
@@ -687,7 +753,7 @@ function RequestList() {
             ) : (
               <>
                 {/* Request Cards */}
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 4 }}>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, mb: 4, position: 'relative', zIndex: 3 }}>
                   {requestMatrix.map((row, rowIndex) => (
                     <Box 
                       key={rowIndex}
@@ -1022,7 +1088,9 @@ function RequestList() {
                     justifyContent: 'center', 
                     gap: 3, 
                     mt: 4,
-                    flexWrap: 'wrap'
+                    flexWrap: 'wrap',
+                    position: 'relative',
+                    zIndex: 3
                   }}>
                     {canViewLess && (
                       <Button
@@ -1126,6 +1194,7 @@ function RequestList() {
           mt: 8,
           position: 'relative',
           overflow: 'hidden',
+          zIndex: 1,
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -1460,6 +1529,89 @@ function RequestList() {
       </Box>
     </>
   );
+}
+
+// 🌟 BEAUTIFUL FLOATING ICON STYLES - EXACT SAME AS REWARDS PAGE
+const beautifulFloatingStyles = {
+  floatingBackground: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    width: '100vw',
+    height: '100vh',
+    pointerEvents: 'none',
+    zIndex: 0,
+    overflow: 'hidden'
+  },
+
+  floatingIcon: {
+    position: 'absolute',
+    width: '40px',
+    height: '40px',
+    color: 'rgba(59, 130, 246, 0.08)', // Exact same as rewards page
+    animation: 'floatAnimation 20s ease-in-out infinite', // Exact same duration and timing
+    opacity: 0.6,
+    userSelect: 'none'
+  },
+
+  iconSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.1))' // Exact same glow
+  }
+};
+
+// 🌟 BEAUTIFUL CSS ANIMATIONS - EXACT SAME AS REWARDS PAGE
+if (typeof document !== 'undefined') {
+  const existingStyle = document.getElementById('request-list-beautiful-floating-styles');
+  if (existingStyle) {
+    existingStyle.remove();
+  }
+  
+  const styleElement = document.createElement('style');
+  styleElement.id = 'request-list-beautiful-floating-styles';
+  styleElement.textContent = `
+    @keyframes floatAnimation {
+      0%, 100% { 
+        transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
+        opacity: 0.6;
+      }
+      25% { 
+        transform: translateY(-20px) translateX(10px) rotate(5deg) scale(1.05);
+        opacity: 0.8;
+      }
+      50% { 
+        transform: translateY(-5px) translateX(-15px) rotate(-3deg) scale(0.95);
+        opacity: 0.4;
+      }
+      75% { 
+        transform: translateY(15px) translateX(8px) rotate(2deg) scale(1.02);
+        opacity: 0.7;
+      }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .floating-icon {
+        width: 30px !important;
+        height: 30px !important;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .floating-icon {
+        width: 25px !important;
+        height: 25px !important;
+      }
+    }
+
+    /* Hover effects for request cards */
+    .MuiCard-root {
+      position: relative;
+      z-index: 4;
+    }
+  `;
+  document.head.appendChild(styleElement);
 }
 
 export default RequestList;

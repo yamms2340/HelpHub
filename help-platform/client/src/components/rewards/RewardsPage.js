@@ -17,6 +17,7 @@ const RewardsPage = () => {
   const [isRedeeming, setIsRedeeming] = useState(false);
   const [notification, setNotification] = useState(null);
 
+  // ... (keeping all the same logic functions)
   const fetchRewards = useCallback(async () => {
     try {
       setLoading(true);
@@ -169,22 +170,40 @@ const RewardsPage = () => {
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
-        {/* Floating Background Icons */}
-        <div style={styles.floatingIconsContainer}>
-          <div style={{...styles.floatingIcon, ...styles.float1, top: '10%', left: '15%'}}>🎁</div>
-          <div style={{...styles.floatingIcon, ...styles.float2, top: '25%', right: '20%'}}>🏆</div>
-          <div style={{...styles.floatingIcon, ...styles.float3, top: '45%', left: '10%'}}>⭐</div>
-          <div style={{...styles.floatingIcon, ...styles.float4, top: '60%', right: '15%'}}>🪙</div>
-          <div style={{...styles.floatingIcon, ...styles.float5, top: '75%', left: '25%'}}>💎</div>
-          <div style={{...styles.floatingIcon, ...styles.float6, top: '35%', left: '50%'}}>✨</div>
-          <div style={{...styles.floatingIcon, ...styles.float7, top: '80%', right: '40%'}}>🎯</div>
-          <div style={{...styles.floatingIcon, ...styles.float8, top: '20%', left: '70%'}}>🔥</div>
+        {/* Beautiful Floating Background Icons */}
+        <div style={styles.floatingBackground}>
+          {[...Array(25)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                ...styles.floatingIcon,
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                animationDelay: `${i * 0.2}s`,
+                animationDuration: `${15 + Math.random() * 10}s`
+              }}
+            >
+              <svg style={styles.iconSvg} viewBox="0 0 24 24" fill="currentColor">
+                {i % 6 === 0 && <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>}
+                {i % 6 === 1 && <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>}
+                {i % 6 === 2 && <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>}
+                {i % 6 === 3 && <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>}
+                {i % 6 === 4 && <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>}
+                {i % 6 === 5 && <path d="M9 11H7v9h2v-9zm4 0h-2v9h2v-9zm4 0h-2v9h2v-9zm2-7H3v2h2v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h2V4zm-4.5-1H8.5l1-1h5l1 1z"/>}
+              </svg>
+            </div>
+          ))}
         </div>
         
-        <div style={styles.loadingSpinner}></div>
-        <div style={styles.loadingText}>
-          <h2 style={styles.loadingTitle}>Loading Premium Rewards</h2>
-          <p style={styles.loadingSubtitle}>Curating the best deals just for you...</p>
+        <div style={styles.loadingContent}>
+          <div style={styles.loadingSpinner}>
+            <div style={styles.spinnerRing}></div>
+            <div style={styles.spinnerCore}></div>
+          </div>
+          <div style={styles.loadingText}>
+            <h2 style={styles.loadingTitle}>Loading Premium Rewards</h2>
+            <p style={styles.loadingSubtitle}>Preparing your exclusive rewards experience...</p>
+          </div>
         </div>
       </div>
     );
@@ -194,43 +213,64 @@ const RewardsPage = () => {
     return (
       <div style={styles.errorContainer}>
         {/* Floating Background Icons */}
-        <div style={styles.floatingIconsContainer}>
-          <div style={{...styles.floatingIcon, ...styles.float1, top: '10%', left: '15%'}}>🎁</div>
-          <div style={{...styles.floatingIcon, ...styles.float2, top: '25%', right: '20%'}}>🏆</div>
-          <div style={{...styles.floatingIcon, ...styles.float3, top: '45%', left: '10%'}}>⭐</div>
-          <div style={{...styles.floatingIcon, ...styles.float4, top: '60%', right: '15%'}}>🪙</div>
+        <div style={styles.floatingBackground}>
+          {[...Array(12)].map((_, i) => (
+            <div
+              key={i}
+              style={{
+                ...styles.floatingIcon,
+                top: `${20 + Math.random() * 60}%`,
+                left: `${10 + Math.random() * 80}%`,
+                animationDelay: `${i * 0.5}s`,
+                animationDuration: `${18 + Math.random() * 8}s`
+              }}
+            >
+              <svg style={styles.iconSvg} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+              </svg>
+            </div>
+          ))}
         </div>
         
-        <div style={styles.errorIcon}>⚠️</div>
-        <h2 style={styles.errorTitle}>Oops! Something went wrong</h2>
-        <p style={styles.errorMessage}>{error}</p>
-        <button onClick={fetchRewards} style={styles.retryButton}>
-          <span>🔄</span> Try Again
-        </button>
+        <div style={styles.errorContent}>
+          <div style={styles.errorIcon}>⚠️</div>
+          <h2 style={styles.errorTitle}>Something went wrong</h2>
+          <p style={styles.errorMessage}>{error}</p>
+          <button onClick={fetchRewards} style={styles.retryButton}>
+            <span>🔄</span> Try Again
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div style={styles.rewardsPage}>
-      {/* Floating Background Icons - Covering Entire Page */}
-      <div style={styles.floatingIconsContainer}>
-        <div style={{...styles.floatingIcon, ...styles.float1, top: '8%', left: '12%'}}>🎁</div>
-        <div style={{...styles.floatingIcon, ...styles.float2, top: '15%', right: '18%'}}>🏆</div>
-        <div style={{...styles.floatingIcon, ...styles.float3, top: '28%', left: '8%'}}>⭐</div>
-        <div style={{...styles.floatingIcon, ...styles.float4, top: '35%', right: '25%'}}>🪙</div>
-        <div style={{...styles.floatingIcon, ...styles.float5, top: '52%', left: '15%'}}>💎</div>
-        <div style={{...styles.floatingIcon, ...styles.float6, top: '48%', right: '10%'}}>✨</div>
-        <div style={{...styles.floatingIcon, ...styles.float7, top: '68%', left: '22%'}}>🎯</div>
-        <div style={{...styles.floatingIcon, ...styles.float8, top: '72%', right: '20%'}}>🔥</div>
-        <div style={{...styles.floatingIcon, ...styles.float1, top: '85%', left: '18%'}}>⚡</div>
-        <div style={{...styles.floatingIcon, ...styles.float2, top: '90%', right: '15%'}}>🚀</div>
-        <div style={{...styles.floatingIcon, ...styles.float3, top: '25%', left: '45%'}}>💰</div>
-        <div style={{...styles.floatingIcon, ...styles.float4, top: '42%', left: '65%'}}>🎪</div>
-        <div style={{...styles.floatingIcon, ...styles.float5, top: '58%', left: '75%'}}>🌟</div>
-        <div style={{...styles.floatingIcon, ...styles.float6, top: '78%', left: '60%'}}>🎊</div>
-        <div style={{...styles.floatingIcon, ...styles.float7, top: '12%', left: '80%'}}>🎨</div>
-        <div style={{...styles.floatingIcon, ...styles.float8, top: '38%', right: '5%'}}>🎭</div>
+      {/* Beautiful Floating Background Icons */}
+      <div style={styles.floatingBackground}>
+        {[...Array(30)].map((_, i) => (
+          <div
+            key={i}
+            style={{
+              ...styles.floatingIcon,
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${i * 0.3}s`,
+              animationDuration: `${12 + Math.random() * 8}s`
+            }}
+          >
+            <svg style={styles.iconSvg} viewBox="0 0 24 24" fill="currentColor">
+              {i % 8 === 0 && <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>}
+              {i % 8 === 1 && <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>}
+              {i % 8 === 2 && <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>}
+              {i % 8 === 3 && <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>}
+              {i % 8 === 4 && <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>}
+              {i % 8 === 5 && <path d="M9 11H7v9h2v-9zm4 0h-2v9h2v-9zm4 0h-2v9h2v-9zm2-7H3v2h2v13c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V6h2V4zm-4.5-1H8.5l1-1h5l1 1z"/>}
+              {i % 8 === 6 && <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 1v2h2v2c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V3h2V1H4zm8 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>}
+              {i % 8 === 7 && <path d="M15.55 13c.75 0 1.41-.41 1.75-1.03L21.7 4H19l-1.1 2.2L16.8 4h-2.7l4.4 9h-2.7L12 7.4 8.2 13h-2.7l4.4-9H7.2L6.1 6.2 5 4H2.3l4.4 7.97C7.14 12.59 7.8 13 8.55 13H15.55z"/>}
+            </svg>
+          </div>
+        ))}
       </div>
 
       {/* Notification */}
@@ -246,56 +286,81 @@ const RewardsPage = () => {
 
       {/* Hero Section */}
       <div style={styles.heroSection}>
+        <div style={styles.heroGlow}></div>
         <div style={styles.heroContent}>
           <div style={styles.heroText}>
             <h1 style={styles.heroTitle}>
-              Premium Rewards
-              <span style={styles.heroTitleAccent}>Store</span>
+              Premium
+              <span style={styles.heroTitleAccent}>Rewards</span>
             </h1>
             <p style={styles.heroSubtitle}>
-              Transform your achievements into extraordinary rewards
+              Transform your achievements into valuable rewards with our trusted platform
             </p>
           </div>
           <div style={styles.heroStats}>
             <div style={styles.heroStat}>
+              <div style={styles.heroStatIcon}>
+                <svg style={styles.heroStatSvg} viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+                </svg>
+              </div>
               <span style={styles.heroStatNumber}>{rewards.length}</span>
               <span style={styles.heroStatLabel}>Premium Rewards</span>
             </div>
             <div style={styles.heroStat}>
-              <span style={styles.heroStatNumber}>24/7</span>
-              <span style={styles.heroStatLabel}>Available</span>
+              <div style={styles.heroStatIcon}>
+                <svg style={styles.heroStatSvg} viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                </svg>
+              </div>
+              <span style={styles.heroStatNumber}>100%</span>
+              <span style={styles.heroStatLabel}>Secure & Trusted</span>
             </div>
           </div>
         </div>
       </div>
 
       <div style={styles.container}>
-        {/* User Wallet */}
+        {/* Wallet Section */}
         {userCoins && (
           <div style={styles.walletSection}>
+            <div style={styles.walletGlow}></div>
             <div style={styles.walletHeader}>
               <h2 style={styles.walletTitle}>Your Digital Wallet</h2>
               <div style={styles.levelBadge}>
-                <span style={styles.levelIcon}>✨</span>
-                <span style={styles.levelText}>{userCoins.level || 'Beginner'}</span>
+                <div style={styles.levelBadgeIcon}>
+                  <svg style={styles.levelBadgeSvg} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
+                <span style={styles.levelText}>{userCoins.level || 'Premium Member'}</span>
               </div>
             </div>
             
             <div style={styles.walletGrid}>
               <div style={{ ...styles.walletCard, ...styles.coinsCard }}>
-                <div style={styles.walletCardIcon}>💎</div>
+                <div style={styles.walletCardGlow}></div>
+                <div style={styles.walletCardIcon}>
+                  <svg style={styles.walletCardSvg} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                  </svg>
+                </div>
                 <div style={styles.walletCardContent}>
                   <div style={styles.walletCardValue}>
                     {userCoins.totalCoins?.toLocaleString() || 0}
                   </div>
                   <div style={styles.walletCardLabel}>Available Coins</div>
-                  <div style={styles.walletCardTrend}>+12.5% this month</div>
+                  <div style={styles.walletCardSubtext}>Ready for redemption</div>
                 </div>
-                <div style={styles.walletCardGlow}></div>
               </div>
               
               <div style={{ ...styles.walletCard, ...styles.pointsCard }}>
-                <div style={styles.walletCardIcon}>🏆</div>
+                <div style={styles.walletCardGlow}></div>
+                <div style={styles.walletCardIcon}>
+                  <svg style={styles.walletCardSvg} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                </div>
                 <div style={styles.walletCardContent}>
                   <div style={styles.walletCardValue}>
                     {userCoins.userPoints?.toLocaleString() || 0}
@@ -303,21 +368,28 @@ const RewardsPage = () => {
                   <div style={styles.walletCardLabel}>Total Points</div>
                   <div style={styles.walletCardProgress}>
                     <div style={styles.walletProgressBar}></div>
+                    <div style={styles.progressShimmer}></div>
                   </div>
                 </div>
-                <div style={styles.walletCardGlow}></div>
               </div>
               
               <div style={{ ...styles.walletCard, ...styles.tasksCard }}>
-                <div style={styles.walletCardIcon}>⚡</div>
+                <div style={styles.walletCardGlow}></div>
+                <div style={styles.walletCardIcon}>
+                  <svg style={styles.walletCardSvg} viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                </div>
                 <div style={styles.walletCardContent}>
                   <div style={styles.walletCardValue}>
                     {userCoins.requestsCompleted || 0}
                   </div>
                   <div style={styles.walletCardLabel}>Tasks Completed</div>
-                  <div style={styles.walletCardBadge}>Active</div>
+                  <div style={styles.walletCardBadge}>
+                    <div style={styles.badgeShimmer}></div>
+                    Active Status
+                  </div>
                 </div>
-                <div style={styles.walletCardGlow}></div>
               </div>
             </div>
           </div>
@@ -325,39 +397,47 @@ const RewardsPage = () => {
 
         {/* Filters */}
         <div style={styles.filtersSection}>
+          <div style={styles.filtersGlow}></div>
           <div style={styles.filtersHeader}>
-            <h3 style={styles.filtersTitle}>Discover Rewards</h3>
+            <h3 style={styles.filtersTitle}>Discover Amazing Rewards</h3>
             <div style={styles.resultsCounter}>
+              <div style={styles.resultsShimmer}></div>
               <span style={styles.resultsNumber}>{rewards.length}</span>
-              <span style={styles.resultsLabel}>available</span>
+              <span style={styles.resultsLabel}>premium rewards</span>
             </div>
           </div>
           
           <div style={styles.filtersControls}>
             <div style={styles.filterGroup}>
               <label style={styles.filterLabel}>Category</label>
-              <select 
-                value={selectedCategory} 
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                style={styles.filterSelect}
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>{category}</option>
-                ))}
-              </select>
+              <div style={styles.selectWrapper}>
+                <select 
+                  value={selectedCategory} 
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  style={styles.filterSelect}
+                >
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+                <div style={styles.selectGlow}></div>
+              </div>
             </div>
             
             <div style={styles.filterGroup}>
               <label style={styles.filterLabel}>Sort By</label>
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value)}
-                style={styles.filterSelect}
-              >
-                <option value="coinsCost">Price: Low to High</option>
-                <option value="-coinsCost">Price: High to Low</option>
-                <option value="title">Name: A to Z</option>
-              </select>
+              <div style={styles.selectWrapper}>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={styles.filterSelect}
+                >
+                  <option value="coinsCost">Price: Low to High</option>
+                  <option value="-coinsCost">Price: High to Low</option>
+                  <option value="title">Name: A to Z</option>
+                </select>
+                <div style={styles.selectGlow}></div>
+              </div>
             </div>
           </div>
         </div>
@@ -372,6 +452,7 @@ const RewardsPage = () => {
                 animationDelay: `${index * 0.1}s`
               }}
             >
+              <div style={styles.cardGlow}></div>
               <div style={styles.cardImageContainer}>
                 <img 
                   src={reward.image} 
@@ -390,7 +471,8 @@ const RewardsPage = () => {
                 <div style={styles.cardBadges}>
                   {reward.isFeatured && (
                     <span style={styles.featuredBadge}>
-                      <span style={styles.featuredIcon}>⭐</span>
+                      <div style={styles.featuredShimmer}></div>
+                      <span style={styles.featuredIcon}>★</span>
                       Featured
                     </span>
                   )}
@@ -404,7 +486,11 @@ const RewardsPage = () => {
                 
                 <div style={styles.cardPricing}>
                   <div style={styles.coinPrice}>
-                    <span style={styles.coinIcon}>🪙</span>
+                    <div style={styles.coinIcon}>
+                      <svg style={styles.coinSvg} viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+                      </svg>
+                    </div>
                     <span style={styles.priceValue}>{reward.coinsCost}</span>
                     <span style={styles.priceLabel}>coins</span>
                   </div>
@@ -431,21 +517,13 @@ const RewardsPage = () => {
                     onClick={() => handleRedeemClick(reward)}
                     disabled={reward.availability <= 0}
                   >
+                    <div style={styles.buttonShimmer}></div>
                     {reward.availability <= 0 ? (
-                      <>
-                        <span style={styles.buttonIcon}>❌</span>
-                        Out of Stock
-                      </>
+                      <>❌ Out of Stock</>
                     ) : !userCoins || userCoins.totalCoins < reward.coinsCost ? (
-                      <>
-                        <span style={styles.buttonIcon}>💰</span>
-                        Need More Coins
-                      </>
+                      <>💰 Need More Coins</>
                     ) : (
-                      <>
-                        <span style={styles.buttonIcon}>🎁</span>
-                        Redeem Now
-                      </>
+                      <>🎁 Redeem Now</>
                     )}
                   </button>
                 </div>
@@ -457,40 +535,87 @@ const RewardsPage = () => {
         {/* Empty State */}
         {rewards.length === 0 && (
           <div style={styles.emptyState}>
-            <div style={styles.emptyIcon}>🎁</div>
+            <div style={styles.emptyGlow}></div>
+            <div style={styles.emptyIcon}>
+              <svg style={styles.emptyIconSvg} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 6h-2.18c.11-.31.18-.65.18-1a2.996 2.996 0 0 0-5.5-1.65l-.5.67-.5-.68C10.96 2.54 10.05 2 9 2 7.34 2 6 3.34 6 5c0 .35.07.69.18 1H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2z"/>
+              </svg>
+            </div>
             <h3 style={styles.emptyTitle}>No rewards found</h3>
             <p style={styles.emptyDescription}>
-              Try adjusting your filters or check back soon for new rewards!
+              Try adjusting your filters or check back later for exciting new rewards
             </p>
             <button 
               onClick={() => setSelectedCategory('All')} 
               style={styles.resetButton}
             >
+              <div style={styles.resetShimmer}></div>
               Reset Filters
             </button>
           </div>
         )}
 
-        {/* Earn More Section */}
+        {/* Earn Section */}
         <div style={styles.earnSection}>
+          <div style={styles.earnGlow}></div>
           <div style={styles.earnHeader}>
-            <h3 style={styles.earnTitle}>Boost Your Earnings</h3>
-            <p style={styles.earnSubtitle}>Multiple ways to earn more coins</p>
+            <h3 style={styles.earnTitle}>Boost Your Earning Power</h3>
+            <p style={styles.earnSubtitle}>Multiple paths to maximize your rewards</p>
           </div>
           
           <div style={styles.earnGrid}>
             {[
-              { icon: '🤝', title: 'Help Others', desc: 'Complete community requests', reward: '+50-100' },
-              { icon: '⭐', title: 'Get 5-Star Ratings', desc: 'Exceptional service quality', reward: '+25' },
-              { icon: '⚡', title: 'Quick Completion', desc: 'Beat deadlines consistently', reward: '+15' },
-              { icon: '🏆', title: 'Unlock Achievements', desc: 'Reach important milestones', reward: '+100+' }
+              { 
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zM4 1v2h2v2c0 .55.45 1 1 1h10c.55 0 1-.45 1-1V3h2V1H4zm8 12c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+                  </svg>
+                ), 
+                title: 'Help Community', 
+                desc: 'Complete requests and assist others', 
+                reward: '+50-100 coins'
+              },
+              { 
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                  </svg>
+                ), 
+                title: 'Earn 5-Star Reviews', 
+                desc: 'Exceptional service brings rewards', 
+                reward: '+25 coins'
+              },
+              { 
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M15.55 13c.75 0 1.41-.41 1.75-1.03L21.7 4H19l-1.1 2.2L16.8 4h-2.7l4.4 9h-2.7L12 7.4 8.2 13h-2.7l4.4-9H7.2L6.1 6.2 5 4H2.3l4.4 7.97C7.14 12.59 7.8 13 8.55 13H15.55z"/>
+                  </svg>
+                ), 
+                title: 'Lightning Fast', 
+                desc: 'Complete tasks ahead of schedule', 
+                reward: '+15 coins'
+              },
+              { 
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                ), 
+                title: 'Unlock Milestones', 
+                desc: 'Achieve goals and collect bonuses', 
+                reward: '+100+ coins'
+              }
             ].map((method, index) => (
               <div key={index} style={styles.earnMethod}>
+                <div style={styles.earnMethodGlow}></div>
                 <div style={styles.earnMethodIcon}>{method.icon}</div>
                 <div style={styles.earnMethodContent}>
                   <h4 style={styles.earnMethodTitle}>{method.title}</h4>
                   <p style={styles.earnMethodDesc}>{method.desc}</p>
-                  <span style={styles.earnMethodReward}>{method.reward}</span>
+                  <div style={styles.earnMethodReward}>
+                    <div style={styles.rewardShimmer}></div>
+                    {method.reward}
+                  </div>
                 </div>
               </div>
             ))}
@@ -512,19 +637,19 @@ const RewardsPage = () => {
   );
 };
 
-// 🌟 STUNNING DEEP BLUE BACKGROUND WITH FLOATING ICONS
+// 🌟 BEAUTIFUL BLUE & WHITE DESIGN WITH FLOATING ANIMATIONS
 const styles = {
   rewardsPage: {
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #0a1628 0%, #1e3a8a 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%)',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
     position: 'relative',
-    overflow: 'hidden',
-    color: 'white'
+    color: '#1e293b',
+    overflow: 'hidden'
   },
 
-  // 🌌 FLOATING ICONS BACKGROUND
-  floatingIconsContainer: {
+  // Beautiful Floating Background
+  floatingBackground: {
     position: 'fixed',
     top: 0,
     left: 0,
@@ -537,196 +662,197 @@ const styles = {
 
   floatingIcon: {
     position: 'absolute',
-    fontSize: '3.5rem',
-    color: 'rgba(255, 255, 255, 0.08)',
+    width: '40px',
+    height: '40px',
+    color: 'rgba(59, 130, 246, 0.08)', // Using #3b82f6 with low opacity
+    animation: 'floatAnimation 20s ease-in-out infinite',
     opacity: 0.6,
-    userSelect: 'none',
-    pointerEvents: 'none',
-    filter: 'blur(0.5px)',
-    textShadow: '0 0 20px rgba(255, 255, 255, 0.3)'
+    userSelect: 'none'
   },
 
-  // Different animation delays and durations for natural movement
-  float1: {
-    animation: 'floatUp 25s ease-in-out infinite',
-    animationDelay: '0s'
+  iconSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.1))'
   },
 
-  float2: {
-    animation: 'floatDown 30s ease-in-out infinite',
-    animationDelay: '5s'
-  },
-
-  float3: {
-    animation: 'floatLeft 28s ease-in-out infinite',
-    animationDelay: '10s'
-  },
-
-  float4: {
-    animation: 'floatRight 32s ease-in-out infinite',
-    animationDelay: '15s'
-  },
-
-  float5: {
-    animation: 'floatDiagonal 26s ease-in-out infinite',
-    animationDelay: '20s'
-  },
-
-  float6: {
-    animation: 'floatCircle 35s ease-in-out infinite',
-    animationDelay: '3s'
-  },
-
-  float7: {
-    animation: 'floatWave 29s ease-in-out infinite',
-    animationDelay: '12s'
-  },
-
-  float8: {
-    animation: 'floatSpin 33s ease-in-out infinite',
-    animationDelay: '7s'
-  },
-
-  // Hero Section with Glass Effect
+  // Hero Section - Beautiful Blue #3b82f6
   heroSection: {
     position: 'relative',
-    height: '70vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)',
+    color: 'white',
+    padding: '5rem 0',
     marginBottom: '4rem',
-    background: 'rgba(255, 255, 255, 0.05)',
-    backdropFilter: 'blur(20px)',
-    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-    zIndex: 2
+    zIndex: 2,
+    overflow: 'hidden'
+  },
+
+  heroGlow: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '120%',
+    height: '120%',
+    background: 'radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%)',
+    pointerEvents: 'none'
   },
 
   heroContent: {
     textAlign: 'center',
-    color: 'white',
-    zIndex: 3,
-    position: 'relative'
-  },
-
-  heroText: {
-    marginBottom: '3rem'
-  },
-
-  heroTitle: {
-    fontSize: '4.5rem',
-    fontWeight: 900,
-    margin: '0 0 1rem 0',
-    background: 'linear-gradient(135deg, #ffffff 0%, #e0e7ff 50%, #c7d2fe 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-    letterSpacing: '-0.02em',
-    lineHeight: 1.1,
-    textShadow: '0 0 30px rgba(255, 255, 255, 0.5)'
-  },
-
-  heroTitleAccent: {
-    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-    filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.8))'
-  },
-
-  heroSubtitle: {
-    fontSize: '1.7rem',
-    fontWeight: 300,
-    opacity: 0.9,
-    margin: 0,
-    letterSpacing: '0.01em',
-    color: 'rgba(255, 255, 255, 0.9)',
-    textShadow: '0 2px 10px rgba(0, 0, 0, 0.3)'
-  },
-
-  heroStats: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '5rem'
-  },
-
-  heroStat: {
-    textAlign: 'center',
-    background: 'rgba(255, 255, 255, 0.1)',
-    padding: '2rem 3rem',
-    borderRadius: '20px',
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-  },
-
-  heroStatNumber: {
-    display: 'block',
-    fontSize: '3rem',
-    fontWeight: 800,
-    marginBottom: '0.5rem',
-    color: '#60a5fa',
-    textShadow: '0 0 20px rgba(96, 165, 250, 0.8)'
-  },
-
-  heroStatLabel: {
-    fontSize: '1.1rem',
-    opacity: 0.9,
-    textTransform: 'uppercase',
-    letterSpacing: '0.1em',
-    fontWeight: 500
-  },
-
-  // Container with Glass Effect
-  container: {
-    maxWidth: '1400px',
+    maxWidth: '900px',
     margin: '0 auto',
     padding: '0 2rem',
     position: 'relative',
     zIndex: 2
   },
 
-  // Wallet Section with Enhanced Glass Effect
+  heroText: {
+    marginBottom: '4rem'
+  },
+
+  heroTitle: {
+    fontSize: '4rem',
+    fontWeight: 900,
+    margin: '0 0 1.5rem 0',
+    lineHeight: 1.1,
+    letterSpacing: '-0.02em',
+    textShadow: '0 2px 20px rgba(0, 0, 0, 0.2)'
+  },
+
+  heroTitleAccent: {
+    color: '#fbbf24',
+    filter: 'drop-shadow(0 0 10px rgba(251, 191, 36, 0.6))'
+  },
+
+  heroSubtitle: {
+    fontSize: '1.4rem',
+    fontWeight: 300,
+    opacity: 0.9,
+    margin: 0,
+    lineHeight: 1.6,
+    textShadow: '0 1px 10px rgba(0, 0, 0, 0.2)'
+  },
+
+  heroStats: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '6rem'
+  },
+
+  heroStat: {
+    textAlign: 'center',
+    background: 'rgba(255, 255, 255, 0.15)',
+    backdropFilter: 'blur(20px)',
+    padding: '2.5rem',
+    borderRadius: '20px',
+    border: '1px solid rgba(255, 255, 255, 0.2)',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  heroStatIcon: {
+    width: '48px',
+    height: '48px',
+    margin: '0 auto 1rem',
+    color: '#fbbf24'
+  },
+
+  heroStatSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 6px rgba(251, 191, 36, 0.5))'
+  },
+
+  heroStatNumber: {
+    display: 'block',
+    fontSize: '2.5rem',
+    fontWeight: 800,
+    marginBottom: '0.8rem',
+    textShadow: '0 0 15px rgba(255, 255, 255, 0.3)'
+  },
+
+  heroStatLabel: {
+    fontSize: '1rem',
+    opacity: 0.9,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontWeight: 500
+  },
+
+  // Container
+  container: {
+    maxWidth: '1300px',
+    margin: '0 auto',
+    padding: '0 2rem',
+    position: 'relative',
+    zIndex: 2
+  },
+
+  // Wallet Section - Pure White with Blue Accents
   walletSection: {
     marginBottom: '4rem',
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(30px)',
     borderRadius: '24px',
-    padding: '2rem',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+    padding: '3rem',
+    border: '1px solid rgba(59, 130, 246, 0.1)',
+    boxShadow: '0 20px 60px rgba(59, 130, 246, 0.1)',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  walletGlow: {
+    position: 'absolute',
+    top: '-30%',
+    left: '-30%',
+    width: '160%',
+    height: '160%',
+    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 70%)',
+    pointerEvents: 'none'
   },
 
   walletHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '2rem'
+    marginBottom: '3rem',
+    position: 'relative',
+    zIndex: 2
   },
 
   walletTitle: {
     fontSize: '2.2rem',
     fontWeight: 800,
-    color: 'white',
-    margin: 0,
-    textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    margin: 0
   },
 
   levelBadge: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.75rem',
-    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%)',
+    gap: '0.8rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
     padding: '1rem 2rem',
     borderRadius: '50px',
     fontWeight: 700,
-    fontSize: '1.1rem',
-    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    fontSize: '1rem',
+    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
+    position: 'relative',
+    overflow: 'hidden'
   },
 
-  levelIcon: {
-    fontSize: '1.5rem'
+  levelBadgeIcon: {
+    width: '24px',
+    height: '24px'
+  },
+
+  levelBadgeSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 4px rgba(255, 255, 255, 0.3))'
   },
 
   levelText: {},
@@ -734,44 +860,62 @@ const styles = {
   walletGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))',
-    gap: '2rem'
+    gap: '2rem',
+    position: 'relative',
+    zIndex: 2
   },
 
   walletCard: {
-    position: 'relative',
-    background: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: '24px',
+    background: 'rgba(255, 255, 255, 0.9)',
+    backdropFilter: 'blur(20px)',
+    borderRadius: '20px',
     padding: '2.5rem',
     display: 'flex',
     alignItems: 'center',
     gap: '2rem',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-    overflow: 'hidden',
-    cursor: 'pointer'
+    border: '1px solid rgba(59, 130, 246, 0.15)',
+    boxShadow: '0 8px 30px rgba(59, 130, 246, 0.08)',
+    transition: 'all 0.4s ease',
+    cursor: 'pointer',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  walletCardGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%)',
+    opacity: 0,
+    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none'
   },
 
   coinsCard: {
-    background: 'linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(59, 130, 246, 0.3) 100%)',
-    borderColor: 'rgba(59, 130, 246, 0.5)'
+    borderLeft: '4px solid #3b82f6'
   },
 
   pointsCard: {
-    background: 'linear-gradient(135deg, rgba(14, 165, 233, 0.2) 0%, rgba(2, 132, 199, 0.3) 100%)',
-    borderColor: 'rgba(14, 165, 233, 0.5)'
+    borderLeft: '4px solid #fbbf24'
   },
 
   tasksCard: {
-    background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.3) 100%)',
-    borderColor: 'rgba(16, 185, 129, 0.5)'
+    borderLeft: '4px solid #10b981'
   },
 
   walletCardIcon: {
-    fontSize: '3.5rem',
-    flexShrink: 0,
-    filter: 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.5))'
+    width: '56px',
+    height: '56px',
+    color: '#3b82f6',
+    flexShrink: 0
+  },
+
+  walletCardSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))'
   },
 
   walletCardContent: {
@@ -781,116 +925,153 @@ const styles = {
   walletCardValue: {
     fontSize: '2.8rem',
     fontWeight: 900,
-    color: 'white',
+    color: '#1e293b',
     marginBottom: '0.5rem',
-    lineHeight: 1,
-    textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+    lineHeight: 1
   },
 
   walletCardLabel: {
-    fontSize: '1.1rem',
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: '1rem',
+    color: '#475569',
     fontWeight: 600,
-    marginBottom: '0.5rem'
+    marginBottom: '0.3rem'
   },
 
-  walletCardTrend: {
-    color: '#34d399',
-    fontSize: '1rem',
-    fontWeight: 700,
-    textShadow: '0 0 10px rgba(52, 211, 153, 0.8)'
+  walletCardSubtext: {
+    fontSize: '0.9rem',
+    color: '#64748b',
+    fontWeight: 400
   },
 
   walletCardProgress: {
     width: '100%',
     height: '6px',
-    background: 'rgba(255, 255, 255, 0.2)',
+    background: 'rgba(59, 130, 246, 0.15)',
     borderRadius: '3px',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    marginTop: '0.8rem',
+    position: 'relative'
   },
 
   walletProgressBar: {
     width: '75%',
     height: '100%',
-    background: 'linear-gradient(90deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%)',
+    background: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)',
     borderRadius: '3px',
-    transition: 'width 2s ease',
-    boxShadow: '0 0 10px rgba(59, 130, 246, 0.8)'
+    transition: 'width 2s ease'
+  },
+
+  progressShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.4), transparent)',
+    animation: 'shimmer 2s ease-in-out infinite'
   },
 
   walletCardBadge: {
-    background: '#10b981',
+    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
     color: 'white',
-    padding: '0.4rem 1rem',
-    borderRadius: '15px',
-    fontSize: '0.9rem',
+    padding: '0.5rem 1rem',
+    borderRadius: '20px',
+    fontSize: '0.85rem',
     fontWeight: 700,
-    boxShadow: '0 0 15px rgba(16, 185, 129, 0.6)'
+    marginTop: '0.5rem',
+    display: 'inline-block',
+    position: 'relative',
+    overflow: 'hidden'
   },
 
-  walletCardGlow: {
+  badgeShimmer: {
     position: 'absolute',
     top: 0,
-    left: 0,
-    right: 0,
-    height: '2px',
-    background: 'linear-gradient(90deg, transparent, #60a5fa, transparent)',
-    opacity: 0,
-    transition: 'opacity 0.3s ease'
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
+    animation: 'shimmer 3s ease-in-out infinite'
   },
 
-  // Filters Section with Enhanced Glass
+  // Filters Section
   filtersSection: {
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(30px)',
     borderRadius: '24px',
     padding: '2.5rem',
-    marginBottom: '3rem',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+    marginBottom: '4rem',
+    border: '1px solid rgba(59, 130, 246, 0.1)',
+    boxShadow: '0 20px 60px rgba(59, 130, 246, 0.1)',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  filtersGlow: {
+    position: 'absolute',
+    top: '-20%',
+    left: '-20%',
+    width: '140%',
+    height: '140%',
+    background: 'radial-gradient(circle, rgba(251, 191, 36, 0.03) 0%, transparent 70%)',
+    pointerEvents: 'none'
   },
 
   filtersHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '2rem'
+    marginBottom: '2rem',
+    position: 'relative',
+    zIndex: 2
   },
 
   filtersTitle: {
     fontSize: '2rem',
     fontWeight: 800,
-    color: 'white',
-    margin: 0,
-    textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    margin: 0
   },
 
   resultsCounter: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.75rem',
-    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%)',
+    gap: '0.8rem',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
     padding: '1rem 2rem',
     borderRadius: '50px',
     fontWeight: 700,
-    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  resultsShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+    animation: 'shimmer 4s ease-in-out infinite'
   },
 
   resultsNumber: {
-    fontSize: '1.4rem',
+    fontSize: '1.3rem',
     fontWeight: 900
   },
 
   resultsLabel: {
-    fontSize: '1rem'
+    fontSize: '0.95rem'
   },
 
   filtersControls: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '2rem'
+    gap: '2rem',
+    position: 'relative',
+    zIndex: 2
   },
 
   filterGroup: {
@@ -901,49 +1082,78 @@ const styles = {
 
   filterLabel: {
     fontWeight: 700,
-    color: 'white',
-    fontSize: '1.1rem',
-    textShadow: '0 1px 5px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    fontSize: '1rem'
+  },
+
+  selectWrapper: {
+    position: 'relative'
   },
 
   filterSelect: {
+    width: '100%',
     padding: '1.2rem 1.8rem',
-    border: '2px solid rgba(255, 255, 255, 0.3)',
+    border: '2px solid rgba(59, 130, 246, 0.2)',
     borderRadius: '16px',
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(255, 255, 255, 0.9)',
     backdropFilter: 'blur(10px)',
     fontSize: '1rem',
     fontWeight: 600,
-    color: 'white',
+    color: '#1e293b',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     outline: 'none'
   },
 
-  // Enhanced Rewards Grid
+  selectGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: '16px',
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.08), transparent)',
+    opacity: 0,
+    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none'
+  },
+
+  // Rewards Grid
   rewardsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))',
     gap: '3rem',
     marginBottom: '5rem'
   },
 
   rewardCard: {
-    background: 'rgba(255, 255, 255, 0.95)',
+    background: 'rgba(255, 255, 255, 0.98)',
     borderRadius: '24px',
     overflow: 'hidden',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    boxShadow: '0 15px 50px rgba(0, 0, 0, 0.3)',
+    border: '1px solid rgba(59, 130, 246, 0.15)',
+    boxShadow: '0 20px 60px rgba(59, 130, 246, 0.08)',
     transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-    animation: 'slideUp 0.6s ease-out both',
     position: 'relative',
-    color: '#1e293b'
+    color: '#1e293b',
+    animation: 'slideUp 0.8s ease-out both'
+  },
+
+  cardGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 50%, rgba(251, 191, 36, 0.05) 100%)',
+    opacity: 0,
+    transition: 'opacity 0.4s ease',
+    pointerEvents: 'none',
+    borderRadius: '24px'
   },
 
   cardImageContainer: {
     position: 'relative',
-    height: '280px',
+    height: '240px',
     overflow: 'hidden'
   },
 
@@ -960,7 +1170,8 @@ const styles = {
     left: 0,
     right: 0,
     bottom: 0,
-    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(29, 78, 216, 0.9) 100%)',
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(37, 99, 235, 0.9) 100%)',
+    backdropFilter: 'blur(10px)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -975,50 +1186,61 @@ const styles = {
 
   viewDetailsText: {
     background: 'rgba(255, 255, 255, 0.2)',
+    backdropFilter: 'blur(20px)',
     padding: '1rem 2rem',
     borderRadius: '50px',
     fontWeight: 700,
-    backdropFilter: 'blur(10px)',
-    border: '1px solid rgba(255, 255, 255, 0.3)',
-    fontSize: '1.1rem'
+    border: '1px solid rgba(255, 255, 255, 0.3)'
   },
 
   cardBadges: {
     position: 'absolute',
-    top: '1.2rem',
-    left: '1.2rem',
-    right: '1.2rem',
+    top: '1.5rem',
+    left: '1.5rem',
+    right: '1.5rem',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start'
   },
 
   featuredBadge: {
-    background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-    color: 'white',
+    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+    color: '#92400e',
     padding: '0.6rem 1.2rem',
     borderRadius: '50px',
-    fontSize: '0.9rem',
+    fontSize: '0.85rem',
     fontWeight: 800,
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
-    boxShadow: '0 4px 15px rgba(245, 158, 11, 0.5)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    boxShadow: '0 8px 25px rgba(251, 191, 36, 0.3)',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  featuredShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent)',
+    animation: 'shimmer 2s ease-in-out infinite'
   },
 
   featuredIcon: {
-    fontSize: '1.1rem'
+    fontSize: '1rem',
+    filter: 'drop-shadow(0 0 3px rgba(146, 64, 14, 0.5))'
   },
 
   categoryBadge: {
     background: 'rgba(255, 255, 255, 0.95)',
-    color: '#374151',
+    backdropFilter: 'blur(20px)',
+    color: '#1e293b',
     padding: '0.6rem 1.2rem',
     borderRadius: '50px',
-    fontSize: '0.9rem',
+    fontSize: '0.85rem',
     fontWeight: 700,
-    backdropFilter: 'blur(10px)',
     border: '1px solid rgba(59, 130, 246, 0.2)'
   },
 
@@ -1027,7 +1249,7 @@ const styles = {
   },
 
   cardTitle: {
-    fontSize: '1.6rem',
+    fontSize: '1.5rem',
     fontWeight: 800,
     color: '#1e293b',
     margin: '0 0 1rem 0',
@@ -1035,8 +1257,8 @@ const styles = {
   },
 
   cardDescription: {
-    color: '#64748b',
-    fontSize: '1.1rem',
+    color: '#475569',
+    fontSize: '1rem',
     lineHeight: 1.6,
     margin: '0 0 2rem 0'
   },
@@ -1051,28 +1273,35 @@ const styles = {
   coinPrice: {
     display: 'flex',
     alignItems: 'center',
-    gap: '0.6rem'
+    gap: '0.8rem'
   },
 
   coinIcon: {
-    fontSize: '1.8rem',
-    filter: 'drop-shadow(0 0 5px rgba(255, 193, 7, 0.8))'
+    width: '32px',
+    height: '32px',
+    color: '#fbbf24'
+  },
+
+  coinSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 4px rgba(251, 191, 36, 0.4))'
   },
 
   priceValue: {
-    fontSize: '2.2rem',
+    fontSize: '2rem',
     fontWeight: 900,
     color: '#1e293b'
   },
 
   priceLabel: {
-    fontSize: '1.1rem',
-    color: '#64748b',
+    fontSize: '1rem',
+    color: '#475569',
     fontWeight: 700
   },
 
   originalPrice: {
-    color: '#9ca3af',
+    color: '#94a3b8',
     textDecoration: 'line-through',
     fontSize: '1rem',
     fontWeight: 600
@@ -1089,423 +1318,407 @@ const styles = {
     alignItems: 'center',
     gap: '0.6rem',
     color: '#10b981',
-    fontSize: '1rem',
+    fontSize: '0.9rem',
     fontWeight: 600
   },
 
   stockDot: {
-    width: '10px',
-    height: '10px',
+    width: '8px',
+    height: '8px',
     background: '#10b981',
     borderRadius: '50%',
     animation: 'pulse 2s infinite',
-    boxShadow: '0 0 10px rgba(16, 185, 129, 0.8)'
+    boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
   },
 
   stockText: {},
 
   redeemButton: {
-    padding: '1.2rem 2.5rem',
+    padding: '1rem 2rem',
     border: 'none',
     borderRadius: '16px',
-    fontSize: '1.1rem',
-    fontWeight: 800,
+    fontSize: '1rem',
+    fontWeight: 700,
     cursor: 'pointer',
     transition: 'all 0.3s ease',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.6rem',
+    gap: '0.5rem',
     position: 'relative',
-    overflow: 'hidden',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05em'
+    overflow: 'hidden'
+  },
+
+  buttonShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
+    transition: 'left 0.6s ease'
   },
 
   redeemButtonAvailable: {
-    background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
-    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)'
   },
 
   redeemButtonDisabled: {
     background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
     color: 'white',
     cursor: 'not-allowed',
-    boxShadow: '0 8px 25px rgba(239, 68, 68, 0.4)'
+    boxShadow: '0 8px 25px rgba(239, 68, 68, 0.3)'
   },
 
   redeemButtonOutOfStock: {
     background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)',
     color: 'white',
     cursor: 'not-allowed',
-    boxShadow: '0 8px 25px rgba(107, 114, 128, 0.4)'
+    boxShadow: '0 8px 25px rgba(107, 114, 128, 0.3)'
   },
 
-  buttonIcon: {
-    fontSize: '1.2rem'
-  },
-
-  // Enhanced Empty State
+  // Empty State
   emptyState: {
     textAlign: 'center',
     padding: '5rem 3rem',
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(30px)',
     borderRadius: '24px',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+    border: '1px solid rgba(59, 130, 246, 0.1)',
+    boxShadow: '0 20px 60px rgba(59, 130, 246, 0.1)',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  emptyGlow: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '150%',
+    height: '150%',
+    background: 'radial-gradient(circle, rgba(59, 130, 246, 0.03) 0%, transparent 70%)',
+    pointerEvents: 'none'
   },
 
   emptyIcon: {
-    fontSize: '5rem',
-    marginBottom: '2rem',
-    filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))'
+    width: '100px',
+    height: '100px',
+    margin: '0 auto 2rem',
+    color: 'rgba(59, 130, 246, 0.4)'
+  },
+
+  emptyIconSvg: {
+    width: '100%',
+    height: '100%',
+    filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.2))'
   },
 
   emptyTitle: {
     fontSize: '2rem',
     fontWeight: 800,
-    color: 'white',
-    marginBottom: '1rem',
-    textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    marginBottom: '1rem'
   },
 
   emptyDescription: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: '1.2rem',
+    color: '#475569',
+    fontSize: '1.1rem',
     marginBottom: '2.5rem',
     lineHeight: 1.6
   },
 
   resetButton: {
-    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%)',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
     border: 'none',
     padding: '1.2rem 2.5rem',
     borderRadius: '16px',
     fontWeight: 700,
-    fontSize: '1.1rem',
+    fontSize: '1rem',
     cursor: 'pointer',
     transition: 'all 0.3s ease',
-    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)',
+    position: 'relative',
+    overflow: 'hidden'
   },
 
-  // Enhanced Earn Section
+  resetShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent)',
+    transition: 'left 0.6s ease'
+  },
+
+  // Earn Section
   earnSection: {
-    background: 'rgba(255, 255, 255, 0.1)',
+    background: 'rgba(255, 255, 255, 0.95)',
+    backdropFilter: 'blur(30px)',
     borderRadius: '24px',
     padding: '4rem',
-    backdropFilter: 'blur(20px)',
-    border: '1px solid rgba(255, 255, 255, 0.2)',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
-    marginBottom: '4rem'
+    border: '1px solid rgba(59, 130, 246, 0.1)',
+    boxShadow: '0 20px 60px rgba(59, 130, 246, 0.1)',
+    marginBottom: '4rem',
+    position: 'relative',
+    overflow: 'hidden'
+  },
+
+  earnGlow: {
+    position: 'absolute',
+    top: '-30%',
+    left: '-30%',
+    width: '160%',
+    height: '160%',
+    background: 'radial-gradient(circle, rgba(251, 191, 36, 0.03) 0%, transparent 70%)',
+    pointerEvents: 'none'
   },
 
   earnHeader: {
     textAlign: 'center',
-    marginBottom: '3rem'
+    marginBottom: '3rem',
+    position: 'relative',
+    zIndex: 2
   },
 
   earnTitle: {
     fontSize: '2.5rem',
     fontWeight: 900,
-    color: 'white',
-    margin: '0 0 0.8rem 0',
-    textShadow: '0 2px 15px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    margin: '0 0 1rem 0'
   },
 
   earnSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: '1.3rem',
-    margin: 0,
-    fontWeight: 400
+    color: '#475569',
+    fontSize: '1.2rem',
+    margin: 0
   },
 
   earnGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '2.5rem'
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '2rem',
+    position: 'relative',
+    zIndex: 2
   },
 
   earnMethod: {
-    background: 'rgba(255, 255, 255, 0.95)',
+    background: 'rgba(255, 255, 255, 0.9)',
     borderRadius: '20px',
     padding: '2.5rem',
     textAlign: 'center',
     transition: 'all 0.4s ease',
-    border: '2px solid rgba(255, 255, 255, 0.3)',
+    border: '2px solid rgba(59, 130, 246, 0.1)',
     position: 'relative',
     overflow: 'hidden',
-    backdropFilter: 'blur(10px)',
-    color: '#1e293b'
+    cursor: 'pointer'
+  },
+
+  earnMethodGlow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.03) 0%, transparent 100%)',
+    opacity: 0,
+    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none',
+    borderRadius: '20px'
   },
 
   earnMethodIcon: {
-    fontSize: '3rem',
-    marginBottom: '1.5rem',
-    filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.5))'
+    width: '48px',
+    height: '48px',
+    margin: '0 auto 1.5rem',
+    color: '#3b82f6',
+    filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.3))'
   },
 
   earnMethodContent: {},
 
   earnMethodTitle: {
-    fontSize: '1.4rem',
+    fontSize: '1.3rem',
     fontWeight: 800,
     color: '#1e293b',
     margin: '0 0 0.8rem 0'
   },
 
   earnMethodDesc: {
-    color: '#64748b',
-    fontSize: '1rem',
+    color: '#475569',
+    fontSize: '0.95rem',
     margin: '0 0 1.5rem 0',
     lineHeight: 1.6
   },
 
   earnMethodReward: {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-    color: 'white',
-    padding: '0.6rem 1.5rem',
+    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+    color: '#92400e',
+    padding: '0.8rem 1.5rem',
     borderRadius: '50px',
     fontWeight: 800,
-    fontSize: '1rem',
+    fontSize: '0.9rem',
     display: 'inline-block',
-    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    boxShadow: '0 8px 25px rgba(251, 191, 36, 0.3)',
+    position: 'relative',
+    overflow: 'hidden'
   },
 
-  // Loading States with Deep Blue Background
+  rewardShimmer: {
+    position: 'absolute',
+    top: 0,
+    left: '-100%',
+    width: '100%',
+    height: '100%',
+    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent)',
+    animation: 'shimmer 3s ease-in-out infinite'
+  },
+
+  // Loading States
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #0a1628 0%, #1e3a8a 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%)',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
     textAlign: 'center',
     position: 'relative',
     overflow: 'hidden'
   },
 
-  loadingSpinner: {
-    width: '100px',
-    height: '100px',
-    border: '6px solid rgba(96, 165, 250, 0.2)',
-    borderTop: '6px solid #60a5fa',
-    borderRadius: '50%',
-    animation: 'spin 1.5s linear infinite',
-    marginBottom: '3rem',
-    boxShadow: '0 0 30px rgba(96, 165, 250, 0.8)'
-  },
-
-  loadingText: {
+  loadingContent: {
     position: 'relative',
     zIndex: 2
   },
 
+  loadingSpinner: {
+    width: '80px',
+    height: '80px',
+    marginBottom: '3rem',
+    position: 'relative'
+  },
+
+  spinnerRing: {
+    width: '100%',
+    height: '100%',
+    border: '6px solid rgba(59, 130, 246, 0.2)',
+    borderTop: '6px solid #3b82f6',
+    borderRadius: '50%',
+    animation: 'spin 1.2s linear infinite'
+  },
+
+  spinnerCore: {
+    position: 'absolute',
+    top: '15px',
+    left: '15px',
+    right: '15px',
+    bottom: '15px',
+    border: '4px solid rgba(251, 191, 36, 0.3)',
+    borderTop: '4px solid #fbbf24',
+    borderRadius: '50%',
+    animation: 'spin 0.8s linear infinite reverse'
+  },
+
+  loadingText: {},
+
   loadingTitle: {
-    fontSize: '2.5rem',
+    fontSize: '2.2rem',
     fontWeight: 900,
-    color: 'white',
-    marginBottom: '1rem',
-    textShadow: '0 2px 15px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    marginBottom: '1rem'
   },
 
   loadingSubtitle: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: '1.3rem',
+    color: '#475569',
+    fontSize: '1.1rem',
     fontWeight: 300
   },
 
-  // Error States with Deep Blue Background
+  // Error States
   errorContainer: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: '100vh',
-    background: 'linear-gradient(135deg, #0a1628 0%, #1e3a8a 25%, #1d4ed8 50%, #2563eb 75%, #3b82f6 100%)',
+    background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 50%, #cbd5e1 75%, #94a3b8 100%)',
     textAlign: 'center',
     padding: '3rem',
     position: 'relative',
     overflow: 'hidden'
   },
 
+  errorContent: {
+    position: 'relative',
+    zIndex: 2
+  },
+
   errorIcon: {
     fontSize: '5rem',
     marginBottom: '2rem',
-    filter: 'drop-shadow(0 0 20px rgba(255, 255, 255, 0.5))'
+    filter: 'drop-shadow(0 0 10px rgba(59, 130, 246, 0.3))'
   },
 
   errorTitle: {
-    fontSize: '2.5rem',
+    fontSize: '2.2rem',
     fontWeight: 900,
-    color: 'white',
-    marginBottom: '1rem',
-    textShadow: '0 2px 15px rgba(0, 0, 0, 0.5)'
+    color: '#1e293b',
+    marginBottom: '1rem'
   },
 
   errorMessage: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: '1.3rem',
+    color: '#475569',
+    fontSize: '1.1rem',
     marginBottom: '2.5rem',
     lineHeight: 1.6
   },
 
   retryButton: {
-    background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #1d4ed8 100%)',
+    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
     color: 'white',
     border: 'none',
     padding: '1.2rem 2.5rem',
     borderRadius: '16px',
     fontWeight: 700,
-    fontSize: '1.1rem',
+    fontSize: '1rem',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
-    gap: '0.6rem',
+    gap: '0.8rem',
     transition: 'all 0.3s ease',
-    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.4)',
-    border: '1px solid rgba(255, 255, 255, 0.3)'
+    boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)'
   }
 };
 
-// 🌟 ADVANCED CSS ANIMATIONS FOR FLOATING ICONS
+// 🌟 BEAUTIFUL CSS ANIMATIONS WITH FLOATING ICONS
 const globalStyles = `
-  @keyframes floatUp {
+  @keyframes floatAnimation {
     0%, 100% { 
-      transform: translateY(0px) rotate(0deg) scale(1);
-      opacity: 0.6;
-    }
-    50% { 
-      transform: translateY(-30px) rotate(5deg) scale(1.1);
-      opacity: 0.8;
-    }
-  }
-
-  @keyframes floatDown {
-    0%, 100% { 
-      transform: translateY(0px) rotate(0deg) scale(1);
-      opacity: 0.6;
-    }
-    50% { 
-      transform: translateY(25px) rotate(-3deg) scale(0.9);
-      opacity: 0.4;
-    }
-  }
-
-  @keyframes floatLeft {
-    0%, 100% { 
-      transform: translateX(0px) translateY(0px) rotate(0deg);
-      opacity: 0.6;
-    }
-    33% { 
-      transform: translateX(-20px) translateY(-10px) rotate(2deg);
-      opacity: 0.8;
-    }
-    66% { 
-      transform: translateX(15px) translateY(15px) rotate(-2deg);
-      opacity: 0.5;
-    }
-  }
-
-  @keyframes floatRight {
-    0%, 100% { 
-      transform: translateX(0px) translateY(0px) rotate(0deg);
-      opacity: 0.6;
-    }
-    33% { 
-      transform: translateX(25px) translateY(-15px) rotate(-3deg);
-      opacity: 0.8;
-    }
-    66% { 
-      transform: translateX(-10px) translateY(20px) rotate(1deg);
-      opacity: 0.4;
-    }
-  }
-
-  @keyframes floatDiagonal {
-    0%, 100% { 
-      transform: translate(0px, 0px) rotate(0deg) scale(1);
+      transform: translateY(0px) translateX(0px) rotate(0deg) scale(1);
       opacity: 0.6;
     }
     25% { 
-      transform: translate(20px, -20px) rotate(5deg) scale(1.1);
+      transform: translateY(-20px) translateX(10px) rotate(5deg) scale(1.05);
       opacity: 0.8;
     }
     50% { 
-      transform: translate(-15px, 10px) rotate(-3deg) scale(0.9);
-      opacity: 0.5;
-    }
-    75% { 
-      transform: translate(10px, 25px) rotate(2deg) scale(1.05);
-      opacity: 0.7;
-    }
-  }
-
-  @keyframes floatCircle {
-    0% { 
-      transform: rotate(0deg) translateX(30px) rotate(0deg);
-      opacity: 0.6;
-    }
-    25% { 
-      transform: rotate(90deg) translateX(30px) rotate(-90deg);
-      opacity: 0.8;
-    }
-    50% { 
-      transform: rotate(180deg) translateX(30px) rotate(-180deg);
+      transform: translateY(-5px) translateX(-15px) rotate(-3deg) scale(0.95);
       opacity: 0.4;
     }
     75% { 
-      transform: rotate(270deg) translateX(30px) rotate(-270deg);
+      transform: translateY(15px) translateX(8px) rotate(2deg) scale(1.02);
       opacity: 0.7;
-    }
-    100% { 
-      transform: rotate(360deg) translateX(30px) rotate(-360deg);
-      opacity: 0.6;
-    }
-  }
-
-  @keyframes floatWave {
-    0%, 100% { 
-      transform: translateY(0px) translateX(0px);
-      opacity: 0.6;
-    }
-    25% { 
-      transform: translateY(-20px) translateX(10px);
-      opacity: 0.8;
-    }
-    50% { 
-      transform: translateY(15px) translateX(-15px);
-      opacity: 0.4;
-    }
-    75% { 
-      transform: translateY(-10px) translateX(20px);
-      opacity: 0.7;
-    }
-  }
-
-  @keyframes floatSpin {
-    0%, 100% { 
-      transform: rotate(0deg) scale(1);
-      opacity: 0.6;
-    }
-    33% { 
-      transform: rotate(120deg) scale(1.1);
-      opacity: 0.8;
-    }
-    66% { 
-      transform: rotate(240deg) scale(0.9);
-      opacity: 0.5;
     }
   }
 
   @keyframes slideUp {
     from {
       opacity: 0;
-      transform: translateY(50px) scale(0.95);
+      transform: translateY(30px) scale(0.96);
     }
     to {
       opacity: 1;
@@ -1522,32 +1735,39 @@ const globalStyles = `
     0%, 100% { 
       opacity: 1; 
       transform: scale(1);
-      box-shadow: 0 0 10px rgba(16, 185, 129, 0.8);
     }
     50% { 
       opacity: 0.6; 
-      transform: scale(1.3);
-      box-shadow: 0 0 20px rgba(16, 185, 129, 1);
+      transform: scale(1.2);
     }
   }
 
-  /* Hover Effects */
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  /* Beautiful Hover Effects */
   .reward-card:hover {
-    transform: translateY(-20px) scale(1.02);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+    transform: translateY(-12px) scale(1.02);
+    box-shadow: 0 25px 60px rgba(59, 130, 246, 0.15);
   }
 
   .reward-card:hover .card-image {
-    transform: scale(1.08);
+    transform: scale(1.06);
   }
 
   .reward-card:hover .card-image-overlay {
     opacity: 1;
   }
 
+  .reward-card:hover .card-glow {
+    opacity: 1;
+  }
+
   .wallet-card:hover {
-    transform: translateY(-12px) scale(1.05);
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 20px 50px rgba(59, 130, 246, 0.12);
   }
 
   .wallet-card:hover .wallet-card-glow {
@@ -1556,34 +1776,44 @@ const globalStyles = `
 
   .earn-method:hover {
     transform: translateY(-8px) scale(1.03);
-    border-color: rgba(96, 165, 250, 0.8);
-    box-shadow: 0 20px 50px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.12);
+  }
+
+  .earn-method:hover .earn-method-glow {
+    opacity: 1;
   }
 
   .redeem-button:hover:not(:disabled) {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(59, 130, 246, 0.6);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4);
+  }
+
+  .redeem-button:hover .button-shimmer {
+    left: 100%;
   }
 
   .filter-select:focus {
-    border-color: rgba(96, 165, 250, 0.8);
-    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  }
+
+  .filter-select:focus + .select-glow {
+    opacity: 1;
+  }
+
+  .reset-button:hover .reset-shimmer {
+    left: 100%;
   }
 
   .reset-button:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(59, 130, 246, 0.6);
-  }
-
-  .retry-button:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 12px 35px rgba(59, 130, 246, 0.6);
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 12px 35px rgba(59, 130, 246, 0.4);
   }
 
   /* Responsive Design */
   @media (max-width: 768px) {
     .hero-title {
-      font-size: 3rem !important;
+      font-size: 2.8rem !important;
     }
     
     .hero-stats {
@@ -1604,30 +1834,32 @@ const globalStyles = `
     }
     
     .floating-icon {
-      font-size: 2.5rem !important;
+      width: 30px !important;
+      height: 30px !important;
     }
   }
 
   @media (max-width: 480px) {
     .hero-title {
-      font-size: 2.5rem !important;
+      font-size: 2.2rem !important;
     }
     
     .floating-icon {
-      font-size: 2rem !important;
+      width: 25px !important;
+      height: 25px !important;
     }
   }
 `;
 
-// Inject global styles
+// Inject beautiful styles
 if (typeof document !== 'undefined') {
-  const existingStyle = document.getElementById('rewards-page-styles');
+  const existingStyle = document.getElementById('rewards-page-blue-white-styles');
   if (existingStyle) {
     existingStyle.remove();
   }
   
   const styleElement = document.createElement('style');
-  styleElement.id = 'rewards-page-styles';
+  styleElement.id = 'rewards-page-blue-white-styles';
   styleElement.textContent = globalStyles;
   document.head.appendChild(styleElement);
 }

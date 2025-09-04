@@ -1,10 +1,42 @@
 import React from 'react';
-import { Grid, Card, CardContent, Typography, Box, Button, Chip, Grow, Paper, Alert } from '@mui/material';
+import { Grid, Card, CardContent, Typography, Box, Button, Chip, Grow, Paper, Alert, CardMedia } from '@mui/material';
 import { Star, ReadMore } from '@mui/icons-material';
 
 const InspiringStories = ({ stories, onStoryClick }) => {
-  // Ensure stories is always an array
   const safeStories = Array.isArray(stories) ? stories : [];
+
+  const renderStoryImage = (story) => {
+    if (story.hasCustomImage && story.imageUrl) {
+      return (
+        <CardMedia
+          component="img"
+          sx={{
+            width: 120,
+            height: 120,
+            borderRadius: 3,
+            objectFit: 'cover',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          }}
+          image={story.imageUrl.startsWith('http') ? story.imageUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${story.imageUrl}`}
+          alt={story.title}
+        />
+      );
+    } else {
+      // Fallback to emoji
+      return (
+        <Typography 
+          variant="h1" 
+          sx={{ 
+            mb: 2, 
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+            fontSize: '4rem'
+          }}
+        >
+          {story.image || '📖'}
+        </Typography>
+      );
+    }
+  };
 
   return (
     <Grow in timeout={1000}>
@@ -35,7 +67,6 @@ const InspiringStories = ({ stories, onStoryClick }) => {
           </Typography>
         </Box>
         
-        {/* Check if stories exist and show appropriate content */}
         {safeStories.length === 0 ? (
           <Alert severity="info" sx={{ textAlign: 'center', borderRadius: 3 }}>
             No inspiring stories yet. Be the first to share your story! 📝
@@ -63,19 +94,10 @@ const InspiringStories = ({ stories, onStoryClick }) => {
                 >
                   <CardContent sx={{ p: 4 }}>
                     <Grid container spacing={4} alignItems="center">
-                      {/* Story Icon and Category */}
+                      {/* Story Image */}
                       <Grid item xs={12} md={2}>
                         <Box textAlign="center">
-                          <Typography 
-                            variant="h1" 
-                            sx={{ 
-                              mb: 2, 
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                              fontSize: '4rem'
-                            }}
-                          >
-                            {story.image || '📖'}
-                          </Typography>
+                          {renderStoryImage(story)}
                           <Chip
                             label={story.category || 'General'}
                             size="small"

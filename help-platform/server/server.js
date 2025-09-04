@@ -2,11 +2,27 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
+const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('✅ Created uploads directory');
+}
+
+// Create stories subdirectory
+const storiesUploadsDir = path.join(__dirname, 'uploads', 'stories');
+if (!fs.existsSync(storiesUploadsDir)) {
+  fs.mkdirSync(storiesUploadsDir, { recursive: true });
+  console.log('✅ Created stories uploads directory');
+}
 
 // Middleware
 app.use(cors({
@@ -15,6 +31,10 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('✅ Static file serving enabled for /uploads');
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub', {
@@ -28,9 +48,9 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub',
 app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
-    message: 'HelpHub API is running with Rewards System!',
+    message: 'HelpHub API is running with Image Upload Support!',
     timestamp: new Date().toISOString(),
-    features: ['Points', 'Coins', 'Rewards', 'Redemptions', 'Impact Posts']
+    features: ['Points', 'Coins', 'Rewards', 'Redemptions', 'Impact Posts', 'Image Upload']
   });
 });
 
@@ -39,7 +59,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'HelpHub Platform API is running! 🚀',
     version: '1.0.0',
-    features: ['Help Requests', 'Points & Coins System', 'Rewards Store', 'Impact Posts'],
+    features: ['Help Requests', 'Points & Coins System', 'Rewards Store', 'Impact Posts', 'Image Upload'],
     timestamp: new Date().toISOString()
   });
 });
@@ -99,73 +119,37 @@ try {
   console.log('⚠️ Request routes not found:', error.message);
 }
 
-// 3. 🔥 IMPACT POSTS ROUTES - FIXED TO USE YOUR EXISTING FILE
+// 3. Stories Routes (UPDATED WITH IMAGE SUPPORT)
 try {
-  const impactPostsRoutes = require('./routes/impactPostsRoutes'); // ✅ CHANGED TO YOUR FILE NAME
-  app.use('/api/impact-posts', impactPostsRoutes);
-  console.log('✅ Impact Posts routes loaded at /api/impact-posts');
-  console.log('   GET  /api/impact-posts (Get all posts)');
-  console.log('   POST /api/impact-posts (Create post)');
-  console.log('   GET  /api/impact-posts/:id (Get single post)');
-  console.log('   PUT  /api/impact-posts/:id (Update post)');
-  console.log('   DELETE /api/impact-posts/:id (Delete post)');
+  const storiesRoutes = require('./routes/stories');
+  app.use('/api/stories', storiesRoutes);
+  console.log('✅ Stories routes loaded at /api/stories (with image upload support)');
+  console.log('   GET  /api/stories/inspiring-stories');
+  console.log('   POST /api/stories/submit (supports image upload)');
+  console.log('   GET  /api/stories/:id');
 } catch (error) {
-  console.error('❌ Impact Posts routes failed to load:', error.message);
-  console.log('💡 Trying alternative file names...');
-  
-  // Try alternative file names
-  const alternativeNames = ['impactPostRoutes', 'impactposts', 'ImpactPosts', 'impact-posts'];
-  let loaded = false;
-  
-  for (const name of alternativeNames) {
-    try {
-      const routes = require(`./routes/impactPostsRouter`);
-      app.use('/api/impact-posts', routes);
-      console.log(`✅ Impact Posts routes loaded from ./routes/${name}`);
-      loaded = true;
-      break;
-    } catch (altError) {
-      // Continue to next alternative
-    }
-  }
-  
-  if (!loaded) {
-    console.log('🔍 Available files in routes directory:');
-    try {
-      const fs = require('fs');
-      const files = fs.readdirSync('./routes/');
-      console.log('   Files found:', files.join(', '));
-    } catch (fsError) {
-      console.log('   Could not read routes directory');
-    }
-    
-    // Create minimal fallback
-    app.get('/api/impact-posts', (req, res) => {
-      res.json({
-        success: true,
-        data: { posts: [] },
-        total: 0,
-        message: 'Impact posts endpoint (fallback - please check your routes/impactPostsRoutes.js file)'
-      });
-    });
-    console.log('✅ Fallback impact-posts route created');
-  }
+  console.log('⚠️ Stories routes not found:', error.message);
 }
 
-// 4. 🎁 REWARDS ROUTES
+// 4. Impact Posts Routes
+try {
+  const impactPostsRoutes = require('./routes/impactPostsRoutes');
+  app.use('/api/impact-posts', impactPostsRoutes);
+  console.log('✅ Impact Posts routes loaded at /api/impact-posts');
+} catch (error) {
+  console.error('❌ Impact Posts routes failed to load:', error.message);
+}
+
+// 5. Rewards Routes
 try {
   const rewardsRoutes = require('./routes/rewards');
   app.use('/api/rewards', rewardsRoutes);
   console.log('✅ Rewards routes loaded at /api/rewards');
-  console.log('   GET  /api/rewards (Browse rewards)');
-  console.log('   GET  /api/rewards/coins (User coins - REAL DATA)');
-  console.log('   POST /api/rewards/redeem (Redeem rewards)');
-  console.log('   GET  /api/rewards/redemptions (User redemptions)');
 } catch (error) {
   console.error('❌ Rewards routes failed to load:', error.message);
 }
 
-// 5. Campaign Routes
+// 6. Campaign Routes
 try {
   const campaignRoutes = require('./routes/campaign');
   app.use('/api/campaigns', campaignRoutes);
@@ -174,22 +158,13 @@ try {
   console.error('❌ Failed to load campaign routes:', error.message);
 }
 
-// 6. Donation Routes
+// 7. Donation Routes
 try {
   const donationRoutes = require('./routes/donations');
   app.use('/api/donations', donationRoutes);
   console.log('✅ Donation routes loaded at /api/donations');
 } catch (error) {
   console.error('❌ Failed to load donation routes:', error.message);
-}
-
-// 7. Stories Routes
-try {
-  const storiesRoutes = require('./routes/stories');
-  app.use('/api/stories', storiesRoutes);
-  console.log('✅ Stories routes loaded at /api/stories');
-} catch (error) {
-  console.log('⚠️ Stories routes not found:', error.message);
 }
 
 // 8. Help Routes
@@ -250,6 +225,38 @@ app.get('/api/campaigns/stats', async (req, res) => {
   }
 });
 
+// Error handling middleware for multer
+app.use((error, req, res, next) => {
+  if (error.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      success: false,
+      message: 'File too large. Maximum size is 5MB.'
+    });
+  }
+  
+  if (error.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({
+      success: false,
+      message: 'Too many files uploaded.'
+    });
+  }
+  
+  if (error instanceof Error && error.message.includes('Only image files')) {
+    return res.status(400).json({
+      success: false,
+      message: 'Only image files are allowed.'
+    });
+  }
+  
+  console.error('💥 Server error:', error);
+  res.status(error.status || 500).json({
+    success: false,
+    error: 'Server Error',
+    message: error.message || 'Internal Server Error',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // 🔥 ENHANCED 404 HANDLER (MUST BE AFTER ALL ROUTES)
 app.use('*', (req, res) => {
   console.log(`❌ Route not found: ${req.method} ${req.originalUrl}`);
@@ -266,8 +273,10 @@ app.use('*', (req, res) => {
     availableRoutes: [
       'GET /api/health',
       'GET /debug/routes',
-      'GET /api/impact-posts',        // ✅ NOW AVAILABLE
-      'POST /api/impact-posts',       
+      'GET /api/stories/inspiring-stories',
+      'POST /api/stories/submit (with image upload)',
+      'GET /api/impact-posts',
+      'POST /api/impact-posts',
       'GET /api/rewards',
       'GET /api/rewards/coins',
       'POST /api/rewards/redeem',
@@ -275,25 +284,7 @@ app.use('*', (req, res) => {
       'POST /api/requests',
       'GET /api/campaigns',
       'GET /api/leaderboard'
-    ],
-    tips: [
-      'Check the exact file name: routes/impactPostsRoutes.js',
-      'Ensure the file exports a router with module.exports = router',
-      'Visit /debug/routes to see all loaded routes',
-      'Check server console for route loading messages'
     ]
-  });
-});
-
-// 🔥 GLOBAL ERROR HANDLER (MUST BE LAST)
-app.use((err, req, res, next) => {
-  console.error('💥 Server error:', err);
-  
-  res.status(err.status || 500).json({
-    success: false,
-    error: 'Server Error',
-    message: err.message || 'Internal Server Error',
-    timestamp: new Date().toISOString()
   });
 });
 
@@ -301,13 +292,14 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`🎁 All Systems READY!`);
+  console.log(`🎁 All Systems READY with Image Upload Support!`);
   console.log(`📋 Test these endpoints:`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
   console.log(`   GET  http://localhost:${PORT}/debug/routes`);
-  console.log(`   GET  http://localhost:${PORT}/api/impact-posts`);      // ✅ SHOULD WORK NOW
-  console.log(`   GET  http://localhost:${PORT}/api/rewards/coins`);
-  console.log(`✅ Impact Posts route should now work with your existing file!`);
+  console.log(`   GET  http://localhost:${PORT}/api/stories/inspiring-stories`);
+  console.log(`   POST http://localhost:${PORT}/api/stories/submit (FormData with image)`);
+  console.log(`   Static files: http://localhost:${PORT}/uploads/stories/`);
+  console.log(`✅ Image upload system ready!`);
 });
 
 module.exports = app;

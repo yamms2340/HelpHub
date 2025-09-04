@@ -462,11 +462,12 @@ export const donationsAPI = {
 };
 
 /**
- * ✅ STORIES API
+ * ✅ STORIES API - UPDATED WITH IMAGE UPLOAD SUPPORT
  */
 export const storiesAPI = {
   getAllStories: async (params = {}) => {
     try {
+      console.log('🔄 Fetching all stories...');
       const response = await api.get('/stories', { params });
       return response.data;
     } catch (error) {
@@ -477,7 +478,9 @@ export const storiesAPI = {
   
   getInspiringStories: async (limit = 10) => {
     try {
+      console.log('🔄 Fetching inspiring stories...');
       const response = await api.get('/stories/inspiring-stories', { params: { limit } });
+      console.log('📥 Inspiring stories response:', response.data);
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching inspiring stories:', error);
@@ -487,6 +490,7 @@ export const storiesAPI = {
   
   getStats: async () => {
     try {
+      console.log('🔄 Fetching story stats...');
       const response = await api.get('/stories/stats');
       return response.data;
     } catch (error) {
@@ -495,18 +499,77 @@ export const storiesAPI = {
     }
   },
   
+  // UPDATED: Submit story with image support using FormData
   submitStory: async (storyData) => {
     try {
-      const response = await api.post('/stories/submit', storyData);
-      return response.data;
+      console.log('🔄 Submitting story with data type:', typeof storyData);
+      console.log('📝 Story data preview:', storyData instanceof FormData ? 'FormData' : storyData);
+      
+      // Create FormData if not already FormData
+      let formData;
+      if (storyData instanceof FormData) {
+        formData = storyData;
+        console.log('📤 Using provided FormData');
+      } else {
+        console.log('📦 Converting object to FormData');
+        formData = new FormData();
+        
+        // Add all story fields to FormData
+        Object.keys(storyData).forEach(key => {
+          if (key === 'helpType' && Array.isArray(storyData[key])) {
+            formData.append(key, JSON.stringify(storyData[key]));
+          } else if (storyData[key] !== null && storyData[key] !== undefined && storyData[key] !== '') {
+            formData.append(key, storyData[key]);
+          }
+        });
+      }
+
+      // Log FormData contents for debugging
+      console.log('📋 FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+        } else {
+          console.log(`  ${key}: ${value}`);
+        }
+      }
+
+      // Make request with FormData using fetch (better FormData handling than axios)
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/stories/submit`, {
+        method: 'POST',
+        headers: {
+          // Don't set Content-Type - browser will set it with boundary for FormData
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('✅ Story submitted successfully:', data);
+      return data;
     } catch (error) {
       console.error('❌ Error submitting story:', error);
-      throw error;
+      
+      // Enhanced error handling
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection.');
+      } else if (error.message.includes('HTTP error')) {
+        throw new Error(error.message);
+      } else {
+        throw new Error(error.message || 'Failed to submit story');
+      }
     }
   },
   
   getStoryById: async (id) => {
     try {
+      console.log('🔄 Fetching story by ID:', id);
       const response = await api.get(`/stories/${id}`);
       return response.data;
     } catch (error) {
@@ -517,6 +580,7 @@ export const storiesAPI = {
   
   searchStories: async (query) => {
     try {
+      console.log('🔍 Searching stories with query:', query);
       const response = await api.get('/stories/search', { params: { q: query } });
       return response.data;
     } catch (error) {
@@ -532,6 +596,7 @@ export const storiesAPI = {
 export const helpAPI = {
   getHallOfFame: async () => {
     try {
+      console.log('🏆 Fetching hall of fame...');
       const response = await api.get('/help/hall-of-fame');
       return response.data;
     } catch (error) {
@@ -552,6 +617,7 @@ export const helpAPI = {
   
   getStats: async () => {
     try {
+      console.log('📊 Fetching help stats...');
       const response = await api.get('/help/stats');
       return response.data;
     } catch (error) {

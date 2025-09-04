@@ -26,11 +26,11 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Link,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  CardMedia,
 } from '@mui/material';
 import {
   EmojiEvents,
@@ -61,6 +61,9 @@ import {
   Help,
   Description,
   Group,
+  CloudUpload,
+  Image as ImageIcon,
+  Delete,
 } from '@mui/icons-material';
 import { helpAPI, storiesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
@@ -75,19 +78,24 @@ function HallOfFame() {
   const [openStoryDialog, setOpenStoryDialog] = useState(false);
   const [selectedStory, setSelectedStory] = useState(null);
   const [showPostStoryModal, setShowPostStoryModal] = useState(false);
+  const [submittingStory, setSubmittingStory] = useState(false);
   const [storyData, setStoryData] = useState({
     title: '',
     description: '',
     category: '',
     impact: '',
-    helpType: []
+    helpType: [],
+    helper: '',
+    location: ''
   });
+  
+  // Image upload states
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [imageUrl, setImageUrl] = useState('');
   
   // Stories visibility state for View More/Less
   const [visibleStoriesCount, setVisibleStoriesCount] = useState(4);
-  
-  // Footer newsletter state
-  const [email, setEmail] = useState('');
   
   const navigate = useNavigate();
 
@@ -115,24 +123,77 @@ function HallOfFame() {
     setTimeout(() => setShowConfetti(true), 500);
   }, []);
 
+  // Image handling functions
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        alert('Image size should be less than 5MB');
+        return;
+      }
+      
+      setSelectedImage(file);
+      setImageUrl(''); // Clear URL if file is selected
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageUrlChange = (url) => {
+    setImageUrl(url);
+    setSelectedImage(null); // Clear file if URL is provided
+    setImagePreview(url); // Show preview
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    setImageUrl('');
+  };
+
+  // UPDATED: Fetch real data from backend, no fake data
   const fetchHallOfFameData = async () => {
     try {
       setLoading(true);
+      setError('');
       
+      console.log('🔄 Fetching Hall of Fame data from backend...');
+      
+      // Fetch data from APIs
       const [helpersResponse, statsResponse, storiesResponse] = await Promise.all([
-        helpAPI.getHallOfFame(),
-        helpAPI.getStats(),
-        storiesAPI.getInspiringStories(10)
+        helpAPI.getHallOfFame().catch(err => {
+          console.warn('Help API failed:', err.message);
+          return { data: [] };
+        }),
+        helpAPI.getStats().catch(err => {
+          console.warn('Stats API failed:', err.message);
+          return { data: {} };
+        }),
+        storiesAPI.getInspiringStories(20).catch(err => {
+          console.warn('Stories API failed:', err.message);
+          return { data: [] };
+        })
       ]);
       
-      console.log('API Responses:', { helpersResponse, statsResponse, storiesResponse });
+      console.log('📥 Raw API Responses:', { helpersResponse, statsResponse, storiesResponse });
       
-      const helpersData = helpersResponse?.data || helpersResponse;
-      setTopHelpers(Array.isArray(helpersData) ? helpersData : []);
+      // Process helpers data
+      const helpersData = helpersResponse?.data || helpersResponse || [];
+      const safeHelpers = Array.isArray(helpersData) ? helpersData : [];
+      setTopHelpers(safeHelpers);
+      console.log('👥 Processed helpers:', safeHelpers.length);
       
-      const statsData = statsResponse?.data || statsResponse;
-      setStats(statsData || {});
+      // Process stats data
+      const statsData = statsResponse?.data || statsResponse || {};
+      setStats(statsData);
+      console.log('📊 Processed stats:', statsData);
       
+      // Process stories data - handle multiple possible response structures
       let storiesArray = [];
       if (Array.isArray(storiesResponse?.data)) {
         storiesArray = storiesResponse.data;
@@ -142,125 +203,17 @@ function HallOfFame() {
         storiesArray = storiesResponse;
       }
       
+      console.log('📚 Processed stories:', storiesArray.length);
       setInspiringStories(storiesArray);
-      setError('');
+      
     } catch (error) {
-      console.error('Error fetching data:', error);
-      setError('Failed to fetch Hall of Fame data');
+      console.error('❌ Error fetching Hall of Fame data:', error);
+      setError(`Failed to fetch data: ${error.message}`);
       
-      // Fallback data with 8+ stories to test View More/Less
-      setTopHelpers([
-        {
-          _id: '1',
-          name: 'Dr. Sarah Johnson',
-          email: 'sarah@example.com',
-          helpCount: 25,
-          rating: 4.8
-        },
-        {
-          _id: '2', 
-          name: 'Maria Rodriguez',
-          email: 'maria@example.com',
-          helpCount: 18,
-          rating: 4.6
-        },
-        {
-          _id: '3',
-          name: 'John Smith',
-          email: 'john@example.com',
-          helpCount: 12,
-          rating: 4.4
-        }
-      ]);
-      
-      setInspiringStories([
-        {
-          id: 1,
-          title: 'The Teacher Who Changed Everything',
-          helper: 'Anonymous Hero',
-          story: 'Started teaching children under a tree with just a blackboard. Today, the initiative has grown into a full school serving 200+ students.',
-          impact: '200+ students educated',
-          category: 'Education',
-          rating: 4.9,
-          location: 'Rural India'
-        },
-        {
-          id: 2,
-          title: 'Coding Mentor Saves Lives',
-          helper: 'Tech Guru',
-          story: 'Late-night coding sessions turned into mentoring dozens of aspiring developers, changing their career paths forever.',
-          impact: '50+ developers trained',
-          category: 'Tech Support',
-          rating: 4.7,
-          location: 'Silicon Valley'
-        },
-        {
-          id: 3,
-          title: 'Community Garden Initiative',
-          helper: 'Green Thumb',
-          story: 'Started a small community garden that now feeds 100 families and brings the neighborhood together.',
-          impact: '100+ families fed',
-          category: 'Community Building',
-          rating: 4.8,
-          location: 'Local Community'
-        },
-        {
-          id: 4,
-          title: 'Emergency Medical Response Team',
-          helper: 'Dr. Emergency',
-          story: 'Built a volunteer medical response team that has saved countless lives during emergencies and natural disasters.',
-          impact: '500+ lives saved',
-          category: 'Emergency Response',
-          rating: 4.9,
-          location: 'Nationwide'
-        },
-        {
-          id: 5,
-          title: 'Senior Care Network',
-          helper: 'Caring Angel',
-          story: 'Created a network of volunteers providing daily care and companionship to elderly residents in our community.',
-          impact: '150+ seniors supported',
-          category: 'Senior Care',
-          rating: 4.8,
-          location: 'Local Community'
-        },
-        {
-          id: 6,
-          title: 'Mental Health First Aid',
-          helper: 'Wellness Warrior',
-          story: 'Trained volunteers to provide mental health first aid and crisis support in schools and workplaces.',
-          impact: '300+ people helped',
-          category: 'Mental Health',
-          rating: 4.7,
-          location: 'Regional'
-        },
-        {
-          id: 7,
-          title: 'Home Repair Heroes',
-          helper: 'Handy Helper',
-          story: 'Organized volunteers to help elderly and disabled residents with home repairs and maintenance.',
-          impact: '80+ homes repaired',
-          category: 'Home Repairs',
-          rating: 4.6,
-          location: 'City Wide'
-        },
-        {
-          id: 8,
-          title: 'Transportation Angels',
-          helper: 'Ride Share Hero',
-          story: 'Created a volunteer network providing free transportation to medical appointments for those in need.',
-          impact: '1000+ rides provided',
-          category: 'Transportation',
-          rating: 4.8,
-          location: 'Metro Area'
-        }
-      ]);
-
-      setStats({
-        totalHelpers: 42,
-        totalHelp: 156,
-        averageRating: 4.6
-      });
+      // Set empty arrays instead of fake data
+      setTopHelpers([]);
+      setInspiringStories([]);
+      setStats({});
     } finally {
       setLoading(false);
     }
@@ -268,15 +221,15 @@ function HallOfFame() {
 
   // Button handlers
   const handleJoinHeroes = () => {
-    navigate('/become-helper');
+    navigate('/dashboard');
   };
 
   const handleStartHelping = () => {
-    navigate('/help-requests');
+    navigate('/dashboard');
   };
 
   const handleStartJourney = () => {
-    navigate('/onboarding');
+    navigate('/dashboard');
   };
   
   const handleShareStory = () => {
@@ -293,29 +246,121 @@ function HallOfFame() {
   };
 
   const openStory = (story) => {
+    console.log('📖 Opening story:', story);
     setSelectedStory(story);
     setOpenStoryDialog(true);
   };
 
+  // UPDATED: Submit story using the updated API
   const handleSubmitStory = async () => {
     try {
       if (!storyData.title || !storyData.description || !storyData.category) {
-        alert('Please fill in all required fields');
+        alert('Please fill in all required fields (Title, Description, Category)');
         return;
       }
 
-      await storiesAPI.submitStory(storyData);
+      setSubmittingStory(true);
+      console.log('📤 Submitting story:', storyData);
+
+      const formData = new FormData();
+      formData.append('title', storyData.title);
+      formData.append('description', storyData.description);
+      formData.append('category', storyData.category);
+      formData.append('impact', storyData.impact || 'Positive impact');
+      formData.append('helpType', JSON.stringify(storyData.helpType));
+      formData.append('helper', storyData.helper || 'Anonymous');
+      formData.append('location', storyData.location || 'Unknown');
       
-      alert('Story submitted successfully!');
-      setShowPostStoryModal(false);
-      setStoryData({ title: '', description: '', category: '', impact: '', helpType: [] });
+      if (selectedImage) {
+        formData.append('image', selectedImage);
+        console.log('📁 Adding image file to submission');
+      } else if (imageUrl) {
+        formData.append('imageUrl', imageUrl);
+        console.log('🔗 Adding image URL to submission');
+      }
+
+      // Use the updated storiesAPI
+      const result = await storiesAPI.submitStory(formData);
       
-      fetchHallOfFameData();
+      console.log('✅ Story submission result:', result);
+      
+      if (result.success) {
+        alert('Story submitted successfully! 🎉');
+        setShowPostStoryModal(false);
+        setStoryData({ 
+          title: '', 
+          description: '', 
+          category: '', 
+          impact: '', 
+          helpType: [], 
+          helper: '', 
+          location: '' 
+        });
+        clearImage();
+        
+        // Refresh the data to show the new story
+        fetchHallOfFameData();
+      } else {
+        throw new Error(result.message || 'Failed to submit story');
+      }
       
     } catch (error) {
-      console.error('Error submitting story:', error);
-      alert('Error submitting story');
+      console.error('❌ Error submitting story:', error);
+      alert(`Error submitting story: ${error.message}`);
+    } finally {
+      setSubmittingStory(false);
     }
+  };
+
+  // UPDATED: Function to render story image - no fake emojis
+  const renderStoryImage = (story) => {
+    // Check if story has a custom image
+    if (story.hasCustomImage && (story.imageUrl || story.image)) {
+      const imageUrl = story.imageUrl || story.image;
+      const fullImageUrl = imageUrl.startsWith('http') 
+        ? imageUrl 
+        : `http://localhost:5000${imageUrl}`;
+      
+      return (
+        <CardMedia
+          component="img"
+          sx={{
+            width: 120,
+            height: 120,
+            borderRadius: 3,
+            objectFit: 'cover',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+            mb: 2
+          }}
+          image={fullImageUrl}
+          alt={story.title}
+          onError={(e) => {
+            console.warn('Image failed to load:', fullImageUrl);
+            // Hide the image if it fails to load
+            e.target.style.display = 'none';
+          }}
+        />
+      );
+    }
+    
+    // If no custom image, just return a placeholder or nothing
+    return (
+      <Box
+        sx={{
+          width: 120,
+          height: 120,
+          borderRadius: 3,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f5f5f5',
+          mb: 2,
+          border: '2px dashed #ddd'
+        }}
+      >
+        <ImageIcon sx={{ fontSize: 40, color: '#999' }} />
+      </Box>
+    );
   };
 
   // Toggle visible stories function
@@ -330,13 +375,6 @@ function HallOfFame() {
   // Footer handlers
   const handleNavigation = (path) => {
     navigate(path);
-  };
-
-  const handleNewsletterSubmit = (e) => {
-    e.preventDefault();
-    console.log('Newsletter subscription:', email);
-    alert('Thank you for subscribing to our newsletter!');
-    setEmail('');
   };
 
   const getRankIcon = (index) => {
@@ -413,10 +451,10 @@ function HallOfFame() {
 
   // Footer data
   const quickLinks = [
-    { label: 'Help Requests', path: '/', icon: Groups },
+    { label: 'Help Requests', path: '/dashboard', icon: Groups },
     { label: 'Hall of Fame', path: '/hall-of-fame', icon: EmojiEvents },
     { label: 'Create Request', path: '/create-request', icon: VolunteerActivism },
-    { label: 'About Us', path: '/about', icon: Help },
+    { label: 'My Requests', path: '/my-requests', icon: Help },
   ];
 
   const supportLinks = [
@@ -469,7 +507,7 @@ function HallOfFame() {
           Loading Hall of Fame...
         </Typography>
         <Typography variant="body1" sx={{ color: '#64748b', mt: 1 }}>
-          Preparing amazing helpers showcase ✨
+          Fetching inspiring stories from our community ✨
         </Typography>
       </Box>
     );
@@ -630,7 +668,7 @@ function HallOfFame() {
             </Grow>
           )}
 
-          {/* ✅ INSPIRING STORIES SECTION - 2 COLUMN MATRIX */}
+          {/* ✅ INSPIRING STORIES SECTION - REAL DATA ONLY */}
           <Paper
             elevation={0}
             sx={{
@@ -648,13 +686,25 @@ function HallOfFame() {
             
             {safeInspiringStories.length === 0 ? (
               <Box textAlign="center" py={6}>
-                <Typography variant="h6" color="text.secondary">
+                <Box sx={{ fontSize: 80, mb: 3 }}>📚</Box>
+                <Typography variant="h6" color="text.secondary" mb={2}>
                   No inspiring stories yet. Be the first to share yours!
+                </Typography>
+                <Typography variant="body1" color="text.secondary" mb={3}>
+                  Share your story of helping others and inspire the community.
                 </Typography>
                 <Button
                   variant="contained"
+                  size="large"
+                  startIcon={<Create />}
                   onClick={() => setShowPostStoryModal(true)}
-                  sx={{ mt: 2 }}
+                  sx={{
+                    background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
+                    px: 4,
+                    py: 1.5,
+                    borderRadius: 3,
+                    textTransform: 'none',
+                  }}
                 >
                   Share Your Story
                 </Button>
@@ -681,12 +731,24 @@ function HallOfFame() {
                         onClick={() => openStory(story)}
                       >
                         <CardContent sx={{ p: 3 }}>
+                          {/* Story Image */}
+                          <Box sx={{ textAlign: 'center', mb: 2 }}>
+                            {renderStoryImage(story)}
+                          </Box>
+                          
                           <Typography variant="h6" fontWeight="bold" mb={2}>
                             {story.title}
                           </Typography>
-                          <Typography variant="body2" color="text.secondary" mb={2}>
-                            {story.story?.substring(0, 150)}...
+                          
+                          <Typography variant="body2" color="text.secondary" mb={1}>
+                            <strong>{story.helper || 'Anonymous'}</strong> • {story.location || 'Unknown location'}
                           </Typography>
+                          
+                          <Typography variant="body2" color="text.secondary" mb={2}>
+                            {(story.description || story.story || '').substring(0, 120)}
+                            {(story.description || story.story || '').length > 120 ? '...' : ''}
+                          </Typography>
+                          
                           <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Chip
                               label={story.category}
@@ -704,6 +766,12 @@ function HallOfFame() {
                               </Typography>
                             </Box>
                           </Box>
+                          
+                          {story.impact && (
+                            <Typography variant="caption" color="primary" sx={{ mt: 1, display: 'block' }}>
+                              Impact: {story.impact}
+                            </Typography>
+                          )}
                         </CardContent>
                       </Card>
                     </Grid>
@@ -1035,14 +1103,17 @@ function HallOfFame() {
           </Box>
         </Container>
 
-        {/* Post Story Modal */}
+        {/* Post Story Modal with Image Upload */}
         <Modal 
           open={showPostStoryModal} 
-          onClose={() => setShowPostStoryModal(false)}
+          onClose={() => {
+            setShowPostStoryModal(false);
+            clearImage();
+          }}
           sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
         >
           <Box sx={{
-            width: { xs: '90%', md: 600 },
+            width: { xs: '90%', md: 700 },
             bgcolor: 'background.paper',
             borderRadius: 4,
             boxShadow: 24,
@@ -1054,7 +1125,10 @@ function HallOfFame() {
               <Typography variant="h4" sx={{ fontWeight: 700, color: '#1e293b' }}>
                 Share Your Hero Story ✨
               </Typography>
-              <IconButton onClick={() => setShowPostStoryModal(false)}>
+              <IconButton onClick={() => {
+                setShowPostStoryModal(false);
+                clearImage();
+              }}>
                 <Close />
               </IconButton>
             </Box>
@@ -1065,30 +1139,107 @@ function HallOfFame() {
 
             <TextField
               fullWidth
-              label="Story Title"
+              label="Story Title *"
               placeholder="e.g., 'The Late-Night Coding Mentor'"
               value={storyData.title}
               onChange={(e) => setStoryData({...storyData, title: e.target.value})}
               sx={{ mb: 3 }}
+              required
             />
 
             <TextField
               fullWidth
               multiline
               rows={4}
-              label="Your Story"
+              label="Your Story *"
               placeholder="Tell us about the help you provided and its impact..."
               value={storyData.description}
               onChange={(e) => setStoryData({...storyData, description: e.target.value})}
               sx={{ mb: 3 }}
+              required
             />
 
+            {/* Image Upload Section */}
+            <Paper sx={{ p: 3, mb: 3, bgcolor: '#f8fafc', border: '2px dashed #e2e8f0' }}>
+              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                <ImageIcon sx={{ mr: 1 }} />
+                Add an Image (Optional)
+              </Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Button
+                    variant="outlined"
+                    component="label"
+                    fullWidth
+                    startIcon={<CloudUpload />}
+                    sx={{ mb: 2, py: 1.5 }}
+                  >
+                    Upload Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={handleImageUpload}
+                    />
+                  </Button>
+                  <Typography variant="caption" color="textSecondary" display="block" textAlign="center">
+                    Max 5MB • JPG, PNG, GIF
+                  </Typography>
+                </Grid>
+                
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Or paste image URL"
+                    value={imageUrl}
+                    onChange={(e) => handleImageUrlChange(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Image Preview */}
+              {imagePreview && (
+                <Box sx={{ mt: 3, textAlign: 'center' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 2 }}>Preview:</Typography>
+                  <Box sx={{ position: 'relative', display: 'inline-block' }}>
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      style={{
+                        maxWidth: '200px',
+                        maxHeight: '200px',
+                        borderRadius: '12px',
+                        objectFit: 'cover',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
+                    />
+                    <IconButton
+                      onClick={clearImage}
+                      sx={{
+                        position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        bgcolor: 'error.main',
+                        color: 'white',
+                        '&:hover': { bgcolor: 'error.dark' }
+                      }}
+                      size="small"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Box>
+              )}
+            </Paper>
+
             <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth>
-                  <InputLabel>Category</InputLabel>
+              <Grid item xs={12} sm={4}>
+                <FormControl fullWidth required>
+                  <InputLabel>Category *</InputLabel>
                   <Select 
-                    label="Category"
+                    label="Category *"
                     value={storyData.category}
                     onChange={(e) => setStoryData({...storyData, category: e.target.value})}
                   >
@@ -1098,7 +1249,7 @@ function HallOfFame() {
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <TextField
                   fullWidth
                   label="Impact Achieved"
@@ -1107,7 +1258,25 @@ function HallOfFame() {
                   onChange={(e) => setStoryData({...storyData, impact: e.target.value})}
                 />
               </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  fullWidth
+                  label="Your Name"
+                  placeholder="e.g., 'John Doe'"
+                  value={storyData.helper}
+                  onChange={(e) => setStoryData({...storyData, helper: e.target.value})}
+                />
+              </Grid>
             </Grid>
+
+            <TextField
+              fullWidth
+              label="Location"
+              placeholder="e.g., 'San Francisco, CA'"
+              value={storyData.location}
+              onChange={(e) => setStoryData({...storyData, location: e.target.value})}
+              sx={{ mb: 3 }}
+            />
 
             <Box sx={{ mb: 3 }}>
               <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 600 }}>
@@ -1134,15 +1303,19 @@ function HallOfFame() {
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button 
                 variant="outlined" 
-                onClick={() => setShowPostStoryModal(false)}
+                onClick={() => {
+                  setShowPostStoryModal(false);
+                  clearImage();
+                }}
                 sx={{ borderRadius: 3, textTransform: 'none', px: 3 }}
+                disabled={submittingStory}
               >
                 Cancel
               </Button>
               <Button 
                 variant="contained" 
                 onClick={handleSubmitStory}
-                disabled={!storyData.title || !storyData.description}
+                disabled={!storyData.title || !storyData.description || !storyData.category || submittingStory}
                 sx={{ 
                   borderRadius: 3, 
                   textTransform: 'none', 
@@ -1150,7 +1323,7 @@ function HallOfFame() {
                   background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
                 }}
               >
-                Submit Story
+                {submittingStory ? 'Submitting...' : 'Submit Story'}
               </Button>
             </Box>
           </Box>
@@ -1185,8 +1358,26 @@ function HallOfFame() {
                 </IconButton>
               </DialogTitle>
               <DialogContent sx={{ pt: 3 }}>
+                {/* Show image in dialog if available */}
+                {selectedStory.hasCustomImage && (selectedStory.imageUrl || selectedStory.image) && (
+                  <Box sx={{ textAlign: 'center', mb: 3 }}>
+                    <img
+                      src={selectedStory.imageUrl?.startsWith('http') 
+                        ? selectedStory.imageUrl 
+                        : `http://localhost:5000${selectedStory.imageUrl || selectedStory.image}`}
+                      alt={selectedStory.title}
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '300px',
+                        borderRadius: '12px',
+                        objectFit: 'cover',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                      }}
+                    />
+                  </Box>
+                )}
                 <Typography variant="body1" sx={{ lineHeight: 1.8, whiteSpace: 'pre-line' }}>
-                  {selectedStory.story || selectedStory.fullStory}
+                  {selectedStory.description || selectedStory.story || selectedStory.fullStory}
                 </Typography>
               </DialogContent>
               <DialogActions sx={{ p: 3 }}>
@@ -1198,7 +1389,7 @@ function HallOfFame() {
                     </Typography>
                   </Box>
                   <Typography variant="body2" sx={{ color: '#64748b' }}>
-                    Impact: <strong>{selectedStory.impact}</strong>
+                    Impact: <strong>{selectedStory.impact || 'Positive impact'}</strong>
                   </Typography>
                   <Button 
                     onClick={() => setOpenStoryDialog(false)}
@@ -1247,7 +1438,6 @@ function HallOfFame() {
           }
         }}
       >
-
         {/* Main Footer Content */}
         <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
           <Grid container spacing={4}>

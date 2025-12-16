@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL
+    ? `${process.env.REACT_APP_API_URL}/api`
+    : 'http://localhost:5000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -332,7 +335,8 @@ export const campaignAPI = {
   getAllCampaigns: async () => {
     try {
       console.log('🔄 Fetching campaigns from backend...');
-      const response = await fetch(`${API_BASE_URL}/campaigns`);
+      const response = await fetch(`${API_BASE_URL}/campaigns`)
+
       const data = await response.json();
       console.log('📥 Campaigns response:', data);
       return data;

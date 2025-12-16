@@ -1,7 +1,16 @@
 import React, { useState } from 'react'
 import {
-  Container, Paper, TextField, Button, Typography, Box,
-  Alert, CircularProgress, Fade, Grow, InputAdornment
+  Container,
+  Paper,
+  TextField,
+  Button,
+  Typography,
+  Box,
+  Alert,
+  CircularProgress,
+  Fade,
+  Grow,
+  InputAdornment
 } from '@mui/material'
 import { Person, Email, Lock } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
@@ -33,16 +42,17 @@ function Register() {
   const validateForm = () => {
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword)
       return 'Please fill all fields'
-
     if (formData.password !== formData.confirmPassword)
       return 'Passwords do not match'
-
     return null
   }
 
-  // STEP 1 → SEND OTP
+  /* ========================
+     STEP 1: SEND OTP
+  ======================== */
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (loading) return
     setError('')
 
     const err = validateForm()
@@ -52,28 +62,44 @@ function Register() {
     }
 
     setLoading(true)
-
     try {
       await authAPI.sendOtp({ email: formData.email })
       setTempUser(formData)
       setStep(1)
-    } catch {
-      setError('Failed to send OTP')
-    }
+    } catch (e) {
+      const msg = e.response?.data?.message || 'Failed to send OTP'
 
-    setLoading(false)
+      if (msg.toLowerCase().includes('already exists')) {
+        setError('Account already exists. Redirecting to login...')
+        setTimeout(() => navigate('/login'), 1500)
+      } else {
+        setError(msg)
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // STEP 2 → VERIFY OTP + REGISTER
+  /* ========================
+     STEP 2: VERIFY OTP + REGISTER
+  ======================== */
   const handleVerifyOtp = async () => {
+    if (!otp.trim()) {
+      setError('OTP is required')
+      return
+    }
+
+    if (!tempUser) {
+      setError('Session expired. Please sign up again.')
+      setStep(0)
+      return
+    }
+
     setLoading(true)
     setError('')
 
     try {
-      await authAPI.verifyOtp({
-        email: tempUser.email,
-        otp
-      })
+      await authAPI.verifyOtp({ email: tempUser.email, otp })
 
       const result = await register(
         tempUser.name,
@@ -84,23 +110,29 @@ function Register() {
       if (result.success) {
         navigate('/dashboard')
       } else {
-        setError(result.error)
+        if (result.error?.toLowerCase().includes('exists')) {
+          setError('Account already exists. Redirecting to login...')
+          setTimeout(() => navigate('/login'), 1500)
+        } else {
+          setError(result.error)
+        }
       }
-    } catch {
-      setError('Invalid OTP')
+    } catch (e) {
+      setError(e.response?.data?.message || 'Invalid OTP')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
     <Container maxWidth="sm">
       <Fade in>
         <Paper sx={{ p: 4, mt: 8 }}>
-
           {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-          {/* STEP 0 : SIGNUP FORM */}
+          {/* ========================
+              STEP 1 UI
+          ======================== */}
           {step === 0 && (
             <Box component="form" onSubmit={handleSubmit}>
               <Typography variant="h4" mb={2}>Create Account</Typography>
@@ -114,7 +146,9 @@ function Register() {
                 margin="normal"
                 InputProps={{
                   startAdornment: (
-                    <InputAdornment position="start"><Person /></InputAdornment>
+                    <InputAdornment position="start">
+                      <Person />
+                    </InputAdornment>
                   )
                 }}
               />
@@ -128,7 +162,9 @@ function Register() {
                 margin="normal"
                 InputProps={{
                   startAdornment: (
-                    <InputAdornment position="start"><Email /></InputAdornment>
+                    <InputAdornment position="start">
+                      <Email />
+                    </InputAdornment>
                   )
                 }}
               />
@@ -143,7 +179,9 @@ function Register() {
                 margin="normal"
                 InputProps={{
                   startAdornment: (
-                    <InputAdornment position="start"><Lock /></InputAdornment>
+                    <InputAdornment position="start">
+                      <Lock />
+                    </InputAdornment>
                   )
                 }}
               />
@@ -167,10 +205,26 @@ function Register() {
               >
                 {loading ? <CircularProgress size={22} /> : 'Send OTP'}
               </Button>
+
+              {/* ✅ SIGN IN LINK */}
+              <Box textAlign="center" mt={2}>
+                <Typography variant="body2">
+                  Already have an account?
+                </Typography>
+                <Button
+                  variant="text"
+                  onClick={() => navigate('/login')}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Sign in
+                </Button>
+              </Box>
             </Box>
           )}
 
-          {/* STEP 1 : OTP VERIFICATION */}
+          {/* ========================
+              STEP 2 UI
+          ======================== */}
           {step === 1 && (
             <Grow in>
               <Box>
@@ -193,10 +247,23 @@ function Register() {
                 >
                   {loading ? <CircularProgress size={22} /> : 'Verify OTP'}
                 </Button>
+
+                {/* ✅ SIGN IN LINK */}
+                <Box textAlign="center" mt={2}>
+                  <Typography variant="body2">
+                    Already have an account?
+                  </Typography>
+                  <Button
+                    variant="text"
+                    onClick={() => navigate('/login')}
+                    sx={{ textTransform: 'none', fontWeight: 600 }}
+                  >
+                    Sign in
+                  </Button>
+                </Box>
               </Box>
             </Grow>
           )}
-
         </Paper>
       </Fade>
     </Container>

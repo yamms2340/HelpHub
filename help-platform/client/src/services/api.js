@@ -188,11 +188,24 @@ export const helpAPI = {
  * =========================
  */
 export const storiesAPI = {
-  getAllStories: (params = {}) => api.get('/stories', { params }),
-  getStoryById: (id) => api.get(`/stories/${id}`),
+  getInspiringStories: (limit = 20) =>
+    api.get('/stories/inspiring-stories', { params: { limit } }),
+
+  getAllStories: (params = {}) =>
+    api.get('/stories', { params }),
+
+  getStoryById: (id) =>
+    api.get(`/stories/${id}`),
+
   searchStories: (query) =>
     api.get('/stories/search', { params: { q: query } }),
+
+  submitStory: (formData) =>
+    api.post('/stories/submit', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
+
 
 /**
  * =========================

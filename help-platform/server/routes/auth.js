@@ -1,132 +1,81 @@
-const express = require('express');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const express = require('express')
+const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
+const nodemailer = require('nodemailer')
 
-const User = require('../models/User');
-const auth = require('../middleware/auth');
+const User = require('../models/User')
+const auth = require('../middleware/auth')
 
-const router = express.Router();
+const router = express.Router()
 
-/**
- * =========================
- * OTP STORAGE (TEMP)
- * =========================
- * NOTE:
- * - For learning: Map is OK
- * - In production: use DB / Redis
- */
-const otpStore = new Map();
+const otpStore = new Map()
+const verifiedEmails = new Set()
 
-/**
- * =========================
- * EMAIL TRANSPORTER (RENDER SAFE)
- * =========================
- * Set these in Render dashboard:
- * EMAIL_USER
- * EMAIL_PASS (Gmail App Password)
- */
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+    pass: process.env.EMAIL_PASS
+  }
+})
 
-/**
- * =========================
- * SEND OTP
- * POST /api/auth/send-otp
- * =========================
- */
 router.post('/send-otp', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = req.body
+    if (!email) return res.status(400).json({ message: 'Email required' })
 
-    if (!email) {
-      return res.status(400).json({ message: 'Email is required' });
-    }
-
-    const otp = crypto.randomInt(100000, 999999).toString();
-
-    otpStore.set(email, otp);
+    const otp = crypto.randomInt(100000, 999999).toString()
+    otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 })
 
     await transporter.sendMail({
+      from: `"HelpHub" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: 'HelpHub Email Verification',
-      text: `Your OTP is ${otp}. It is valid for a short time.`,
-    });
+      subject: 'Email Verification',
+      text: `Your OTP is ${otp}`
+    })
 
-    res.json({ success: true, message: 'OTP sent to email' });
+    res.json({ success: true })
   } catch (error) {
-    console.error('Send OTP error:', error);
-    res.status(500).json({ message: 'Failed to send OTP' });
-  }
-});
+  console.error('SEND OTP ERROR:', error);
+  res.status(500).json({ message: 'Failed to send OTP' });
+}
 
-/**
- * =========================
- * VERIFY OTP
- * POST /api/auth/verify-otp
- * =========================
- */
+})
+
 router.post('/verify-otp', (req, res) => {
-  const { email, otp } = req.body;
+  const { email, otp } = req.body
+  const record = otpStore.get(email)
 
-  if (!email || !otp) {
-    return res.status(400).json({ message: 'Email and OTP are required' });
-  }
+  if (!record || record.otp !== otp || Date.now() > record.expiresAt)
+    return res.status(400).json({ message: 'Invalid or expired OTP' })
 
-  const storedOtp = otpStore.get(email);
+  otpStore.delete(email)
+  verifiedEmails.add(email)
 
-  if (storedOtp !== otp) {
-    return res.status(400).json({ message: 'Invalid OTP' });
-  }
+  res.json({ success: true })
+})
 
-  otpStore.delete(email);
-
-  res.json({ success: true, message: 'OTP verified' });
-});
-
-/**
- * =========================
- * REGISTER
- * POST /api/auth/register
- * =========================
- * IMPORTANT:
- * - Called ONLY AFTER OTP verification
- */
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password } = req.body
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'All fields are required' });
-    }
+    if (!verifiedEmails.has(email))
+      return res.status(403).json({ message: 'OTP verification required' })
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
-    }
+    verifiedEmails.delete(email)
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const exists = await User.findOne({ email })
+    if (exists) return res.status(400).json({ message: 'User already exists' })
 
-    const user = new User({
-      name,
-      email,
-      password: hashedPassword,
-    });
-
-    await user.save();
+    const hashed = await bcrypt.hash(password, 10)
+    const user = await User.create({ name, email, password: hashed })
 
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
-    );
+    )
 
     res.status(201).json({
       token,
@@ -135,73 +84,51 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         helpCount: user.helpCount,
-        rating: user.rating,
-      },
-    });
-  } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ message: 'Server error' });
+        rating: user.rating
+      }
+    })
+  } catch {
+    res.status(500).json({ message: 'Registration failed' })
   }
-});
+})
 
-/**
- * =========================
- * LOGIN
- * POST /api/auth/login
- * =========================
- */
 router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+  const user = await User.findOne({ email })
+  if (!user) return res.status(400).json({ message: 'Invalid credentials' })
+
+  const ok = await bcrypt.compare(password, user.password)
+  if (!ok) return res.status(400).json({ message: 'Invalid credentials' })
+
+  const token = jwt.sign(
+    { userId: user._id },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  )
+
+  res.json({
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      helpCount: user.helpCount,
+      rating: user.rating
     }
+  })
+})
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating,
-      },
-    });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-/**
- * =========================
- * GET CURRENT USER
- * GET /api/auth/me
- * =========================
- */
-router.get('/me', auth, async (req, res) => {
+router.get('/me', auth, (req, res) => {
   res.json({
     user: {
       id: req.user._id,
       name: req.user.name,
       email: req.user.email,
       helpCount: req.user.helpCount,
-      rating: req.user.rating,
-    },
-  });
-});
+      rating: req.user.rating
+    }
+  })
+})
 
-module.exports = router;
+module.exports = router

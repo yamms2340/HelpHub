@@ -20,7 +20,6 @@ async function syncUserPointsAndCoins(userId) {
     if (!userCoins) {
       // First time setup - create coins record matching current points
       const initialCoins = user.totalPoints || 0; // 1:1 sync
-      
       userCoins = new UserCoins({
         userId,
         totalCoins: initialCoins,

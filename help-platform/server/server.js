@@ -39,8 +39,10 @@ const allowedOrigins = [
    MIDDLEWARE
 ================================ */
 
+const cors = require('cors');
+
 app.use(cors({
-  origin: true,
+  origin: 'https://helphub-backend.onrender.com',
   credentials: true
 }));
 

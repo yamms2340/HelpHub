@@ -24,6 +24,8 @@ router.post('/send-otp', async (req, res) => {
   try {
     const { email } = req.body
     if (!email) return res.status(400).json({ message: 'Email required' })
+      console.log("EMAIL_USER:", process.env.EMAIL_USER);
+      console.log("EMAIL_PASS EXISTS:", !!process.env.EMAIL_PASS);
 
     const otp = crypto.randomInt(100000, 999999).toString()
     otpStore.set(email, { otp, expiresAt: Date.now() + 5 * 60 * 1000 })

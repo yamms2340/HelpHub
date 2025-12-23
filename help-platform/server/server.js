@@ -47,7 +47,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/requests', require('./routes/requests'));
 app.use('/api/rewards', require('./routes/rewards'));
 app.use('/api/stories', require('./routes/stories'));
-app.use('/api/impact-posts', require('./routes/impactPostsRoutes'));
+app.use('/api/impact-posts', require('./routes/impactPostsRouter'));
 app.use('/api/campaigns', require('./routes/campaign'));
 app.use('/api/donations', require('./routes/donations'));
 app.use('/api/help', require('./routes/help'));

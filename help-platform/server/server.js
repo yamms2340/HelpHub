@@ -2,8 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
-const path = require('path');
-const fs = require('fs');
 
 dotenv.config();
 const app = express();
@@ -23,14 +21,7 @@ app.use(cors({
    BODY PARSERS
 ================================ */
 app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-/* ================================
-   STATIC FILES
-================================ */
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-app.use('/uploads', express.static(uploadsDir));
+app.use(express.urlencoded({ extended: true }));
 
 /* ================================
    DATABASE
@@ -44,20 +35,12 @@ mongoose
    ROUTES
 ================================ */
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/requests', require('./routes/requests'));
-app.use('/api/rewards', require('./routes/rewards'));
-app.use('/api/stories', require('./routes/stories'));
-app.use('/api/impact-posts', require('./routes/impactPostsRouter'));
-app.use('/api/campaigns', require('./routes/campaign'));
-app.use('/api/donations', require('./routes/donations'));
-app.use('/api/help', require('./routes/help'));
-app.use('/api/leaderboard', require('./routes/LeaderBoard'));
 
 /* ================================
    HEALTH
 ================================ */
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'API running' });
+  res.json({ success: true });
 });
 
 /* ================================

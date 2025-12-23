@@ -41,7 +41,7 @@ const allowedOrigins = [
 
 
 app.use(cors({
-  origin: 'https://helphub-backend.onrender.com',
+  origin: 'https://helphub-otp-backend.onrender.com',
   credentials: true
 }));
 

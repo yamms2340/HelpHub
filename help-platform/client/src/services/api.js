@@ -63,7 +63,10 @@ api.interceptors.response.use(
  * 🔐 AUTH + OTP API
  * =========================
  */
+  console.log("API_BASE_URL USED BY FRONTEND:", API_BASE_URL);
+
 export const authAPI = {
+
   // OTP
   sendOtp: (data) => api.post('/auth/send-otp', data),
   verifyOtp: (data) => api.post('/auth/verify-otp', data),

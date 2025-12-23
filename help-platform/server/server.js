@@ -76,7 +76,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
+//
 app.get('/', (req, res) => {
   res.json({
     message: 'HelpHub Platform API is running! 🚀',

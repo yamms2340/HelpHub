@@ -10,12 +10,13 @@ import {
   CircularProgress,
 } from '@mui/material';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext'; // ✅ Updated import
+import { useAuth } from '../../contexts/AuthContext';
 
 function VerifyOtp() {
+  // ✅ SINGLE useAuth() - FIXES ALL ESLint ERRORS!
+  const { verifyOtp, register } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const { verifyOtp, getCurrentUser } = useAuth(); // ✅ Use verifyOtp from context!
 
   const emailFromRegister = location.state?.email || '';
   const [email, setEmail] = useState(emailFromRegister);
@@ -36,7 +37,6 @@ function VerifyOtp() {
     try {
       console.log('🔐 Verifying OTP for:', email);
       
-      // ✅ Use context verifyOtp (auto-saves token + user)
       const result = await verifyOtp(email, otp);
       
       if (result.success) {
@@ -64,13 +64,11 @@ function VerifyOtp() {
     setLoading(true);
     try {
       console.log('🔄 Resending OTP to:', email);
-      const result = await useAuth().register('', email, ''); // Email only
-      if (result.success) {
-        setError(''); // Clear previous errors
-        alert('New OTP sent! Check your email.');
-      }
+      const result = await register('', email, '');
+      setError('');
+      alert('New OTP sent! Check your email (including spam folder).');
     } catch (err) {
-      setError('Failed to resend OTP');
+      setError('Failed to resend OTP. Try registering again.');
     } finally {
       setLoading(false);
     }
@@ -153,10 +151,15 @@ function VerifyOtp() {
               label="6-Digit OTP"
               margin="normal"
               value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))} // Numbers only
+              onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, ''))}
               inputProps={{ 
                 maxLength: 6,
-                style: { textAlign: 'center', fontSize: '1.5rem', fontWeight: 600, letterSpacing: '0.2em' }
+                style: { 
+                  textAlign: 'center', 
+                  fontSize: '1.5rem', 
+                  fontWeight: 600, 
+                  letterSpacing: '0.2em' 
+                }
               }}
               sx={{ mb: 3 }}
             />

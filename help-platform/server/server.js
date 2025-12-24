@@ -10,9 +10,8 @@ dotenv.config();
 
 const app = express();
 
-// ✅ RENDER PORT DEFINITION (use later)
+// ✅ RENDER OFFICIAL PORT (NO HOST!)
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
 // Create uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -27,7 +26,7 @@ if (!fs.existsSync(storiesUploadsDir)) {
   console.log('✅ Created stories uploads directory');
 }
 
-// ✅ CORS (Local + Render)
+// ✅ CORS (Local + Render Frontend)
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -50,13 +49,12 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
   .then(() => console.log('✅ MongoDB connected'))
   .catch((err) => console.error('❌ MongoDB error:', err));
 
-// Health check
+// Health check (Render detects this!)
 app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
     message: 'HelpHub API LIVE!',
     port: PORT,
-    host: HOST,
     env: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString()
   });
@@ -93,7 +91,7 @@ app.get('/debug/routes', (req, res) => {
   });
 });
 
-// ✅ ALL ROUTES (Your existing - perfect!)
+// ✅ ALL ROUTES (Safe try-catch)
 try {
   app.use('/api/auth', require('./routes/auth'));
   console.log('✅ Auth routes: /api/auth');
@@ -172,14 +170,13 @@ app.use('*', (req, res) => {
   });
 });
 
-// ✅ SERVER START (AFTER ALL MIDDLEWARE + ROUTES!)
-const server = app.listen(PORT, HOST, () => {
+// ✅ RENDER OFFICIAL: app.listen(PORT) NO HOST!
+app.listen(PORT, () => {
   console.log('='.repeat(60));
-  console.log(`🚀 HelpHub API v1.0 LIVE`);
-  console.log(`📍 ${HOST}:${PORT}`);
-  console.log(`🌐 http://${HOST === '0.0.0.0' ? 'your-app.onrender.com' : `localhost:${PORT}`}/api/health`);
-  console.log(`🔐 /api/auth/register`);
-  console.log(`📧 Brevo: ${process.env.BREVO_API_KEY ? '✅' : '❌ Missing'}`);
+  console.log(`🚀 HelpHub API v1.0 LIVE on port ${PORT}`);
+  console.log(`🌐 Health: http://localhost:${PORT}/api/health`);
+  console.log(`🔐 Auth: http://localhost:${PORT}/api/auth/register`);
+  console.log(`📧 Brevo: ${process.env.BREVO_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log('='.repeat(60));
 });
 

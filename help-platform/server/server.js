@@ -31,7 +31,8 @@ if (!fs.existsSync(storiesUploadsDir)) {
 
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  origin: ['http://localhost:3000', 'http://localhost:3001','https://helphub-services-xhmh.onrender.com'
+],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));

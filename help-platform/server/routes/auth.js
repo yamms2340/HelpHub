@@ -1,36 +1,98 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const { Resend } = require('resend');
+
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Register
+/* ================================
+   RESEND SETUP
+================================ */
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+/* ================================
+   OTP STORAGE (in-memory)
+================================ */
+const otpStore = new Map();
+const verifiedEmails = new Set();
+
+/* ================================
+   SEND OTP
+================================ */
+router.post('/send-otp', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: 'Email required' });
+    }
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+
+    otpStore.set(email, {
+      otp,
+      expiresAt: Date.now() + 5 * 60 * 1000
+    });
+
+    await resend.emails.send({
+      from: 'HelpHub <onboarding@resend.dev>',
+      to: email,
+      subject: 'Email Verification',
+      html: `<h3>Your OTP is</h3><h2>${otp}</h2>`
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('RESEND OTP ERROR:', err);
+    res.status(500).json({ message: 'Failed to send OTP' });
+  }
+});
+
+/* ================================
+   VERIFY OTP
+================================ */
+router.post('/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
+  const record = otpStore.get(email);
+
+  if (!record || record.otp !== otp || Date.now() > record.expiresAt) {
+    return res.status(400).json({ message: 'Invalid or expired OTP' });
+  }
+
+  otpStore.delete(email);
+  verifiedEmails.add(email);
+
+  res.json({ success: true });
+});
+
+/* ================================
+   REGISTER
+================================ */
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    if (!verifiedEmails.has(email)) {
+      return res.status(403).json({ message: 'OTP verification required' });
+    }
+
+    verifiedEmails.delete(email);
+
+    const exists = await User.findOne({ email });
+    if (exists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create user
-    const user = new User({
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.create({
       name,
       email,
-      password: hashedPassword
+      password: hashed
     });
 
-    await user.save();
-
-    // Generate token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -42,64 +104,56 @@ router.post('/register', async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating
+        email: user.email
       }
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Registration failed' });
   }
 });
 
-// Login
+/* ================================
+   LOGIN
+================================ */
 router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+  const { email, password } = req.body;
 
-    // Check if user exists
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Verify password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
-    }
-
-    // Generate token
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(400).json({ message: 'Invalid credentials' });
   }
+
+  const ok = await bcrypt.compare(password, user.password);
+  if (!ok) {
+    return res.status(400).json({ message: 'Invalid credentials' });
+  }
+
+  const token = jwt.sign(
+    { userId: user._id },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+
+  res.json({
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email
+    }
+  });
 });
 
-// Get current user
-router.get('/me', auth, async (req, res) => {
+/* ================================
+   ME
+================================ */
+router.get('/me', auth, (req, res) => {
   res.json({
     user: {
       id: req.user._id,
       name: req.user.name,
-      email: req.user.email,
-      helpCount: req.user.helpCount,
-      rating: req.user.rating
+      email: req.user.email
     }
   });
 });

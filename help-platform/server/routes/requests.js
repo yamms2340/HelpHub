@@ -80,6 +80,8 @@ router.put('/:id/confirm', auth, async (req, res) => {
     
     // Only requester can confirm
     if (request.requester.toString() !== req.user.id) {
+      console.log("requester: "+request.requester.toString());
+        console.log("user id: "+req.user.id);
       return res.status(403).json({ message: 'Only the requester can confirm completion' });
     }
     

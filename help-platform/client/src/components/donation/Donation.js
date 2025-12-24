@@ -1718,7 +1718,11 @@ function DonationPage() {
         fullWidth
         PaperProps={{
           sx: {
+<<<<<<< HEAD
             borderRadius: '32px',
+=======
+            borderRadius:'32px',
+>>>>>>> otp-verification
             background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
             boxShadow: '0 20px 40px rgba(37, 99, 235, 0.15)',
             overflow: 'hidden'

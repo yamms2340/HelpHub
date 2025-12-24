@@ -1,101 +1,77 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import React, { createContext, useContext, useState, useEffect } from 'react'
+import { authAPI } from '../services/api'
 
-const AuthContext = createContext();
+const AuthContext = createContext(null)
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  return useContext(AuthContext)
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check if user is logged in when the app loads
-    const token = localStorage.getItem('token');
-    if (token) {
-      getCurrentUser();
-    } else {
-      setLoading(false);
+    const token = localStorage.getItem('token')
+    if (!token) {
+      setLoading(false)
+      return
     }
-  }, []);
+    getCurrentUser()
+  }, [])
 
   const getCurrentUser = async () => {
     try {
-      const response = await authAPI.getCurrentUser();
-      setUser(response.data.user);
-      setIsAuthenticated(true);
-    } catch (error) {
-      // Token might be expired or invalid
-      localStorage.removeItem('token');
-      setUser(null);
-      setIsAuthenticated(false);
+      const res = await authAPI.getCurrentUser()
+      setUser(res.data.user)
+    } catch (e) {
+      if (e.response?.status === 401) {
+        localStorage.removeItem('token')
+        setUser(null)
+      }
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const login = async (email, password) => {
     try {
-      const response = await authAPI.login({ email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      setUser(user);
-      setIsAuthenticated(true);
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Login failed' 
-      };
+      const res = await authAPI.login({ email, password })
+      localStorage.setItem('token', res.data.token)
+      setUser(res.data.user)
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: e.response?.data?.message || 'Login failed' }
     }
-  };
+  }
 
   const register = async (name, email, password) => {
     try {
-      const response = await authAPI.register({ name, email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      setUser(user);
-      setIsAuthenticated(true);
-      
-      return { success: true };
-    } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
-      };
+      const res = await authAPI.register({ name, email, password })
+      localStorage.setItem('token', res.data.token)
+      setUser(res.data.user)
+      return { success: true }
+    } catch (e) {
+      return { success: false, error: e.response?.data?.message || 'Registration failed' }
     }
-  };
+  }
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    setIsAuthenticated(false);
-  };
-
-  const value = {
-    user,
-    isAuthenticated,
-    loading,
-    login,
-    register,
-    logout,
-    getCurrentUser
-  };
+    localStorage.removeItem('token')
+    setUser(null)
+  }
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{
+      user,
+      loading,
+      isAuthenticated: !!user,
+      login,
+      register,
+      logout,
+      getCurrentUser
+    }}>
       {!loading && children}
     </AuthContext.Provider>
-  );
+  )
 }

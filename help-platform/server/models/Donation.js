@@ -74,4 +74,8 @@ donationSchema.index({ status: 1 });
 donationSchema.index({ razorpayOrderId: 1 });
 donationSchema.index({ razorpayPaymentId: 1 });
 
+<<<<<<< HEAD
 module.exports = mongoose.model('Donation', donationSchema);
+=======
+module.exports = mongoose.model('Donation', donationSchema);
+>>>>>>> otp-verification

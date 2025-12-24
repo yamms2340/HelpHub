@@ -5,10 +5,13 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 
+
 // Load environment variables
 dotenv.config();
 
+
 const app = express();
+
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -17,12 +20,14 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('✅ Created uploads directory');
 }
 
+
 // Create stories subdirectory
 const storiesUploadsDir = path.join(__dirname, 'uploads', 'stories');
 if (!fs.existsSync(storiesUploadsDir)) {
   fs.mkdirSync(storiesUploadsDir, { recursive: true });
   console.log('✅ Created stories uploads directory');
 }
+
 
 // Middleware
 app.use(cors({
@@ -32,17 +37,17 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log('✅ Static file serving enabled for /uploads');
 
-// Database Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+
+// Database Connection (FIXED - removed deprecated options)
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
 .then(() => console.log('✅ MongoDB connected successfully'))
 .catch((err) => console.error('❌ MongoDB connection error:', err));
+
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -54,6 +59,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -63,6 +69,7 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
 
 // 🔍 DEBUG ENDPOINT: List all routes
 app.get('/debug/routes', (req, res) => {
@@ -99,7 +106,9 @@ app.get('/debug/routes', (req, res) => {
   });
 });
 
+
 // ✅ MOUNT ALL ROUTES IN PRIORITY ORDER
+
 
 // 1. Auth Routes
 try {
@@ -110,6 +119,7 @@ try {
   console.log('⚠️ Auth routes not found:', error.message);
 }
 
+
 // 2. Request Routes
 try {
   const requestRoutes = require('./routes/requests');
@@ -118,6 +128,7 @@ try {
 } catch (error) {
   console.log('⚠️ Request routes not found:', error.message);
 }
+
 
 // 3. Stories Routes (UPDATED WITH IMAGE SUPPORT)
 try {
@@ -131,14 +142,16 @@ try {
   console.log('⚠️ Stories routes not found:', error.message);
 }
 
+
 // 4. Impact Posts Routes
 try {
-  const impactPostsRoutes = require('./routes/impactPostsRoutes');
+  const impactPostsRoutes = require('./routes/impactPostsRouter');
   app.use('/api/impact-posts', impactPostsRoutes);
   console.log('✅ Impact Posts routes loaded at /api/impact-posts');
 } catch (error) {
   console.error('❌ Impact Posts routes failed to load:', error.message);
 }
+
 
 // 5. Rewards Routes
 try {
@@ -149,6 +162,7 @@ try {
   console.error('❌ Rewards routes failed to load:', error.message);
 }
 
+
 // 6. Campaign Routes
 try {
   const campaignRoutes = require('./routes/campaign');
@@ -157,6 +171,7 @@ try {
 } catch (error) {
   console.error('❌ Failed to load campaign routes:', error.message);
 }
+
 
 // 7. Donation Routes
 try {
@@ -167,6 +182,7 @@ try {
   console.error('❌ Failed to load donation routes:', error.message);
 }
 
+
 // 8. Help Routes
 try {
   const helpRoutes = require('./routes/help');
@@ -176,6 +192,7 @@ try {
   console.log('⚠️ Help routes not found:', error.message);
 }
 
+
 // 9. Leaderboard Routes
 try {
   const leaderboardRoutes = require('./routes/LeaderBoard');
@@ -184,6 +201,7 @@ try {
 } catch (error) {
   console.log('⚠️ Leaderboard routes not found:', error.message);
 }
+
 
 // Campaign statistics endpoint
 app.get('/api/campaigns/stats', async (req, res) => {
@@ -204,6 +222,7 @@ app.get('/api/campaigns/stats', async (req, res) => {
       }
     ]);
 
+
     const campaignStats = stats[0] || {
       totalCampaigns: 0,
       totalTargetAmount: 0,
@@ -211,6 +230,7 @@ app.get('/api/campaigns/stats', async (req, res) => {
       totalDonors: 0,
       totalDonatedAllTime: 0
     };
+
 
     res.json({
       success: true,
@@ -224,6 +244,7 @@ app.get('/api/campaigns/stats', async (req, res) => {
     });
   }
 });
+
 
 // Error handling middleware for multer
 app.use((error, req, res, next) => {
@@ -257,6 +278,7 @@ app.use((error, req, res, next) => {
   });
 });
 
+
 // 🔥 ENHANCED 404 HANDLER (MUST BE AFTER ALL ROUTES)
 app.use('*', (req, res) => {
   console.log(`❌ Route not found: ${req.method} ${req.originalUrl}`);
@@ -288,6 +310,7 @@ app.use('*', (req, res) => {
   });
 });
 
+
 // Start server
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
@@ -301,5 +324,6 @@ const server = app.listen(PORT, () => {
   console.log(`   Static files: http://localhost:${PORT}/uploads/stories/`);
   console.log(`✅ Image upload system ready!`);
 });
+
 
 module.exports = app;

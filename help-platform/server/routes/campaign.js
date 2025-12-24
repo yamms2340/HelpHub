@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Campaign = require('../models/Campaign');
+const Donation = require('../models/Donation');
 const auth = require('../middleware/auth');
 
 // Get all active campaigns
@@ -24,10 +25,13 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ✅ NEW: Get campaign statistics for real-time progress (unlimited total)
+// ✅ CRITICAL FIX: Get campaign statistics including ALL donations (campaign + general)
 router.get('/stats', async (req, res) => {
   try {
-    const stats = await Campaign.aggregate([
+    console.log('📊 Fetching comprehensive campaign statistics...');
+
+    // Get campaign-specific stats
+    const campaignStats = await Campaign.aggregate([
       { $match: { status: 'active' } },
       {
         $group: {
@@ -35,30 +39,59 @@ router.get('/stats', async (req, res) => {
           totalCampaigns: { $sum: 1 },
           totalTargetAmount: { $sum: '$targetAmount' },
           totalCurrentAmount: { $sum: '$currentAmount' },
-          totalDonors: { $sum: { $size: '$donors' } },
-          // ✅ NEW: Total donated across all campaigns (unlimited)
-          totalDonatedAllTime: { $sum: '$currentAmount' }
+          totalCampaignDonors: { $sum: { $size: '$donors' } }
         }
       }
     ]);
 
-    const campaignStats = stats[0] || {
+    // ✅ CRITICAL: Get ALL completed donations (campaign + general)
+    const allCompletedDonations = await Donation.find({ status: 'completed' });
+    
+    // Calculate total from ALL donations
+    const totalDonatedAllTime = allCompletedDonations.reduce(
+      (sum, donation) => sum + (donation.amount || 0), 
+      0
+    );
+    
+    // Get unique donor count from all donations
+    const uniqueDonorEmails = new Set(
+      allCompletedDonations.map(d => d.donorEmail).filter(Boolean)
+    );
+    const totalUniqueDonors = uniqueDonorEmails.size;
+
+    const stats = campaignStats[0] || {
       totalCampaigns: 0,
       totalTargetAmount: 0,
       totalCurrentAmount: 0,
-      totalDonors: 0,
-      totalDonatedAllTime: 0
+      totalCampaignDonors: 0
     };
+
+    // ✅ Combine campaign stats with all donation data
+    const finalStats = {
+      totalCampaigns: stats.totalCampaigns,
+      totalTargetAmount: stats.totalTargetAmount,
+      totalCurrentAmount: stats.totalCurrentAmount, // Amount raised through campaigns
+      totalDonors: totalUniqueDonors, // ✅ Unique donors from ALL donations
+      totalDonatedAllTime: totalDonatedAllTime, // ✅ ALL donations (campaign + general)
+      generalDonationsTotal: totalDonatedAllTime - stats.totalCurrentAmount, // General donations only
+      totalDonationCount: allCompletedDonations.length,
+      averageDonation: totalUniqueDonors > 0 
+        ? Math.round((totalDonatedAllTime / totalUniqueDonors) * 100) / 100 
+        : 0
+    };
+
+    console.log('✅ Campaign stats calculated:', finalStats);
 
     res.json({
       success: true,
-      data: campaignStats
+      data: finalStats
     });
   } catch (error) {
-    console.error('Error fetching campaign stats:', error);
+    console.error('❌ Error fetching campaign stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch campaign statistics'
+      message: 'Failed to fetch campaign statistics',
+      error: error.message
     });
   }
 });
@@ -148,12 +181,13 @@ router.post('/', auth, async (req, res) => {
     console.error('❌ Error creating campaign:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create campaign'
+      message: 'Failed to create campaign',
+      error: error.message
     });
   }
 });
 
-// ✅ NEW: Donate to a specific campaign
+// ✅ Donate to a specific campaign (this is now handled in donations route)
 router.post('/:id/donate', auth, async (req, res) => {
   try {
     const { amount, donorName, donorEmail, transactionId, message } = req.body;
@@ -235,12 +269,13 @@ router.post('/:id/donate', auth, async (req, res) => {
     console.error('❌ Error adding donation:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to add donation'
+      message: 'Failed to add donation',
+      error: error.message
     });
   }
 });
 
-// ✅ NEW: Get campaign donations
+// ✅ Get campaign donations
 router.get('/:id/donations', async (req, res) => {
   try {
     const campaign = await Campaign.findById(req.params.id)
@@ -273,7 +308,8 @@ router.get('/:id/donations', async (req, res) => {
     console.error('❌ Error fetching donations:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch donations'
+      message: 'Failed to fetch donations',
+      error: error.message
     });
   }
 });
@@ -332,7 +368,8 @@ router.put('/:id', auth, async (req, res) => {
     console.error('❌ Error updating campaign:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update campaign'
+      message: 'Failed to update campaign',
+      error: error.message
     });
   }
 });
@@ -378,7 +415,8 @@ router.delete('/:id', auth, async (req, res) => {
     console.error('❌ Error deleting campaign:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete campaign'
+      message: 'Failed to delete campaign',
+      error: error.message
     });
   }
 });

@@ -5,29 +5,35 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 
+
 // Load environment variables
 dotenv.config();
 
+
 const app = express();
 
+
+// Create uploads directory if it doesn't exist
 /* ================================
    📁 CREATE UPLOAD DIRECTORIES
-================================ */
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('✅ Created uploads directory');
 }
 
+
+// Create stories subdirectory
 const storiesUploadsDir = path.join(__dirname, 'uploads', 'stories');
 if (!fs.existsSync(storiesUploadsDir)) {
   fs.mkdirSync(storiesUploadsDir, { recursive: true });
   console.log('✅ Created stories uploads directory');
 }
 
+
+// Middleware
 /* ================================
    🌐 CORS CONFIGURATION
-================================ */
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -43,20 +49,27 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log('✅ Static file serving enabled for /uploads');
 
+
+// Database Connection (FIXED - removed deprecated options)
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
+.then(() => console.log('✅ MongoDB connected successfully'))
+.catch((err) => console.error('❌ MongoDB connection error:', err));
+
+
+// Health check endpoint
 /* ================================
    💾 DATABASE CONNECTION
-================================ */
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
   .then(() => console.log('✅ MongoDB connected successfully'))
   .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 /* ================================
    🏥 HEALTH CHECK & ROOT
-================================ */
 app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
@@ -66,6 +79,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'HelpHub Platform API is running! 🚀',
@@ -75,9 +90,10 @@ app.get('/', (req, res) => {
   });
 });
 
+
+// 🔍 DEBUG ENDPOINT: List all routes
 /* ================================
    🔍 DEBUG ENDPOINT
-================================ */
 app.get('/debug/routes', (req, res) => {
   const routes = [];
   
@@ -112,9 +128,13 @@ app.get('/debug/routes', (req, res) => {
   });
 });
 
+
+// ✅ MOUNT ALL ROUTES IN PRIORITY ORDER
+
+
+// 1. Auth Routes
 /* ================================
    🛣️ API ROUTES (PRIORITY ORDER)
-================================ */
 
 // 1. AUTH + OTP ROUTES
 try {
@@ -125,6 +145,8 @@ try {
   console.error('❌ Auth routes failed:', error.message);
 }
 
+
+// 2. Request Routes
 // 2. HELP REQUESTS (CRITICAL - FIXES /api/requests 404)
 try {
   const requestRoutes = require('./routes/requests');
@@ -134,6 +156,8 @@ try {
   console.error('❌ Request routes failed:', error.message);
 }
 
+
+// 3. Stories Routes (UPDATED WITH IMAGE SUPPORT)
 // 3. REWARDS + COINS
 try {
   const rewardsRoutes = require('./routes/rewards');
@@ -143,6 +167,12 @@ try {
   console.error('❌ Rewards routes failed:', error.message);
 }
 
+
+// 4. Impact Posts Routes
+try {
+  const impactPostsRoutes = require('./routes/impactPostsRouter');
+  app.use('/api/impact-posts', impactPostsRoutes);
+  console.log('✅ Impact Posts routes loaded at /api/impact-posts');
 // 4. LEADERBOARD
 try {
   const leaderboardRoutes = require('./routes/LeaderBoard');
@@ -152,6 +182,8 @@ try {
   console.error('❌ Leaderboard routes failed:', error.message);
 }
 
+
+// 5. Rewards Routes
 // 5. HELP (hall-of-fame, stats, inspiring stories)
 try {
   const helpRoutes = require('./routes/help');
@@ -161,6 +193,8 @@ try {
   console.error('❌ Help routes failed:', error.message);
 }
 
+
+// 6. Campaign Routes
 // 6. STORIES (WITH IMAGE UPLOAD SUPPORT)
 try {
   const storiesRoutes = require('./routes/stories');
@@ -170,6 +204,8 @@ try {
   console.error('❌ Stories routes failed:', error.message);
 }
 
+
+// 7. Donation Routes
 // 7. IMPACT POSTS
 try {
   const impactPostsRoutes = require('./routes/impactPostsRouter');
@@ -179,6 +215,8 @@ try {
   console.error('❌ Impact Posts routes failed:', error.message);
 }
 
+
+// 8. Help Routes
 // 8. CAMPAIGNS
 try {
   const campaignRoutes = require('./routes/campaign');
@@ -188,6 +226,8 @@ try {
   console.error('❌ Campaign routes failed:', error.message);
 }
 
+
+// 9. Leaderboard Routes
 // 9. DONATIONS (RAZORPAY)
 try {
   const donationRoutes = require('./routes/donations');
@@ -197,9 +237,53 @@ try {
   console.error('❌ Donation routes failed:', error.message);
 }
 
+
+// Campaign statistics endpoint
+app.get('/api/campaigns/stats', async (req, res) => {
+  try {
+    const Campaign = require('./models/Campaign');
+    
+    const stats = await Campaign.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: null,
+          totalCampaigns: { $sum: 1 },
+          totalTargetAmount: { $sum: '$targetAmount' },
+          totalCurrentAmount: { $sum: '$currentAmount' },
+          totalDonors: { $sum: { $size: '$donors' } },
+          totalDonatedAllTime: { $sum: '$currentAmount' }
+        }
+      }
+    ]);
+
+
+    const campaignStats = stats[0] || {
+      totalCampaigns: 0,
+      totalTargetAmount: 0,
+      totalCurrentAmount: 0,
+      totalDonors: 0,
+      totalDonatedAllTime: 0
+    };
+
+
+    res.json({
+      success: true,
+      data: campaignStats
+    });
+  } catch (error) {
+    console.error('Error fetching campaign stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch campaign statistics'
+    });
+  }
+});
+
+
+// Error handling middleware for multer
 /* ================================
    ⚠️ ERROR HANDLING MIDDLEWARE
-================================ */
 
 // Multer error handling
 app.use((error, req, res, next) => {
@@ -233,9 +317,10 @@ app.use((error, req, res, next) => {
   });
 });
 
+
+// 🔥 ENHANCED 404 HANDLER (MUST BE AFTER ALL ROUTES)
 /* ================================
    🚫 404 HANDLER (MUST BE LAST)
-================================ */
 app.use('*', (req, res) => {
   console.log(`❌ Route not found: ${req.method} ${req.originalUrl}`);
   
@@ -275,9 +360,10 @@ app.use('*', (req, res) => {
   });
 });
 
+
+// Start server
 /* ================================
    🚀 START SERVER
-================================ */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log('\n' + '='.repeat(60));
@@ -298,4 +384,6 @@ app.listen(PORT, () => {
   console.log('='.repeat(60) + '\n');
 });
 
+
+module.exports = app;
 module.exports = app;

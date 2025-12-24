@@ -1,10 +1,12 @@
 import React from 'react';
+
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from 'react-router-dom';
+
 import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { RequestsProvider } from './components/requests/RequestContext';
@@ -19,6 +21,7 @@ import HallOfFame from './components/hallOfFame/HallOfFame';
 import HomePage from './components/home/HomePage';
 import Leaderboard from './components/requests/LeaderBoard';
 import DonationPage from './components/donation/Donation';
+import VerifyOtp from './components/auth/VerifyOtp';
 
 // REWARDS SYSTEM COMPONENTS
 import RewardsPage from './components/rewards/RewardsPage';
@@ -228,6 +231,8 @@ function App() {
               ================================ */}
 
               {/* Dashboard - Main Requests View */}
+              <Route path="/verify-otp" element={<VerifyOtp />} />
+
               <Route
                 path="/dashboard"
                 element={
@@ -273,7 +278,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              
+
               <Route
                 path="/my-redemptions"
                 element={

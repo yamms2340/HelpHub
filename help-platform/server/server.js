@@ -10,7 +10,7 @@ dotenv.config();
 
 const app = express();
 
-// ✅ RENDER PORT + HOST (Critical!)
+// ✅ RENDER PORT DEFINITION (use later)
 const PORT = process.env.PORT || 5000;
 const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
 
@@ -27,7 +27,7 @@ if (!fs.existsSync(storiesUploadsDir)) {
   console.log('✅ Created stories uploads directory');
 }
 
-// ✅ FIXED CORS (Local + Render)
+// ✅ CORS (Local + Render)
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -39,140 +39,105 @@ app.use(cors({
   credentials: true
 }));
 
-// Middleware
+// Middleware (BEFORE ROUTES)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-console.log('✅ Static file serving enabled for /uploads');
+console.log('✅ Static files: /uploads');
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch((err) => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch((err) => console.error('❌ MongoDB error:', err));
 
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
-    message: 'HelpHub API is running!',
+    message: 'HelpHub API LIVE!',
     port: PORT,
     host: HOST,
     env: process.env.NODE_ENV || 'development',
-    timestamp: new Date().toISOString(),
-    features: ['Auth', 'Stories', 'Help', 'Rewards', 'Image Upload']
-  });
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    message: 'HelpHub Platform API 🚀',
-    version: '1.0.0',
-    baseUrl: `${HOST}:${PORT}/api`,
-    docs: '/debug/routes',
     timestamp: new Date().toISOString()
   });
 });
 
-// 🔍 DEBUG: List all routes
+// Root
+app.get('/', (req, res) => {
+  res.json({
+    message: 'HelpHub API 🚀',
+    docs: '/debug/routes',
+    health: '/api/health'
+  });
+});
+
+// Debug routes
 app.get('/debug/routes', (req, res) => {
   const routes = [];
-  
   function extractRoutes(stack, prefix = '') {
     stack.forEach((middleware) => {
       if (middleware.route) {
         const methods = Object.keys(middleware.route.methods).join(', ').toUpperCase();
-        routes.push({
-          path: prefix + middleware.route.path,
-          methods: methods
-        });
+        routes.push({ path: prefix + middleware.route.path, methods });
       } else if (middleware.name === 'router' && middleware.handle.stack) {
         const routerPrefix = middleware.regexp.source
-          .replace(/^\^\\?/, '')
-          .replace(/\$.*/, '')
-          .replace(/\\\//g, '/');
+          .replace(/^\^\\?/, '').replace(/\$.*/, '').replace(/\\\//g, '/');
         extractRoutes(middleware.handle.stack, routerPrefix);
       }
     });
   }
-  
-  if (app._router && app._router.stack) {
-    extractRoutes(app._router.stack);
-  }
-  
+  extractRoutes(app._router.stack);
   res.json({
     success: true,
-    totalRoutes: routes.length,
-    routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
-    timestamp: new Date().toISOString()
+    routes: routes.sort((a, b) => a.path.localeCompare(b.path))
   });
 });
 
-// ✅ ALL ROUTES (Your existing code - perfect!)
+// ✅ ALL ROUTES (Your existing - perfect!)
 try {
   app.use('/api/auth', require('./routes/auth'));
-  console.log('✅ Auth routes loaded at /api/auth');
-} catch (error) {
-  console.log('⚠️ Auth routes not found:', error.message);
-}
+  console.log('✅ Auth routes: /api/auth');
+} catch (e) { console.log('⚠️ Auth routes missing'); }
 
 try {
   app.use('/api/requests', require('./routes/requests'));
-  console.log('✅ Request routes loaded at /api/requests');
-} catch (error) {
-  console.log('⚠️ Request routes not found:', error.message);
-}
+  console.log('✅ Requests: /api/requests');
+} catch (e) { console.log('⚠️ Requests missing'); }
 
 try {
   app.use('/api/stories', require('./routes/stories'));
-  console.log('✅ Stories routes loaded at /api/stories (with image upload)');
-  console.log('   GET  /api/stories/inspiring-stories');
-  console.log('   POST /api/stories/submit');
-} catch (error) {
-  console.log('⚠️ Stories routes not found:', error.message);
-}
+  console.log('✅ Stories: /api/stories');
+} catch (e) { console.log('⚠️ Stories missing'); }
 
 try {
   app.use('/api/impact-posts', require('./routes/impactPostsRouter'));
-  console.log('✅ Impact Posts routes loaded at /api/impact-posts');
-} catch (error) {
-  console.log('⚠️ Impact Posts routes not found:', error.message);
-}
+  console.log('✅ Impact posts: /api/impact-posts');
+} catch (e) { console.log('⚠️ Impact posts missing'); }
 
 try {
   app.use('/api/rewards', require('./routes/rewards'));
-  console.log('✅ Rewards routes loaded at /api/rewards');
-} catch (error) {
-  console.log('⚠️ Rewards routes not found:', error.message);
-}
+  console.log('✅ Rewards: /api/rewards');
+} catch (e) { console.log('⚠️ Rewards missing'); }
 
 try {
   app.use('/api/campaigns', require('./routes/campaign'));
-  console.log('✅ Campaign routes loaded at /api/campaigns');
-} catch (error) {
-  console.log('⚠️ Campaign routes not found:', error.message);
-}
+  console.log('✅ Campaigns: /api/campaigns');
+} catch (e) { console.log('⚠️ Campaigns missing'); }
 
 try {
   app.use('/api/donations', require('./routes/donations'));
-  console.log('✅ Donation routes loaded at /api/donations');
-} catch (error) {
-  console.log('⚠️ Donation routes not found:', error.message);
-}
+  console.log('✅ Donations: /api/donations');
+} catch (e) { console.log('⚠️ Donations missing'); }
 
 try {
   app.use('/api/help', require('./routes/help'));
-  console.log('✅ Help routes loaded at /api/help');
-} catch (error) {
-  console.log('⚠️ Help routes not found:', error.message);
-}
+  console.log('✅ Help: /api/help');
+} catch (e) { console.log('⚠️ Help missing'); }
 
 try {
   app.use('/api/leaderboard', require('./routes/LeaderBoard'));
-  console.log('✅ Leaderboard routes loaded at /api/leaderboard');
-} catch (error) {
-  console.log('⚠️ Leaderboard routes not found:', error.message);
-}
+  console.log('✅ Leaderboard: /api/leaderboard');
+} catch (e) { console.log('⚠️ Leaderboard missing'); }
 
 // Campaign stats
 app.get('/api/campaigns/stats', async (req, res) => {
@@ -180,53 +145,42 @@ app.get('/api/campaigns/stats', async (req, res) => {
     const Campaign = require('./models/Campaign');
     const stats = await Campaign.aggregate([
       { $match: { status: 'active' } },
-      {
-        $group: {
-          _id: null,
-          totalCampaigns: { $sum: 1 },
-          totalTargetAmount: { $sum: '$targetAmount' },
-          totalCurrentAmount: { $sum: '$currentAmount' },
-          totalDonors: { $sum: { $size: '$donors' } }
-        }
-      }
+      { $group: { _id: null, totalCampaigns: { $sum: 1 } } }
     ]);
-    
-    res.json({
-      success: true,
-      data: stats[0] || { totalCampaigns: 0, totalTargetAmount: 0 }
-    });
+    res.json({ success: true, data: stats[0] || { totalCampaigns: 0 } });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Stats error' });
   }
 });
 
-// Error handling
+// Error handler
 app.use((error, req, res, next) => {
   if (error.code === 'LIMIT_FILE_SIZE') {
-    return res.status(400).json({ success: false, message: 'File too large (5MB max)' });
+    return res.status(400).json({ success: false, message: 'File too large' });
   }
-  console.error('💥 Server error:', error);
+  console.error('💥 Error:', error);
   res.status(500).json({ success: false, message: 'Server error' });
 });
 
-// 404 Handler
+// 404 Handler (LAST!)
 app.use('*', (req, res) => {
   console.log(`❌ 404: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
-    use: '/api/auth/register, /api/health'
+  res.status(404).json({ 
+    success: false, 
+    message: 'Route not found',
+    try: '/api/health, /api/auth/register'
   });
 });
 
-// ✅ RENDER + LOCALHOST SERVER START
+// ✅ SERVER START (AFTER ALL MIDDLEWARE + ROUTES!)
 const server = app.listen(PORT, HOST, () => {
-  console.log(`🚀 HelpHub API running on:`);
-  console.log(`   Local:   http://localhost:${PORT}`);
-  console.log(`   Render:  http://${HOST}:${PORT}`);
-  console.log(`✅ Health:  http://${HOST}:${PORT}/api/health`);
-  console.log(`✅ Auth:    http://${HOST}:${PORT}/api/auth/register`);
-  console.log(`🎁 All systems READY!`);
+  console.log('='.repeat(60));
+  console.log(`🚀 HelpHub API v1.0 LIVE`);
+  console.log(`📍 ${HOST}:${PORT}`);
+  console.log(`🌐 http://${HOST === '0.0.0.0' ? 'your-app.onrender.com' : `localhost:${PORT}`}/api/health`);
+  console.log(`🔐 /api/auth/register`);
+  console.log(`📧 Brevo: ${process.env.BREVO_API_KEY ? '✅' : '❌ Missing'}`);
+  console.log('='.repeat(60));
 });
 
 module.exports = app;

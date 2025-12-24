@@ -1,7 +1,12 @@
 import axios from 'axios';
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ DYNAMIC API URL (Local + Render + Vite)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 
+  import.meta.env.REACT_APP_API_URL || 
+  'http://localhost:5000/api';
+
+// 🔍 Log base URL for debugging
+console.log('🔗 API Base URL:', API_BASE_URL);
 
 // Create axios instance
 const api = axios.create({
@@ -12,7 +17,7 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor
+// Request interceptor (auto token + logging)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -31,26 +36,26 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor (401 auto-logout + logging)
 api.interceptors.response.use(
   (response) => {
     const duration = response.config.metadata ? 
       new Date() - response.config.metadata.startTime : 0;
-    console.log(`✅ API Response: ${response.config.url} (${duration}ms) - Status: ${response.status}`);
+    console.log(`✅ API Response: ${response.config.url} (${duration}ms) - ${response.status}`);
     return response;
   },
   (error) => {
     const duration = error.config?.metadata ? 
       new Date() - error.config.metadata.startTime : 0;
-    console.error(`❌ API Error: ${error.config?.url} (${duration}ms) - ${error.response?.status || 'Network Error'}`);
+    console.log(`❌ API Error: ${error.config?.url} (${duration}ms) - ${error.response?.status || 'Network'}`);
     
+    // Auto-logout on 401
     if (error.response?.status === 401) {
-      console.warn('🔒 Unauthorized - Clearing session');
+      console.warn('🔒 Unauthorized → Clearing session');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      // Don't redirect in API calls (let component handle)
+      // window.location.href = '/login';
     }
     
     return Promise.reject(error);
@@ -58,180 +63,17 @@ api.interceptors.response.use(
 );
 
 /**
- * ✅ AUTH API
+ * ✅ AUTH API (Perfect!)
  */
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
+  verifyOtp: (data) => api.post('/auth/verify-otp', data),  // ✅ Fixed!
   login: (credentials) => api.post('/auth/login', credentials),
   getCurrentUser: () => api.get('/auth/me'),
-  refreshToken: () => api.post('/auth/refresh'),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
-  
-  // 👈 ADD THIS LINE:
-  verifyOtp: (data) => api.post('/auth/verify-otp', data),
-  
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     return Promise.resolve({ data: { success: true } });
-  }
-};
-
-
-
-/**
- * ✅ REWARDS API - ENHANCED WITH PROPER ERROR HANDLING
- */
-export const rewardsAPI = {
-  // Get all rewards with filters
-  getAllRewards: async (params = {}) => {
-    try {
-      console.log('🎁 Fetching rewards with params:', params);
-      const response = await api.get('/rewards', { params });
-      console.log('📥 Rewards response:', response.data);
-      
-      // Ensure we return the expected structure
-      if (response.data && typeof response.data === 'object') {
-        return response.data;
-      }
-      
-      // Fallback structure
-      return {
-        success: false,
-        data: [],
-        message: 'Invalid response format'
-      };
-    } catch (error) {
-      console.error('❌ Error fetching rewards:', error);
-      
-      // Return error in expected format
-      return {
-        success: false,
-        data: [],
-        message: error.response?.data?.message || error.message || 'Failed to fetch rewards'
-      };
-    }
-  },
-
-  // Get user's coins balance
-  getUserCoins: async () => {
-    try {
-      console.log('🪙 Fetching user coins...');
-      const response = await api.get('/rewards/coins');
-      console.log('💰 Coins response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching coins:', error);
-      
-      // Return mock data if API fails (for testing)
-      console.warn('🔄 Using mock coins data for testing');
-      return {
-        success: true,
-        data: {
-          totalCoins: 1200,
-          userPoints: 1200,
-          level: 'Helper',
-          requestsCompleted: 5,
-          lifetimeEarned: 1200,
-          lifetimeRedeemed: 0
-        },
-        message: 'Mock coins data (API unavailable)'
-      };
-    }
-  },
-
-  // Redeem a reward - ENHANCED WITH BETTER ERROR HANDLING
-  redeemReward: async (rewardId, deliveryDetails = {}) => {
-    try {
-      console.log('🎁 Processing redemption for reward:', rewardId);
-      
-      if (!rewardId) {
-        throw new Error('Reward ID is required');
-      }
-
-      const requestData = {
-        rewardId,
-        deliveryDetails
-      };
-
-      console.log('📤 Sending redemption request:', requestData);
-      const response = await api.post('/rewards/redeem', requestData);
-      console.log('✅ Redemption response:', response.data);
-
-      // Ensure response has expected structure
-      if (response.data && response.data.success) {
-        return response.data;
-      } else {
-        throw new Error(response.data?.message || 'Redemption failed');
-      }
-    } catch (error) {
-      console.error('❌ Error redeeming reward:', error);
-      
-      // Enhanced error handling with specific messages
-      if (error.response) {
-        // Server responded with error status
-        const serverError = error.response.data;
-        throw new Error(serverError?.message || `Server error: ${error.response.status}`);
-      } else if (error.request) {
-        // Request was made but no response received
-        throw new Error('No response from server. Please check your connection.');
-      } else {
-        // Something else happened
-        throw new Error(error.message || 'An unexpected error occurred during redemption');
-      }
-    }
-  },
-
-  // Get user's redemption history
-  getUserRedemptions: async () => {
-    try {
-      console.log('📦 Fetching user redemptions...');
-      const response = await api.get('/rewards/redemptions');
-      console.log('📋 Redemptions response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching user redemptions:', error);
-      
-      // Return empty list if API fails
-      return {
-        success: true,
-        data: [],
-        message: 'No redemptions found or API unavailable'
-      };
-    }
-  },
-
-  // Get reward categories
-  getRewardCategories: async () => {
-    try {
-      console.log('📂 Fetching reward categories...');
-      const response = await api.get('/rewards/categories');
-      console.log('🏷️ Categories response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching reward categories:', error);
-      
-      // Return default categories if API fails
-      return {
-        success: true,
-        data: ['Gift Cards', 'Electronics', 'Books', 'Food & Drinks', 'Merchandise', 'Experiences'],
-        message: 'Using default categories (API unavailable)'
-      };
-    }
-  },
-
-  // Award coins for testing - ENHANCED
-  awardCoins: async (pointsData) => {
-    try {
-      console.log('🎯 Awarding coins:', pointsData);
-      const response = await api.post('/rewards/award-coins', pointsData);
-      console.log('✅ Coins awarded:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error awarding coins:', error);
-      throw new Error(error.response?.data?.message || 'Failed to award coins');
-    }
   }
 };
 
@@ -242,458 +84,93 @@ export const requestsAPI = {
   createRequest: (requestData) => api.post('/requests', requestData),
   getAllRequests: (params = {}) => api.get('/requests', { params }),
   getRequestById: (id) => api.get(`/requests/${id}`),
-  updateRequest: (id, updateData) => api.put(`/requests/${id}`, updateData),
-  deleteRequest: (id) => api.delete(`/requests/${id}`),
-  
   offerHelp: (id) => api.put(`/requests/${id}/offer-help`),
-  confirmCompletion: (id, confirmationData) => api.put(`/requests/${id}/confirm`, confirmationData),
-  cancelRequest: (id, reason) => api.put(`/requests/${id}/cancel`, { reason }),
-  
   searchRequests: (query, filters = {}) => api.get('/requests/search', { 
     params: { q: query, ...filters } 
   }),
-  getRequestsByUser: (userId) => api.get(`/requests/user/${userId}`),
-  getRequestsByCategory: (category) => api.get(`/requests/category/${category}`),
-  
-  getRequestStats: () => api.get('/requests/stats'),
-  getUserRequestStats: (userId) => api.get(`/requests/stats/user/${userId}`)
 };
 
 /**
- * ✅ IMPACT POSTS API
+ * ✅ STORIES API (Image upload ready!)
+ */
+export const storiesAPI = {
+  getInspiringStories: (limit = 10) => api.get('/stories/inspiring-stories', { params: { limit } }),
+  submitStory: async (storyData) => {
+    const formData = new FormData();
+    Object.keys(storyData).forEach(key => {
+      if (storyData[key] !== null && storyData[key] !== undefined) {
+        formData.append(key, storyData[key]);
+      }
+    });
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${API_BASE_URL}/stories/submit`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Story upload failed');
+    }
+    
+    return response.json();
+  }
+};
+
+/**
+ * ✅ REWARDS API (Simplified)
+ */
+export const rewardsAPI = {
+  getAllRewards: (params = {}) => api.get('/rewards', { params }),
+  getUserCoins: () => api.get('/rewards/coins'),
+  redeemReward: (rewardId) => api.post('/rewards/redeem', { rewardId }),
+};
+
+/**
+ * ✅ USER IMPACT API
  */
 export const impactPostsAPI = {
-  getAllPosts: async (params = {}) => {
-    try {
-      console.log('🔄 Fetching impact posts with params:', params);
-      const response = await api.get('/impact-posts', { params });
-      
-      console.log('📥 Impact posts raw response:', response.data);
-      
-      // Handle different response formats
-      if (response.data && response.data.success !== undefined) {
-        return response.data;
-      } else if (response.data && Array.isArray(response.data)) {
-        return {
-          success: true,
-          data: { posts: response.data },
-          total: response.data.length
-        };
-      } else if (response.data && response.data.posts) {
-        return {
-          success: true,
-          data: { posts: response.data.posts },
-          total: response.data.total || response.data.posts.length
-        };
-      } else {
-        return {
-          success: true,
-          data: { posts: [] },
-          total: 0
-        };
-      }
-    } catch (error) {
-      console.error('❌ Error fetching impact posts:', error);
-      throw error;
-    }
-  },
-  
-  createPost: async (postData) => {
-    try {
-      console.log('🔄 Creating impact post with data:', postData);
-      const response = await api.post('/impact-posts', postData);
-      console.log('✅ Impact post created successfully:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error creating impact post:', error);
-      throw error;
-    }
-  },
-  
-  getPostById: (postId) => api.get(`/impact-posts/${postId}`),
-  updatePost: (postId, updateData) => api.put(`/impact-posts/${postId}`, updateData),
-  deletePost: (postId) => api.delete(`/impact-posts/${postId}`),
-  likePost: (postId) => api.post(`/impact-posts/${postId}/like`),
-  unlikePost: (postId) => api.delete(`/impact-posts/${postId}/like`)
+  getAllPosts: (params = {}) => api.get('/impact-posts', { params }),
+  createPost: (postData) => api.post('/impact-posts', postData),
 };
 
 /**
  * ✅ LEADERBOARD API
  */
 export const leaderboardAPI = {
-  getLeaderboard: (timeframe = 'all', limit = 10) => 
-    api.get('/leaderboard', { params: { timeframe, limit } }),
-  getUserStats: (userId) => api.get(`/leaderboard/user/${userId}`),
-  getUserRank: (userId, timeframe = 'all') => 
-    api.get(`/leaderboard/user/${userId}/rank`, { params: { timeframe } }),
-  getStatsOverview: () => api.get('/leaderboard/stats/overview'),
-  awardPoints: (pointsData) => api.post('/leaderboard/award-points', pointsData),
-  getUserPointsHistory: (userId, limit = 20) => 
-    api.get(`/leaderboard/user/${userId}/points-history`, { params: { limit } })
-};
-
-/**
- * ✅ CAMPAIGNS API - FETCH-BASED FOR COMPATIBILITY
- */
-export const campaignAPI = {
-  getAllCampaigns: async () => {
-    try {
-      console.log('🔄 Fetching campaigns from backend...');
-      const response = await fetch(`${API_BASE_URL}/campaigns`);
-      const data = await response.json();
-      console.log('📥 Campaigns response:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error fetching campaigns:', error);
-      throw error;
-    }
-  },
-
-  getCampaignStats: async () => {
-    try {
-      console.log('🔄 Fetching campaign stats from backend...');
-      const response = await fetch(`${API_BASE_URL}/campaigns/stats`);
-      const data = await response.json();
-      console.log('📊 Campaign stats response:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error fetching campaign stats:', error);
-      throw error;
-    }
-  },
-
-  getCampaign: async (campaignId) => {
-    try {
-      console.log('🔄 Fetching single campaign:', campaignId);
-      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`);
-      const data = await response.json();
-      console.log('📥 Single campaign response:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error fetching campaign:', error);
-      throw error;
-    }
-  },
-
-  createCampaign: async (campaignData) => {
-    try {
-      console.log('🔄 Creating campaign with data:', campaignData);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/campaigns`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(campaignData)
-      });
-      const data = await response.json();
-      console.log('✅ Campaign created successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error creating campaign:', error);
-      throw error;
-    }
-  },
-
-  // Campaign donation - CRITICAL FOR PROGRESS UPDATES
-  donateToCampaign: async (campaignId, donationData) => {
-    try {
-      console.log('💰 Processing donation to campaign:', campaignId);
-      console.log('💰 Donation data:', donationData);
-      
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/donate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(donationData)
-      });
-      
-      const data = await response.json();
-      console.log('✅ Campaign donation processed:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error processing campaign donation:', error);
-      throw error;
-    }
-  }
-};
-
-/**
- * ✅ DONATIONS API
- */
-export const donationsAPI = {
-  createOrder: async (orderData) => {
-    try {
-      console.log('🔄 Creating donation order:', orderData);
-      
-      if (!orderData.amount || orderData.amount <= 0) {
-        throw new Error('Invalid order amount');
-      }
-      
-      const response = await api.post('/donations/create-order', orderData);
-      console.log('✅ Donation order created:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error creating donation order:', error);
-      console.error('Error details:', error.response?.data);
-      throw error;
-    }
-  },
-  
-  verifyPayment: async (paymentData) => {
-    try {
-      console.log('🔄 Verifying payment:', paymentData);
-      const response = await api.post('/donations/verify-payment', paymentData);
-      console.log('✅ Payment verified:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error verifying payment:', error);
-      console.error('Error details:', error.response?.data);
-      throw error;
-    }
-  },
-  
-  testRazorpay: async () => {
-    try {
-      const response = await api.get('/donations/test-razorpay');
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error testing Razorpay:', error);
-      throw error;
-    }
-  }
-};
-
-/**
- * ✅ STORIES API - UPDATED WITH IMAGE UPLOAD SUPPORT
- */
-export const storiesAPI = {
-  getAllStories: async (params = {}) => {
-    try {
-      console.log('🔄 Fetching all stories...');
-      const response = await api.get('/stories', { params });
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching stories:', error);
-      throw error;
-    }
-  },
-  
-  getInspiringStories: async (limit = 10) => {
-    try {
-      console.log('🔄 Fetching inspiring stories...');
-      const response = await api.get('/stories/inspiring-stories', { params: { limit } });
-      console.log('📥 Inspiring stories response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching inspiring stories:', error);
-      throw error;
-    }
-  },
-  
-  getStats: async () => {
-    try {
-      console.log('🔄 Fetching story stats...');
-      const response = await api.get('/stories/stats');
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching story stats:', error);
-      throw error;
-    }
-  },
-  
-  // UPDATED: Submit story with image support using FormData
-  submitStory: async (storyData) => {
-    try {
-      console.log('🔄 Submitting story with data type:', typeof storyData);
-      console.log('📝 Story data preview:', storyData instanceof FormData ? 'FormData' : storyData);
-      
-      // Create FormData if not already FormData
-      let formData;
-      if (storyData instanceof FormData) {
-        formData = storyData;
-        console.log('📤 Using provided FormData');
-      } else {
-        console.log('📦 Converting object to FormData');
-        formData = new FormData();
-        
-        // Add all story fields to FormData
-        Object.keys(storyData).forEach(key => {
-          if (key === 'helpType' && Array.isArray(storyData[key])) {
-            formData.append(key, JSON.stringify(storyData[key]));
-          } else if (storyData[key] !== null && storyData[key] !== undefined && storyData[key] !== '') {
-            formData.append(key, storyData[key]);
-          }
-        });
-      }
-
-      // Log FormData contents for debugging
-      console.log('📋 FormData contents:');
-      for (let [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
-        } else {
-          console.log(`  ${key}: ${value}`);
-        }
-      }
-
-      // Make request with FormData using fetch (better FormData handling than axios)
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/stories/submit`, {
-        method: 'POST',
-        headers: {
-          // Don't set Content-Type - browser will set it with boundary for FormData
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        },
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('✅ Story submitted successfully:', data);
-      return data;
-    } catch (error) {
-      console.error('❌ Error submitting story:', error);
-      
-      // Enhanced error handling
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
-        throw new Error('Network error. Please check your connection.');
-      } else if (error.message.includes('HTTP error')) {
-        throw new Error(error.message);
-      } else {
-        throw new Error(error.message || 'Failed to submit story');
-      }
-    }
-  },
-  
-  getStoryById: async (id) => {
-    try {
-      console.log('🔄 Fetching story by ID:', id);
-      const response = await api.get(`/stories/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching story by ID:', error);
-      throw error;
-    }
-  },
-  
-  searchStories: async (query) => {
-    try {
-      console.log('🔍 Searching stories with query:', query);
-      const response = await api.get('/stories/search', { params: { q: query } });
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error searching stories:', error);
-      throw error;
-    }
-  }
+  getLeaderboard: (timeframe = 'all') => api.get('/leaderboard', { params: { timeframe } }),
 };
 
 /**
  * ✅ HELP API
  */
 export const helpAPI = {
-  getHallOfFame: async () => {
-    try {
-      console.log('🏆 Fetching hall of fame...');
-      const response = await api.get('/help/hall-of-fame');
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching hall of fame:', error);
-      throw error;
-    }
-  },
-  
-  getUserHistory: async (userId, limit = 20) => {
-    try {
-      const response = await api.get(`/help/history/${userId}`, { params: { limit } });
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching user history:', error);
-      throw error;
-    }
-  },
-  
-  getStats: async () => {
-    try {
-      console.log('📊 Fetching help stats...');
-      const response = await api.get('/help/stats');
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching help stats:', error);
-      throw error;
-    }
-  },
-  
-  getInspiringStories: async (limit = 10) => {
-    try {
-      const response = await api.get('/help/inspiring-stories', { params: { limit } });
-      return response.data;
-    } catch (error) {
-      console.error('❌ Error fetching inspiring stories from help:', error);
-      throw error;
-    }
-  }
+  getHallOfFame: () => api.get('/help/hall-of-fame'),
+};
+
+/**
+ * ✅ CAMPAIGNS API
+ */
+export const campaignAPI = {
+  getAllCampaigns: () => api.get('/campaigns'),
+  getStats: () => api.get('/campaigns/stats'),
 };
 
 /**
  * ✅ UTILITY FUNCTIONS
  */
 export const apiUtils = {
-  handleApiError: (error) => {
-    if (error.response) {
-      return {
-        status: error.response.status,
-        message: error.response.data?.error || error.response.data?.message || 'An error occurred',
-        data: error.response.data
-      };
-    } else if (error.request) {
-      return {
-        status: 0,
-        message: 'Network error - please check your connection',
-        data: null
-      };
-    } else {
-      return {
-        status: -1,
-        message: error.message || 'An unexpected error occurred',
-        data: null
-      };
-    }
+  setToken: (token) => {
+    localStorage.setItem('token', token);
   },
-  
-  formatResponse: (response) => ({
-    success: true,
-    data: response.data,
-    status: response.status,
-    message: response.data?.message || 'Success'
-  }),
-  
-  retryRequest: async (requestFn, maxRetries = 3, delay = 1000) => {
-    for (let i = 0; i < maxRetries; i++) {
-      try {
-        return await requestFn();
-      } catch (error) {
-        if (i === maxRetries - 1) throw error;
-        await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
-      }
-    }
+  clearAuth: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }
 };
 
-// Default export
+// Default exports
 export default api;
-
-// Named exports
-export {
-  api,
-  API_BASE_URL
-};
+export { API_BASE_URL };

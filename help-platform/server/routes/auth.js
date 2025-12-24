@@ -7,12 +7,26 @@ const { sendOtpEmail } = require('../utils/emailService');
 
 const router = express.Router();
 
+// Input validation middleware
+const validateRegister = (req, res, next) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: 'Name, email, and password required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ message: 'Password must be 6+ characters' });
+  }
+  next();
+};
+
 /* ============================
    REGISTER (send OTP email)
 ============================ */
-router.post('/register', async (req, res) => {
+router.post('/register', validateRegister, async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
+    console.log('📝 Register attempt:', { name, email });
 
     let user = await User.findOne({ email });
 
@@ -22,17 +36,19 @@ router.post('/register', async (req, res) => {
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = Date.now() + 10 * 60 * 1000;
+    const otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
     if (user && !user.isVerified) {
-      // Case 2: resend OTP
+      // Case 2: resend OTP to existing unverified user
+      console.log('🔄 Resending OTP to existing user:', email);
       user.name = name;
       user.otp = otp;
       user.otpExpiresAt = otpExpiresAt;
       await user.save();
     } else {
       // Case 3: new user
-      const hashedPassword = await bcrypt.hash(password, 10);
+      console.log('👤 Creating new user:', email);
+      const hashedPassword = await bcrypt.hash(password, 12); // Stronger salt
 
       user = new User({
         name,
@@ -41,16 +57,20 @@ router.post('/register', async (req, res) => {
         otp,
         otpExpiresAt,
         isVerified: false,
+        helpCount: 0,
+        rating: 0,
       });
 
       await user.save();
     }
 
+    // Send OTP email
+    console.log('📧 Sending OTP to:', email);
     await sendOtpEmail(user.email, otp);
 
     return res.status(201).json({
       success: true,
-      message: 'OTP sent to your email.',
+      message: 'OTP sent to your email. Check inbox/spam.',
       user: {
         id: user._id,
         name: user.name,
@@ -58,8 +78,8 @@ router.post('/register', async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Register error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('💥 Register error:', error.message);
+    return res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
@@ -70,57 +90,48 @@ router.post('/verify-otp', async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    console.log('🔐 VERIFY OTP REQUEST');
-    console.log('📩 Email received:', email);
-    console.log('🔢 OTP received (raw):', otp, 'type:', typeof otp);
+    console.log('🔐 VERIFY OTP:', { email, otp });
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      console.error('❌ VERIFY FAIL: user not found');
-      return res.status(400).json({ message: 'User not found' });
+      console.log('❌ User not found:', email);
+      return res.status(400).json({ message: 'User not found. Register first.' });
     }
 
-    console.log('🧾 USER FOUND:', {
-      id: user._id.toString(),
-      email: user.email,
-      isVerified: user.isVerified,
+    console.log('✅ User found:', {
+      id: user._id,
       otpInDB: user.otp,
-      otpTypeInDB: typeof user.otp,
       otpExpiresAt: new Date(user.otpExpiresAt),
       now: new Date(),
     });
 
+    // Check OTP exists
     if (!user.otp || !user.otpExpiresAt) {
-      console.error('❌ VERIFY FAIL: OTP missing in DB');
-      return res
-        .status(400)
-        .json({ message: 'No OTP generated. Please register again.' });
+      return res.status(400).json({ message: 'No OTP found. Register again.' });
     }
 
+    // Check OTP expired
     if (Date.now() > user.otpExpiresAt) {
-      console.error('❌ VERIFY FAIL: OTP expired');
-      return res
-        .status(400)
-        .json({ message: 'OTP expired. Please request a new one.' });
+      console.log('⏰ OTP expired for:', email);
+      return res.status(400).json({ message: 'OTP expired. Request new one.' });
     }
 
-    // ⚠️ MOST COMMON BUG: STRING vs NUMBER mismatch
+    // Verify OTP (string comparison)
     if (String(user.otp) !== String(otp)) {
-      console.error('❌ VERIFY FAIL: OTP mismatch');
-      console.error('➡ DB OTP:', user.otp, 'type:', typeof user.otp);
-      console.error('➡ INPUT OTP:', otp, 'type:', typeof otp);
-
+      console.log('❌ OTP mismatch:', { db: user.otp, input: otp });
       return res.status(400).json({ message: 'Invalid OTP' });
     }
 
+    // ✅ Mark verified + clear OTP
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpiresAt = undefined;
     await user.save();
 
-    console.log('✅ OTP VERIFIED SUCCESSFULLY for', email);
+    console.log('🎉 OTP VERIFIED for:', email);
 
+    // Generate JWT
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
@@ -129,20 +140,19 @@ router.post('/verify-otp', async (req, res) => {
 
     return res.json({
       success: true,
-      message: 'OTP verified successfully',
+      message: 'Email verified! Welcome to HelpHub.',
       token,
       user: {
         id: user._id,
         name: user.name,
         email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating,
+        helpCount: user.helpCount || 0,
+        rating: user.rating || 0,
       },
     });
   } catch (error) {
-    console.error('🔥 VERIFY OTP SERVER ERROR');
-    console.error(error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('💥 Verify OTP error:', error);
+    return res.status(500).json({ message: 'Server error during verification' });
   }
 });
 
@@ -158,22 +168,27 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Must be verified
     if (!user.isVerified) {
-      return res
-        .status(403)
-        .json({ message: 'Please verify your email with OTP first.' });
+      return res.status(403).json({ 
+        message: 'Please verify your email with OTP first.' 
+      });
     }
 
+    // Check password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Generate token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    console.log('✅ Login success:', user.email);
 
     return res.json({
       success: true,
@@ -182,13 +197,13 @@ router.post('/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating,
+        helpCount: user.helpCount || 0,
+        rating: user.rating || 0,
       },
     });
   } catch (error) {
-    console.error('Login error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('💥 Login error:', error);
+    return res.status(500).json({ message: 'Server error during login' });
   }
 });
 
@@ -196,15 +211,26 @@ router.post('/login', async (req, res) => {
    GET CURRENT USER
 ============================ */
 router.get('/me', auth, async (req, res) => {
-  return res.json({
-    user: {
-      id: req.user._id,
-      name: req.user.name,
-      email: req.user.email,
-      helpCount: req.user.helpCount,
-      rating: req.user.rating,
-    },
-  });
+  try {
+    const user = await User.findById(req.user.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json({
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        helpCount: user.helpCount || 0,
+        rating: user.rating || 0,
+        isVerified: user.isVerified,
+      },
+    });
+  } catch (error) {
+    console.error('💥 Get user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 module.exports = router;

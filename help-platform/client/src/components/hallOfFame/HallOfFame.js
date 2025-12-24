@@ -252,65 +252,60 @@ function HallOfFame() {
   };
 
   // UPDATED: Submit story using the updated API
-  const handleSubmitStory = async () => {
-    try {
-      if (!storyData.title || !storyData.description || !storyData.category) {
-        alert('Please fill in all required fields (Title, Description, Category)');
-        return;
-      }
-
-      setSubmittingStory(true);
-      console.log('📤 Submitting story:', storyData);
-
-      const formData = new FormData();
-      formData.append('title', storyData.title);
-      formData.append('description', storyData.description);
-      formData.append('category', storyData.category);
-      formData.append('impact', storyData.impact || 'Positive impact');
-      formData.append('helpType', JSON.stringify(storyData.helpType));
-      formData.append('helper', storyData.helper || 'Anonymous');
-      formData.append('location', storyData.location || 'Unknown');
-      
-      if (selectedImage) {
-        formData.append('image', selectedImage);
-        console.log('📁 Adding image file to submission');
-      } else if (imageUrl) {
-        formData.append('imageUrl', imageUrl);
-        console.log('🔗 Adding image URL to submission');
-      }
-
-      // Use the updated storiesAPI
-      const result = await storiesAPI.submitStory(formData);
-      
-      console.log('✅ Story submission result:', result);
-      
-      if (result.success) {
-        alert('Story submitted successfully! 🎉');
-        setShowPostStoryModal(false);
-        setStoryData({ 
-          title: '', 
-          description: '', 
-          category: '', 
-          impact: '', 
-          helpType: [], 
-          helper: '', 
-          location: '' 
-        });
-        clearImage();
-        
-        // Refresh the data to show the new story
-        fetchHallOfFameData();
-      } else {
-        throw new Error(result.message || 'Failed to submit story');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error submitting story:', error);
-      alert(`Error submitting story: ${error.message}`);
-    } finally {
-      setSubmittingStory(false);
+ const handleSubmitStory = async () => {
+  try {
+    if (!storyData.title || !storyData.description || !storyData.category) {
+      alert('Please fill all required fields');
+      return;
     }
-  };
+
+    setSubmittingStory(true);
+
+    const formData = new FormData();
+    formData.append('title', storyData.title);
+    formData.append('description', storyData.description);
+    formData.append('category', storyData.category);
+    formData.append('impact', storyData.impact || 'Positive impact');
+    formData.append('helpType', JSON.stringify(storyData.helpType));
+    formData.append('helper', storyData.helper || 'Anonymous');
+    formData.append('location', storyData.location || 'Unknown');
+
+    if (selectedImage) {
+      formData.append('image', selectedImage);
+    } else if (imageUrl) {
+      formData.append('imageUrl', imageUrl);
+    }
+
+    // ✅ FIXED RESPONSE HANDLING
+    const response = await storiesAPI.submitStory(formData);
+
+    if (response.data?.success) {
+      alert('Story submitted successfully 🎉');
+
+      setShowPostStoryModal(false);
+      setStoryData({
+        title: '',
+        description: '',
+        category: '',
+        impact: '',
+        helpType: [],
+        helper: '',
+        location: '',
+      });
+
+      clearImage();
+      fetchHallOfFameData();
+    } else {
+      throw new Error(response.data?.message || 'Failed to submit story');
+    }
+  } catch (error) {
+    console.error('❌ Error submitting story:', error);
+    alert(error.message || 'Failed to submit story');
+  } finally {
+    setSubmittingStory(false);
+  }
+};
+
 
   // UPDATED: Function to render story image - no fake emojis
   const renderStoryImage = (story) => {

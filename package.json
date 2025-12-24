@@ -2,7 +2,11 @@
   "dependencies": {
     "@date-io/date-fns": "^3.2.1",
     "@mui/x-date-pickers": "^8.10.2",
+    "cors": "^2.8.5",
     "date-fns": "^4.1.0",
-    "react-hook-form": "^7.62.0"
+    "express": "^5.2.1",
+    "nodemailer": "^7.0.11",
+    "react-hook-form": "^7.62.0",
+    "resend": "^6.6.0"
   }
 }

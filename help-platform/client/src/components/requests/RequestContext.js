@@ -16,169 +16,138 @@ export const RequestsProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fetch all requests from backend
+  // ---------------- FETCH ----------------
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching requests from API...');
       const response = await requestsAPI.getAllRequests();
-      console.log('✅ Fetched requests:', response.data?.length || 0, 'items');
       setRequests(response.data || []);
       setError('');
-    } catch (error) {
-      console.error('❌ Error fetching requests:', error);
+    } catch (err) {
+      console.error('Fetch requests error:', err);
       setError('Failed to fetch requests');
     } finally {
       setLoading(false);
     }
   };
 
-  // Load requests on mount
   useEffect(() => {
     fetchRequests();
   }, []);
 
-  // Add new request
+  // ---------------- CREATE ----------------
   const addRequest = async (requestData) => {
-    try {
-      console.log('➕ Creating new request:', requestData);
-      const response = await requestsAPI.createRequest(requestData);
-      const newRequest = response.data;
-      
-      // Add to beginning of list
-      setRequests(prev => [newRequest, ...prev]);
-      
-      // Refresh from server after short delay
-      setTimeout(() => {
-        fetchRequests();
-      }, 1000);
-      
-      console.log('✅ Request created successfully:', newRequest._id);
-      return newRequest;
-    } catch (error) {
-      console.error('❌ Error creating request:', error);
-      throw error;
-    }
+    const response = await requestsAPI.createRequest(requestData);
+    await fetchRequests();
+    return response.data;
   };
 
-  // Complete request and award points
-  const completeRequest = async (requestId, completionData) => {
+  // ---------------- OFFER HELP (FIXED) ----------------
+  const offerHelp = async (requestId) => {
     try {
-      console.log('🎯 Completing request:', requestId, completionData);
-      
-      const response = await requestsAPI.confirmCompletion(requestId, completionData);
-      
-      console.log('✅ Completion response:', response.data);
-      
-      // Update local state immediately
-      setRequests(prev => 
-        prev.map(request => {
-          if (request._id === requestId || request.id === requestId) {
-            return {
-              ...request,
-              status: 'Completed',
-              completedAt: new Date().toISOString(),
-              rating: completionData.rating || 5,
-              feedback: completionData.feedback || '',
-              pointsAwarded: response.data.points || 0
-            };
-          }
-          return request;
-        })
+      await requestsAPI.offerHelp(requestId);
+
+      setRequests(prev =>
+        prev.map(req =>
+          req._id === requestId
+            ? {
+                ...req,
+                status: 'In Progress',
+                acceptedBy: { _id: 'me' }
+              }
+            : req
+        )
       );
 
-      // Refresh from server to ensure consistency
-      setTimeout(() => {
-        fetchRequests();
-      }, 1000);
-
-      return {
-        points: response.data.points || 0,
-        badges: response.data.badges || [],
-        achievements: response.data.achievements || []
-      };
-      
+      await fetchRequests();
     } catch (error) {
-      console.error('❌ Error completing request:', error);
+      console.error(
+        'Offer help error:',
+        error.response?.data?.message
+      );
       throw error;
     }
   };
 
-  // Filter requests
+  // ---------------- COMPLETE REQUEST (FIXED) ----------------
+  const completeRequest = async (requestId, completionData = {}) => {
+    try {
+      const response = await requestsAPI.confirmCompletion(
+        requestId,
+        completionData
+      );
+
+      setRequests(prev =>
+        prev.map(req =>
+          req._id === requestId
+            ? {
+                ...req,
+                status: 'Completed',
+                completedAt: new Date().toISOString(),
+                rating: completionData.rating || 5,
+                feedback: completionData.feedback || '',
+                pointsAwarded: response.data.points
+              }
+            : req
+        )
+      );
+
+      await fetchRequests();
+
+      return response.data;
+    } catch (error) {
+      console.error(
+        'Complete request error:',
+        error.response?.data?.message
+      );
+      throw error;
+    }
+  };
+
+  // ---------------- FILTER ----------------
   const getFilteredRequests = (filters) => {
     let filtered = [...requests];
-    
+
     if (filters.category !== 'All') {
-      filtered = filtered.filter(req => req.category === filters.category);
+      filtered = filtered.filter(r => r.category === filters.category);
     }
     if (filters.urgency !== 'All') {
-      filtered = filtered.filter(req => req.urgency === filters.urgency);
+      filtered = filtered.filter(r => r.urgency === filters.urgency);
     }
     if (filters.status !== 'All') {
-      filtered = filtered.filter(req => req.status === filters.status);
+      filtered = filtered.filter(r => r.status === filters.status);
     }
-    
+
     return filtered;
   };
 
-  // Get user stats
+  // ---------------- USER STATS ----------------
   const getUserStats = async (userId) => {
-    try {
-      if (!userId) {
-        return {
-          totalPoints: 0,
-          monthlyPoints: 0,
-          weeklyPoints: 0,
-          requestsCompleted: 0,
-          requestsCreated: 0,
-          badges: [],
-          achievements: [],
-          rank: null
-        };
-      }
-
-      const response = await leaderboardAPI.getUserStats(userId);
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching user stats:', error);
-      return {
-        totalPoints: 0,
-        monthlyPoints: 0,
-        weeklyPoints: 0,
-        requestsCompleted: 0,
-        requestsCreated: 0,
-        badges: [],
-        achievements: [],
-        rank: null
-      };
-    }
+    if (!userId) return null;
+    const response = await leaderboardAPI.getUserStats(userId);
+    return response.data.data;
   };
 
-  // Get leaderboard
   const getLeaderboard = async (timeframe = 'all', limit = 10) => {
-    try {
-      const response = await leaderboardAPI.getLeaderboard(timeframe, limit);
-      return response.data.data || [];
-    } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-      return [];
-    }
-  };
-
-  const value = {
-    requests,
-    loading,
-    error,
-    addRequest,
-    completeRequest,
-    getFilteredRequests,
-    fetchRequests,
-    getUserStats,
-    getLeaderboard,
+    const response = await leaderboardAPI.getLeaderboard(timeframe, limit);
+    return response.data.data || [];
   };
 
   return (
-    <RequestContext.Provider value={value}>
+    <RequestContext.Provider
+      value={{
+        requests,
+        loading,
+        error,
+        fetchRequests,
+        addRequest,
+        offerHelp,
+        completeRequest,
+        getFilteredRequests,
+        getUserStats,
+        getLeaderboard
+      }}
+    >
       {children}
     </RequestContext.Provider>
   );

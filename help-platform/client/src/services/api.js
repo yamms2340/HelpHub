@@ -66,12 +66,18 @@ export const authAPI = {
   refreshToken: () => api.post('/auth/refresh'),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
+  
+  // 👈 ADD THIS LINE:
+  verifyOtp: (data) => api.post('/auth/verify-otp', data),
+  
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     return Promise.resolve({ data: { success: true } });
   }
 };
+
+
 
 /**
  * ✅ REWARDS API - ENHANCED WITH PROPER ERROR HANDLING

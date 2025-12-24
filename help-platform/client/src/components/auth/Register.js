@@ -87,27 +87,32 @@ function Register() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-    
-    setLoading(true);
+  e.preventDefault();
+  setError('');
 
-    const result = await register(formData.name, formData.email, formData.password);
-    
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error);
-    }
-    
-    setLoading(false);
-  };
+  const validationError = validateForm();
+  if (validationError) {
+    setError(validationError);
+    return;
+  }
+
+  setLoading(true);
+
+  // Call register (it should POST /api/auth/register and NOT auto-login)
+  const result = await register(formData.name, formData.email, formData.password);
+
+  setLoading(false);
+
+  if (result.success) {
+    // ✅ Go to OTP page with email in state/query
+    navigate('/verify-otp', {
+      state: { email: formData.email }
+    });
+  } else {
+    setError(result.error || 'Failed to create account');
+  }
+};
+
 
   return (
     <Box

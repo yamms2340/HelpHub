@@ -33,17 +33,21 @@ const donationSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // ✅ CRITICAL FIX: Allow null for general donations
   campaignId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Campaign'
+    ref: 'Campaign',
+    default: null,
+    required: false
   },
   campaignTitle: {
     type: String,
-    trim: true
+    trim: true,
+    default: 'General Donation'
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed'],
+    enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending'
   },
   razorpayOrderId: {
@@ -62,5 +66,12 @@ const donationSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// ✅ Indexes for better query performance
+donationSchema.index({ donorEmail: 1, createdAt: -1 });
+donationSchema.index({ campaignId: 1 });
+donationSchema.index({ status: 1 });
+donationSchema.index({ razorpayOrderId: 1 });
+donationSchema.index({ razorpayPaymentId: 1 });
 
 module.exports = mongoose.model('Donation', donationSchema);

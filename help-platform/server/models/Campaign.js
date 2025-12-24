@@ -48,11 +48,11 @@ const campaignSchema = new mongoose.Schema({
     enum: ['active', 'completed', 'paused', 'cancelled'],
     default: 'active'
   },
-  // ✅ UPDATED: Enhanced donors array with more details
+  // ✅ Enhanced donors array with donation details
   donors: [{
     donor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'Donation',
       required: true
     },
     donorName: {
@@ -113,7 +113,7 @@ const campaignSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
-  // ✅ NEW: Performance tracking
+  // ✅ Performance tracking
   metrics: {
     totalViews: {
       type: Number,

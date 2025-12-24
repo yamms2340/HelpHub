@@ -3,21 +3,33 @@ const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const router = express.Router();
 
-// ✅ Initialize Razorpay with YOUR credentials
-const razorpay = new Razorpay({
-  key_id: 'rzp_test_RAWJZe53MZOrPx',
-  key_secret: 'k0UoF2QyAUTjjoc8joMXGwGg',
-});
+// ✅ FIXED: Initialize Razorpay with proper error handling
+let razorpay;
+try {
+  razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_RAWJZe53MZOrPx',
+    key_secret: process.env.RAZORPAY_KEY_SECRET || 'k0UoF2QyAUTjjoc8joMXGwGg',
+  });
+  console.log('✅ Razorpay initialized successfully');
+} catch (error) {
+  console.error('❌ Razorpay initialization failed:', error);
+}
 
-console.log('🔧 Razorpay initialized successfully with key:', 'rzp_test_RAWJZe53MZOrPx');
-
-// ✅ CREATE ORDER ENDPOINT
+// ✅ FIXED: CREATE ORDER ENDPOINT with proper general donation handling
 router.post('/create-order', async (req, res) => {
   try {
     const { amount, donorName, donorEmail, donorPhone, message, campaignId } = req.body;
     
     console.log('📦 Creating donation order:', { amount, donorName, donorEmail, campaignId });
     
+    // ✅ Validate Razorpay instance
+    if (!razorpay) {
+      return res.status(500).json({
+        success: false,
+        message: 'Payment gateway not initialized. Please contact support.'
+      });
+    }
+
     // Validate amount
     const amountFloat = parseFloat(amount);
     if (!amountFloat || amountFloat < 1) {
@@ -48,9 +60,13 @@ router.post('/create-order', async (req, res) => {
     // Generate unique receipt ID
     const receiptId = `DONATION_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Check if campaignId exists and is valid
+    // ✅ CRITICAL FIX: Handle general vs campaign donations
+    const isGeneralDonation = !campaignId || campaignId === 'general';
     let campaign = null;
-    if (campaignId && campaignId !== 'main-campaign' && campaignId !== 'general') {
+    let actualCampaignId = null;
+    let campaignTitle = 'General Donation';
+    
+    if (!isGeneralDonation) {
       try {
         const Campaign = require('../models/Campaign');
         campaign = await Campaign.findById(campaignId);
@@ -66,12 +82,18 @@ router.post('/create-order', async (req, res) => {
             message: 'Campaign is not active'
           });
         }
+        actualCampaignId = campaignId;
+        campaignTitle = campaign.title;
       } catch (campaignError) {
         console.warn('⚠️ Campaign check failed:', campaignError.message);
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid campaign'
+        });
       }
     }
     
-    // Create Razorpay order
+    // ✅ FIXED: Create Razorpay order with proper structure
     const razorpayOrderData = {
       amount: amountInPaise,
       currency: 'INR',
@@ -80,19 +102,30 @@ router.post('/create-order', async (req, res) => {
         donorName: donorName || 'Anonymous',
         donorEmail: donorEmail || '',
         donorPhone: donorPhone || '',
-        campaignId: campaignId || 'general',
-        campaignTitle: campaign ? campaign.title : 'General Donation',
+        campaignId: isGeneralDonation ? 'general' : campaignId,
+        campaignTitle: campaignTitle,
         platform: 'HelpHub'
       }
     };
     
     console.log('🎯 Creating Razorpay order with data:', razorpayOrderData);
     
-    const razorpayOrder = await razorpay.orders.create(razorpayOrderData);
+    // ✅ FIXED: Proper error handling for Razorpay API call
+    let razorpayOrder;
+    try {
+      razorpayOrder = await razorpay.orders.create(razorpayOrderData);
+    } catch (razorpayError) {
+      console.error('❌ Razorpay API Error:', razorpayError);
+      return res.status(500).json({
+        success: false,
+        message: razorpayError.error?.description || 'Failed to create payment order. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? razorpayError.message : undefined
+      });
+    }
     
     console.log('✅ Razorpay order created successfully:', razorpayOrder.id);
     
-    // Save transaction record (optional - create Donation model if needed)
+    // ✅ CRITICAL FIX: Save donation record with null campaignId for general donations
     try {
       const Donation = require('../models/Donation');
       const donation = new Donation({
@@ -103,14 +136,16 @@ router.post('/create-order', async (req, res) => {
         donorEmail,
         donorPhone: donorPhone || '',
         message: message || '',
-        campaignId: campaignId || null,
-        campaignTitle: campaign ? campaign.title : 'General Donation',
+        campaignId: actualCampaignId, // null for general, ObjectId for campaigns
+        campaignTitle: campaignTitle,
         status: 'pending',
         razorpayOrderId: razorpayOrder.id
       });
       await donation.save();
+      console.log('✅ Donation record saved:', donation._id);
     } catch (saveError) {
-      console.warn('⚠️ Could not save donation record:', saveError.message);
+      console.error('⚠️ Could not save donation record:', saveError.message);
+      // Continue anyway - we'll handle it in verification
     }
     
     res.json({
@@ -119,7 +154,7 @@ router.post('/create-order', async (req, res) => {
         orderId: razorpayOrder.id,
         amount: amountFloat,
         currency: 'INR',
-        razorpayKeyId: 'rzp_test_RAWJZe53MZOrPx',
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_RAWJZe53MZOrPx',
         transactionId: receiptId
       },
       message: 'Order created successfully'
@@ -143,7 +178,7 @@ router.post('/create-order', async (req, res) => {
   }
 });
 
-// ✅ VERIFY PAYMENT ENDPOINT
+// ✅ CRITICAL FIX: VERIFY PAYMENT ENDPOINT - Properly handles general donations
 router.post('/verify-payment', async (req, res) => {
   try {
     const { 
@@ -166,9 +201,10 @@ router.post('/verify-payment', async (req, res) => {
       });
     }
     
-    // ✅ Signature verification with your secret
+    // ✅ FIXED: Signature verification
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || 'k0UoF2QyAUTjjoc8joMXGwGg';
     const expectedSignature = crypto
-      .createHmac('sha256', 'k0UoF2QyAUTjjoc8joMXGwGg')
+      .createHmac('sha256', keySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
     
@@ -176,70 +212,143 @@ router.post('/verify-payment', async (req, res) => {
       console.error('❌ Invalid signature');
       return res.status(400).json({ 
         success: false, 
-        message: 'Payment verification failed' 
+        message: 'Payment verification failed - invalid signature' 
       });
     }
     
-    // Fetch payment details
+    console.log('✅ Signature verified successfully');
+    
+    // ✅ Fetch payment details from Razorpay
     let paymentDetails = null;
+    let paymentAmount = 0;
     try {
       paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
+      paymentAmount = paymentDetails.amount / 100;
       console.log('💰 Payment verified:', {
-        amount: `₹${paymentDetails.amount / 100}`,
+        amount: `₹${paymentAmount}`,
         status: paymentDetails.status
       });
     } catch (fetchError) {
       console.warn('⚠️ Could not fetch payment details:', fetchError.message);
     }
-    
-    const paymentAmount = paymentDetails ? paymentDetails.amount / 100 : 0;
 
-    // Update donation record and campaign (if applicable)
+    // ✅ CRITICAL FIX: Update donation AND campaign in proper sequence
+    let donation = null;
+    let campaignUpdated = false;
+    let updatedCampaign = null;
+    
     try {
       const Donation = require('../models/Donation');
-      const donation = await Donation.findOne({ razorpayOrderId: razorpay_order_id });
+      const Campaign = require('../models/Campaign');
       
-      if (donation) {
-        donation.razorpayPaymentId = razorpay_payment_id;
-        donation.razorpaySignature = razorpay_signature;
-        donation.status = 'completed';
-        donation.paidAt = new Date();
-        await donation.save();
+      // Find donation
+      donation = await Donation.findOne({ razorpayOrderId: razorpay_order_id });
+      
+      if (!donation) {
+        // ✅ Create donation if not found (fallback)
+        console.warn('❌ Donation not found, creating new record for order:', razorpay_order_id);
+        
+        const isGeneralDonation = !paymentDetails.notes.campaignId || 
+                                  paymentDetails.notes.campaignId === 'general';
+        
+        donation = new Donation({
+          orderId: razorpay_order_id,
+          amount: paymentAmount,
+          currency: 'INR',
+          donorName: paymentDetails.notes.donorName || 'Anonymous',
+          donorEmail: paymentDetails.notes.donorEmail || '',
+          donorPhone: paymentDetails.notes.donorPhone || '',
+          message: '',
+          campaignId: isGeneralDonation ? null : paymentDetails.notes.campaignId,
+          campaignTitle: paymentDetails.notes.campaignTitle || 'General Donation',
+          status: 'pending',
+          razorpayOrderId: razorpay_order_id
+        });
+      }
 
-        // Update campaign if donation is for a specific campaign
-        if (donation.campaignId && donation.campaignId !== 'general') {
-          try {
-            const Campaign = require('../models/Campaign');
-            const campaign = await Campaign.findById(donation.campaignId);
-            if (campaign) {
-              campaign.donors.push({
-                donor: donation._id,
-                donorName: donation.donorName,
-                donorEmail: donation.donorEmail,
-                amount: donation.amount,
-                transactionId: razorpay_payment_id,
-                message: donation.message || '',
-                donatedAt: new Date()
-              });
+      // Update donation status
+      donation.razorpayPaymentId = razorpay_payment_id;
+      donation.razorpaySignature = razorpay_signature;
+      donation.status = 'completed';
+      donation.paidAt = new Date();
+      await donation.save();
+      console.log('✅ Donation record updated:', donation._id);
 
-              campaign.currentAmount += donation.amount;
+      // ✅ CRITICAL: Update campaign ONLY if campaignId exists (not null and not general)
+      if (donation.campaignId) {
+        try {
+          const campaign = await Campaign.findById(donation.campaignId);
+          
+          if (campaign) {
+            console.log('📊 Before update:', {
+              campaignId: campaign._id,
+              currentAmount: campaign.currentAmount,
+              donationAmount: donation.amount
+            });
+            
+            // Add donor to campaign
+            campaign.donors.push({
+              donor: donation._id,
+              donorName: donation.donorName,
+              donorEmail: donation.donorEmail,
+              amount: donation.amount,
+              transactionId: razorpay_payment_id,
+              message: donation.message || '',
+              donatedAt: new Date()
+            });
 
-              if (campaign.currentAmount >= campaign.targetAmount) {
-                campaign.status = 'completed';
-              }
+            // ✅ CRITICAL: Properly increment current amount
+            const previousAmount = campaign.currentAmount || 0;
+            campaign.currentAmount = previousAmount + donation.amount;
+            
+            console.log('💰 After calculation:', {
+              previousAmount,
+              donationAmount: donation.amount,
+              newAmount: campaign.currentAmount,
+              targetAmount: campaign.targetAmount
+            });
 
-              await campaign.save();
-              console.log('✅ Campaign updated with donation');
+            // Check if campaign target is reached
+            if (campaign.currentAmount >= campaign.targetAmount && campaign.status === 'active') {
+              campaign.status = 'completed';
+              console.log('🎉 Campaign completed!');
             }
-          } catch (campaignError) {
-            console.error('❌ Error updating campaign:', campaignError);
+
+            // ✅ CRITICAL: Save campaign changes
+            await campaign.save();
+            campaignUpdated = true;
+            
+            // Fetch fresh campaign data to return
+            updatedCampaign = await Campaign.findById(campaign._id)
+              .select('_id title currentAmount targetAmount status donors')
+              .lean();
+            
+            console.log('✅ Campaign updated successfully:', {
+              id: updatedCampaign._id,
+              currentAmount: updatedCampaign.currentAmount,
+              targetAmount: updatedCampaign.targetAmount,
+              donorsCount: updatedCampaign.donors.length
+            });
+          } else {
+            console.warn('⚠️ Campaign not found:', donation.campaignId);
           }
+        } catch (campaignError) {
+          console.error('❌ Error updating campaign:', campaignError);
+          // Continue - don't fail verification if campaign update fails
         }
+      } else {
+        console.log('ℹ️ General donation - no specific campaign to update');
       }
     } catch (updateError) {
-      console.warn('⚠️ Could not update records:', updateError.message);
+      console.error('❌ Error in donation/campaign update:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to update donation records',
+        error: process.env.NODE_ENV === 'development' ? updateError.message : undefined
+      });
     }
     
+    // ✅ Send success response with updated campaign data
     res.json({
       success: true,
       message: `Donation of ₹${paymentAmount} verified successfully! 🎉`,
@@ -250,7 +359,10 @@ router.post('/verify-payment', async (req, res) => {
         amount: paymentAmount,
         verified: true,
         paymentMethod: paymentDetails?.method || 'Unknown',
-        paymentStatus: paymentDetails?.status || 'captured'
+        paymentStatus: paymentDetails?.status || 'captured',
+        campaignUpdated: campaignUpdated,
+        updatedCampaign: updatedCampaign, // ✅ Return fresh campaign data
+        donationId: donation?._id
       }
     });
     
@@ -269,20 +381,25 @@ router.get('/test-razorpay', async (req, res) => {
   try {
     console.log('🧪 Testing Razorpay connection...');
     
+    if (!razorpay) {
+      return res.status(500).json({
+        success: false,
+        message: '❌ Razorpay not initialized',
+      });
+    }
+    
     const testOrder = await razorpay.orders.create({
-      amount: 100, // ₹1 in paise
+      amount: 100,
       currency: 'INR',
       receipt: `test_${Date.now()}`,
-      notes: {
-        purpose: 'Connection Test'
-      }
+      notes: { purpose: 'Connection Test' }
     });
     
     res.json({
       success: true,
       message: '✅ Razorpay connection successful!',
       data: {
-        keyId: 'rzp_test_RAWJZe53MZOrPx',
+        keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_RAWJZe53MZOrPx',
         testOrderId: testOrder.id,
         testAmount: '₹1.00',
         status: testOrder.status,
@@ -295,7 +412,7 @@ router.get('/test-razorpay', async (req, res) => {
       success: false,
       message: '❌ Razorpay connection failed',
       error: error.message,
-      keyId: 'rzp_test_RAWJZe53MZOrPx'
+      keyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_RAWJZe53MZOrPx'
     });
   }
 });

@@ -22,7 +22,7 @@ const sendOtpEmail = async (email, otp) => {
 
   const sendSmtpEmail = {
     sender: {
-      name: 'nil',
+      name: 'HELP-HUB',
       email: 'yaminireddy2023@gmail.com', // your verified sender
     },
     to: [{ email }],
@@ -34,7 +34,11 @@ const sendOtpEmail = async (email, otp) => {
     const result = await client.sendTransacEmail(sendSmtpEmail);
     console.log('✅ Brevo OTP sent:', { to: email, messageId: result.messageId });
   } catch (err) {
-    console.error('❌ Brevo OTP error:', err.response?.body || err.message);
+   console.error('❌ Brevo OTP error:', {
+  status: err.response?.status,
+  data: err.response?.body || err.response?.data,
+});
+
   }
 };
 

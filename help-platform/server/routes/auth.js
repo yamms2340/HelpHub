@@ -36,6 +36,7 @@ router.post('/register', async (req, res) => {
 
       user = new User({
         name,
+        role: 'user',  // ✅ FIXED: Default role
         email,
         password: hashedPassword,
         otp,
@@ -55,6 +56,7 @@ router.post('/register', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
+        role: user.role,  // ✅ Added role
       },
     });
   } catch (error) {
@@ -135,8 +137,9 @@ router.post('/verify-otp', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating,
+        role: user.role,  // ✅ Added role
+        helpCount: user.helpCount || 0,
+        rating: user.rating || 0,
       },
     });
   } catch (error) {
@@ -182,8 +185,9 @@ router.post('/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        helpCount: user.helpCount,
-        rating: user.rating,
+        role: user.role,  // ✅ Added role
+        helpCount: user.helpCount || 0,
+        rating: user.rating || 0,
       },
     });
   } catch (error) {
@@ -195,16 +199,30 @@ router.post('/login', async (req, res) => {
 /* ============================
    GET CURRENT USER
 ============================ */
-router.get('/me', auth, async (req, res) => {
-  return res.json({
-    user: {
-      id: req.user._id,
-      name: req.user.name,
-      email: req.user.email,
-      helpCount: req.user.helpCount,
-      rating: req.user.rating,
-    },
-  });
+router.get('/me', auth, async (req, res) => {  // ✅ FIXED: router
+  try {
+    console.log('🔍 req.user.userId:', req.user.userId);
+    
+    // CRITICAL: Fetch FRESH from DB (includes role!)
+    const user = await User.findById(req.user.userId).select('-password');
+    
+    console.log('🔍 DB USER ROLE:', user.role);
+    
+    res.json({
+      success: true,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        helpCount: user.helpCount || 0,
+        rating: user.rating || 0,
+      },
+    });
+  } catch (error) {
+    console.error('🔥 /me ERROR:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
 });
 
 module.exports = router;

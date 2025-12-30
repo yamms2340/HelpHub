@@ -5,13 +5,10 @@ const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
 
-
 // Load environment variables
 dotenv.config();
 
-
 const app = express();
-
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -20,7 +17,6 @@ if (!fs.existsSync(uploadsDir)) {
   console.log('✅ Created uploads directory');
 }
 
-
 // Create stories subdirectory
 const storiesUploadsDir = path.join(__dirname, 'uploads', 'stories');
 if (!fs.existsSync(storiesUploadsDir)) {
@@ -28,27 +24,50 @@ if (!fs.existsSync(storiesUploadsDir)) {
   console.log('✅ Created stories uploads directory');
 }
 
+// ✅ CORS Configuration - UPDATED FOR PRODUCTION
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://helphub-services-xhmh.onrender.com',
+  'https://helphub-1-1ab2.onrender.com', // ✅ New frontend URL
+  process.env.FRONTEND_URL
+].filter(Boolean); // Remove undefined values
 
-// Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001','https://helphub-services-xhmh.onrender.com'
-],
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      console.log('✅ CORS allowed for origin:', origin);
+      callback(null, true);
+    } else {
+      console.warn('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log('✅ Static file serving enabled for /uploads');
 
-
-// Database Connection (FIXED - removed deprecated options)
+// Database Connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
-.then(() => console.log('✅ MongoDB connected successfully'))
-.catch((err) => console.error('❌ MongoDB connection error:', err));
-
+  .then(() => {
+    console.log('✅ MongoDB connected successfully');
+    console.log('📊 Database:', mongoose.connection.name);
+  })
+  .catch((err) => {
+    console.error('❌ MongoDB connection error:', err);
+    process.exit(1);
+  });
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
@@ -56,10 +75,10 @@ app.get('/api/health', (req, res) => {
     success: true, 
     message: 'HelpHub API is running with Image Upload Support!',
     timestamp: new Date().toISOString(),
-    features: ['Points', 'Coins', 'Rewards', 'Redemptions', 'Impact Posts', 'Image Upload']
+    environment: process.env.NODE_ENV || 'development',
+    features: ['Auth', 'OTP', 'Points', 'Coins', 'Rewards', 'Campaigns', 'Donations', 'Impact Posts', 'Image Upload']
   });
 });
-
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -70,7 +89,6 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
-
 
 // 🔍 DEBUG ENDPOINT: List all routes
 app.get('/debug/routes', (req, res) => {
@@ -107,9 +125,7 @@ app.get('/debug/routes', (req, res) => {
   });
 });
 
-
 // ✅ MOUNT ALL ROUTES IN PRIORITY ORDER
-
 
 // 1. Auth Routes
 try {
@@ -120,7 +136,6 @@ try {
   console.log('⚠️ Auth routes not found:', error.message);
 }
 
-
 // 2. Request Routes
 try {
   const requestRoutes = require('./routes/requests');
@@ -129,7 +144,6 @@ try {
 } catch (error) {
   console.log('⚠️ Request routes not found:', error.message);
 }
-
 
 // 3. Stories Routes (UPDATED WITH IMAGE SUPPORT)
 try {
@@ -143,7 +157,6 @@ try {
   console.log('⚠️ Stories routes not found:', error.message);
 }
 
-
 // 4. Impact Posts Routes
 try {
   const impactPostsRoutes = require('./routes/impactPostsRouter');
@@ -152,7 +165,6 @@ try {
 } catch (error) {
   console.error('❌ Impact Posts routes failed to load:', error.message);
 }
-
 
 // 5. Rewards Routes
 try {
@@ -163,7 +175,6 @@ try {
   console.error('❌ Rewards routes failed to load:', error.message);
 }
 
-
 // 6. Campaign Routes
 try {
   const campaignRoutes = require('./routes/campaign');
@@ -172,7 +183,6 @@ try {
 } catch (error) {
   console.error('❌ Failed to load campaign routes:', error.message);
 }
-
 
 // 7. Donation Routes
 try {
@@ -183,7 +193,6 @@ try {
   console.error('❌ Failed to load donation routes:', error.message);
 }
 
-
 // 8. Help Routes
 try {
   const helpRoutes = require('./routes/help');
@@ -193,7 +202,6 @@ try {
   console.log('⚠️ Help routes not found:', error.message);
 }
 
-
 // 9. Leaderboard Routes
 try {
   const leaderboardRoutes = require('./routes/LeaderBoard');
@@ -202,7 +210,6 @@ try {
 } catch (error) {
   console.log('⚠️ Leaderboard routes not found:', error.message);
 }
-
 
 // Campaign statistics endpoint
 app.get('/api/campaigns/stats', async (req, res) => {
@@ -223,7 +230,6 @@ app.get('/api/campaigns/stats', async (req, res) => {
       }
     ]);
 
-
     const campaignStats = stats[0] || {
       totalCampaigns: 0,
       totalTargetAmount: 0,
@@ -231,7 +237,6 @@ app.get('/api/campaigns/stats', async (req, res) => {
       totalDonors: 0,
       totalDonatedAllTime: 0
     };
-
 
     res.json({
       success: true,
@@ -245,7 +250,6 @@ app.get('/api/campaigns/stats', async (req, res) => {
     });
   }
 });
-
 
 // Error handling middleware for multer
 app.use((error, req, res, next) => {
@@ -270,6 +274,13 @@ app.use((error, req, res, next) => {
     });
   }
   
+  if (error.message.includes('CORS')) {
+    return res.status(403).json({
+      success: false,
+      message: 'CORS policy: Access denied from this origin.'
+    });
+  }
+  
   console.error('💥 Server error:', error);
   res.status(error.status || 500).json({
     success: false,
@@ -278,7 +289,6 @@ app.use((error, req, res, next) => {
     timestamp: new Date().toISOString()
   });
 });
-
 
 // 🔥 ENHANCED 404 HANDLER (MUST BE AFTER ALL ROUTES)
 app.use('*', (req, res) => {
@@ -296,6 +306,9 @@ app.use('*', (req, res) => {
     availableRoutes: [
       'GET /api/health',
       'GET /debug/routes',
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+      'POST /api/auth/verify-otp',
       'GET /api/stories/inspiring-stories',
       'POST /api/stories/submit (with image upload)',
       'GET /api/impact-posts',
@@ -311,20 +324,24 @@ app.use('*', (req, res) => {
   });
 });
 
-
 // Start server
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 HelpHub Server Running on Port ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Backend URL: http://localhost:${PORT}`);
   console.log(`🎁 All Systems READY with Image Upload Support!`);
   console.log(`📋 Test these endpoints:`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
   console.log(`   GET  http://localhost:${PORT}/debug/routes`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/register`);
+  console.log(`   POST http://localhost:${PORT}/api/auth/login`);
   console.log(`   GET  http://localhost:${PORT}/api/stories/inspiring-stories`);
   console.log(`   POST http://localhost:${PORT}/api/stories/submit (FormData with image)`);
   console.log(`   Static files: http://localhost:${PORT}/uploads/stories/`);
   console.log(`✅ Image upload system ready!`);
+  console.log(`\n🔒 CORS enabled for:`);
+  allowedOrigins.forEach(origin => console.log(`   - ${origin}`));
 });
-
 
 module.exports = app;

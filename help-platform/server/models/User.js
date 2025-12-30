@@ -24,6 +24,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+   role: {
+    type: String,
+    enum: ['user', 'admin'],  // Only these 2 roles
+    default: 'user'           // New users get 'user' role
+  },
 
   // 🔐 OTP & email verification
   otp: {

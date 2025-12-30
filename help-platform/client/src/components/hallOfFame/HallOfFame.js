@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '../../contexts/AuthContext'; 
+
 import {
   Container,
   Typography,
@@ -69,6 +71,15 @@ import { helpAPI, storiesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 
 function HallOfFame() {
+  const { user, loading: authLoading } = useAuth();
+  const canPostStory = user?.role === 'admin';  // ✅ Fixed!
+console.log('🔍 USER:', user);               // ✅ Debug
+console.log('🔍 canPostStory:', user?.role === 'admin');  // ✅
+console.log('🔍 RAW USER FROM AUTH:', user);
+console.log('🔍 USER KEYS:', user ? Object.keys(user) : 'NO USER');
+console.log('🔍 USER ROLE:', user?.role);
+console.log('🔍 CAN POST:', user?.role === 'admin');
+ 
   const [topHelpers, setTopHelpers] = useState([]);
   const [stats, setStats] = useState({});
   const [inspiringStories, setInspiringStories] = useState([]);  
@@ -598,31 +609,33 @@ function HallOfFame() {
                 >
                   Join Heroes
                 </Button>
+               {canPostStory ? (
+  <Button
+    variant="contained"
+    size="large"
+    startIcon={<Create />}
+    onClick={() => setShowPostStoryModal(true)}
+    sx={{
+      background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
+      color: 'white',
+      fontWeight: 600,
+      fontSize: '1rem',
+      px: 4,
+      py: 1.5,
+      borderRadius: 3,
+      textTransform: 'none',
+      boxShadow: '0 4px 20px rgba(13, 71, 161, 0.3)',
+      '&:hover': {
+        background: 'linear-gradient(135deg, #0a3d91 0%, #0d47a1 100%)',
+        transform: 'translateY(-1px)',
+        boxShadow: '0 8px 25px rgba(13, 71, 161, 0.4)',
+      }
+    }}
+  >
+    Post Your Story
+  </Button>
+) : null}
 
-                <Button
-                  variant="contained"
-                  size="large"
-                  startIcon={<Create />}
-                  onClick={() => setShowPostStoryModal(true)}
-                  sx={{
-                    background: 'linear-gradient(135deg, #0d47a1 0%, #1565c0 100%)',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    px: 4,
-                    py: 1.5,
-                    borderRadius: 3,
-                    textTransform: 'none',
-                    boxShadow: '0 4px 20px rgba(13, 71, 161, 0.3)',
-                    '&:hover': {
-                      background: 'linear-gradient(135deg, #0a3d91 0%, #0d47a1 100%)',
-                      transform: 'translateY(-1px)',
-                      boxShadow: '0 8px 25px rgba(13, 71, 161, 0.4)',
-                    }
-                  }}
-                >
-                  Post Your Story
-                </Button>
                 
                 <Button
                   variant="outlined"

@@ -22,7 +22,7 @@ import {
   ArrowForward 
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext'; // Import your auth context
+import { useAuth } from '../../contexts/AuthContext';
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +34,7 @@ const LoginPage = () => {
   const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
-  const { login } = useAuth(); // Assuming you have an auth context
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -49,16 +49,18 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
+      console.log('🔐 Attempting login...');
       const result = await login(formData.email, formData.password);
       
       if (result.success) {
-        // Navigate to dashboard after successful login
+        console.log('✅ Login successful');
         navigate('/dashboard', { replace: true });
       } else {
         setError(result.error || 'Login failed. Please check your credentials.');
       }
     } catch (error) {
-      setError('Login failed. Please try again.');
+      console.error('❌ Login error:', error);
+      setError(error.response?.data?.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

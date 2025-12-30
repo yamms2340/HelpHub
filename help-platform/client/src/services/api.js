@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-const API_BASE_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ Use environment variable for API URL (works in both dev and production)
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
+console.log('🌐 API Base URL:', API_BASE_URL);
+console.log('🔧 Environment:', process.env.NODE_ENV);
 
 // Create axios instance
 const api = axios.create({
@@ -9,7 +12,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 30000,
+  timeout: 30000, // 30 seconds
+  withCredentials: true,
 });
 
 // Request interceptor
@@ -48,7 +52,7 @@ api.interceptors.response.use(
       console.warn('🔒 Unauthorized - Clearing session');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (window.location.pathname !== '/login') {
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
         window.location.href = '/login';
       }
     }
@@ -63,13 +67,12 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (userData) => api.post('/auth/register', userData),
   login: (credentials) => api.post('/auth/login', credentials),
+  sendOtp: (data) => api.post('/auth/send-otp', data),
+  verifyOtp: (data) => api.post('/auth/verify-otp', data),
   getCurrentUser: () => api.get('/auth/me'),
   refreshToken: () => api.post('/auth/refresh'),
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
   resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
-  
-  // 👈 ADD THIS LINE:
-  verifyOtp: (data) => api.post('/auth/verify-otp', data),
   
   logout: () => {
     localStorage.removeItem('token');
@@ -77,8 +80,6 @@ export const authAPI = {
     return Promise.resolve({ data: { success: true } });
   }
 };
-
-
 
 /**
  * ✅ REWARDS API - ENHANCED WITH PROPER ERROR HANDLING
@@ -124,20 +125,24 @@ export const rewardsAPI = {
     } catch (error) {
       console.error('❌ Error fetching coins:', error);
       
-      // Return mock data if API fails (for testing)
-      console.warn('🔄 Using mock coins data for testing');
-      return {
-        success: true,
-        data: {
-          totalCoins: 1200,
-          userPoints: 1200,
-          level: 'Helper',
-          requestsCompleted: 5,
-          lifetimeEarned: 1200,
-          lifetimeRedeemed: 0
-        },
-        message: 'Mock coins data (API unavailable)'
-      };
+      // Return mock data if API fails (for development)
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('🔄 Using mock coins data for development');
+        return {
+          success: true,
+          data: {
+            totalCoins: 1200,
+            userPoints: 1200,
+            level: 'Helper',
+            requestsCompleted: 5,
+            lifetimeEarned: 1200,
+            lifetimeRedeemed: 0
+          },
+          message: 'Mock coins data (development mode)'
+        };
+      }
+      
+      throw error;
     }
   },
 
@@ -333,16 +338,15 @@ export const leaderboardAPI = {
 };
 
 /**
- * ✅ CAMPAIGNS API - FETCH-BASED FOR COMPATIBILITY
+ * ✅ CAMPAIGNS API - USING AXIOS FOR CONSISTENCY
  */
 export const campaignAPI = {
   getAllCampaigns: async () => {
     try {
       console.log('🔄 Fetching campaigns from backend...');
-      const response = await fetch(`${API_BASE_URL}/campaigns`);
-      const data = await response.json();
-      console.log('📥 Campaigns response:', data);
-      return data;
+      const response = await api.get('/campaigns');
+      console.log('📥 Campaigns response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error fetching campaigns:', error);
       throw error;
@@ -352,10 +356,9 @@ export const campaignAPI = {
   getCampaignStats: async () => {
     try {
       console.log('🔄 Fetching campaign stats from backend...');
-      const response = await fetch(`${API_BASE_URL}/campaigns/stats`);
-      const data = await response.json();
-      console.log('📊 Campaign stats response:', data);
-      return data;
+      const response = await api.get('/campaigns/stats');
+      console.log('📊 Campaign stats response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error fetching campaign stats:', error);
       throw error;
@@ -365,10 +368,9 @@ export const campaignAPI = {
   getCampaign: async (campaignId) => {
     try {
       console.log('🔄 Fetching single campaign:', campaignId);
-      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`);
-      const data = await response.json();
-      console.log('📥 Single campaign response:', data);
-      return data;
+      const response = await api.get(`/campaigns/${campaignId}`);
+      console.log('📥 Single campaign response:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error fetching campaign:', error);
       throw error;
@@ -378,20 +380,35 @@ export const campaignAPI = {
   createCampaign: async (campaignData) => {
     try {
       console.log('🔄 Creating campaign with data:', campaignData);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/campaigns`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(campaignData)
-      });
-      const data = await response.json();
-      console.log('✅ Campaign created successfully:', data);
-      return data;
+      const response = await api.post('/campaigns', campaignData);
+      console.log('✅ Campaign created successfully:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error creating campaign:', error);
+      throw error;
+    }
+  },
+
+  updateCampaign: async (campaignId, campaignData) => {
+    try {
+      console.log('🔄 Updating campaign:', campaignId);
+      const response = await api.put(`/campaigns/${campaignId}`, campaignData);
+      console.log('✅ Campaign updated successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error updating campaign:', error);
+      throw error;
+    }
+  },
+
+  deleteCampaign: async (campaignId) => {
+    try {
+      console.log('🗑️ Deleting campaign:', campaignId);
+      const response = await api.delete(`/campaigns/${campaignId}`);
+      console.log('✅ Campaign deleted successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error deleting campaign:', error);
       throw error;
     }
   },
@@ -402,19 +419,9 @@ export const campaignAPI = {
       console.log('💰 Processing donation to campaign:', campaignId);
       console.log('💰 Donation data:', donationData);
       
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/donate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(donationData)
-      });
-      
-      const data = await response.json();
-      console.log('✅ Campaign donation processed:', data);
-      return data;
+      const response = await api.post(`/campaigns/${campaignId}/donate`, donationData);
+      console.log('✅ Campaign donation processed:', response.data);
+      return response.data;
     } catch (error) {
       console.error('❌ Error processing campaign donation:', error);
       throw error;
@@ -457,6 +464,30 @@ export const donationsAPI = {
     }
   },
   
+  getAllDonations: async () => {
+    try {
+      console.log('🔄 Fetching all donations...');
+      const response = await api.get('/donations');
+      console.log('📥 Donations response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching donations:', error);
+      throw error;
+    }
+  },
+
+  getUserDonations: async () => {
+    try {
+      console.log('🔄 Fetching user donations...');
+      const response = await api.get('/donations/user');
+      console.log('📥 User donations response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error fetching user donations:', error);
+      throw error;
+    }
+  },
+  
   testRazorpay: async () => {
     try {
       const response = await api.get('/donations/test-razorpay');
@@ -469,7 +500,7 @@ export const donationsAPI = {
 };
 
 /**
- * ✅ STORIES API - UPDATED WITH IMAGE UPLOAD SUPPORT
+ * ✅ STORIES API - WITH IMAGE UPLOAD SUPPORT
  */
 export const storiesAPI = {
   getAllStories: async (params = {}) => {
@@ -506,7 +537,7 @@ export const storiesAPI = {
     }
   },
   
-  // UPDATED: Submit story with image support using FormData
+  // Submit story with image support using FormData
   submitStory: async (storyData) => {
     try {
       console.log('🔄 Submitting story with data type:', typeof storyData);
@@ -541,7 +572,7 @@ export const storiesAPI = {
         }
       }
 
-      // Make request with FormData using fetch (better FormData handling than axios)
+      // Make request with FormData
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/stories/submit`, {
         method: 'POST',
@@ -683,8 +714,24 @@ export const apiUtils = {
         return await requestFn();
       } catch (error) {
         if (i === maxRetries - 1) throw error;
+        console.warn(`⚠️ Request failed, retrying... (${i + 1}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
       }
+    }
+  },
+
+  // Check API health
+  checkHealth: async () => {
+    try {
+      const response = await api.get('/health');
+      console.log('✅ API Health Check:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ API Health Check Failed:', error);
+      return {
+        success: false,
+        message: 'API is unreachable'
+      };
     }
   }
 };

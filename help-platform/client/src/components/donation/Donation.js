@@ -77,7 +77,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { impactPostsAPI, campaignAPI, donationsAPI } from '../../services/api';
 
-// Load Razorpay script
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     if (window.Razorpay) {
@@ -97,6 +96,8 @@ const loadRazorpayScript = () => {
 function DonationPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const canPost = user?.role === 'admin';  // ✅ Fixed!
+// Load Razorpay script
 
   // ✅ REAL-TIME CAMPAIGN PROGRESS STATES (UNLIMITED TOTAL)
   const [campaignStats, setCampaignStats] = useState({
@@ -199,6 +200,7 @@ function DonationPage() {
     fetchCampaigns();
     fetchCampaignStats();
   }, []);
+  
 
   // ✅ FIXED: Remove fake stories fallback
   const fetchImpactPosts = async () => {
@@ -814,7 +816,7 @@ function DonationPage() {
               </Typography>
             </Box>
 
-            {user && (
+            {canPost && (
               <Button
                 variant="contained"
                 startIcon={<Add sx={{ fontSize: 20 }} />}
@@ -925,7 +927,7 @@ function DonationPage() {
                 </Box>
               </Box>
 
-              {user && (
+              {canPost && (
                 <Button
                   variant="outlined"
                   startIcon={<Add />}

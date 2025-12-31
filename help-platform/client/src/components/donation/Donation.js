@@ -839,7 +839,7 @@ function DonationPage() {
                   },
                 }}
               >
-                Share Your Story
+                Share a Story
               </Button>
             )}
           </Box>
@@ -946,7 +946,7 @@ function DonationPage() {
                     },
                   }}
                 >
-                  Create Campaign
+                  Create a Campaign
                 </Button>
               )}
             </Box>
@@ -1704,7 +1704,7 @@ function DonationPage() {
                     },
                   }}
                 >
-                  Share Your Story
+                  Share a Story
                 </Button>
               )}
             </Paper>

@@ -632,9 +632,11 @@ console.log('🔍 CAN POST:', user?.role === 'admin');
       }
     }}
   >
-    Post Your Story
+    Post a User Story
   </Button>
-) : null}
+) : null
+}
+
 
                 
                 <Button
@@ -719,7 +721,7 @@ console.log('🔍 CAN POST:', user?.role === 'admin');
                     textTransform: 'none',
                   }}
                 >
-                  Share Your Story
+                  Share a Story
                 </Button>
               </Box>
             ) : (

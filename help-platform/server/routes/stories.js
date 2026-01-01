@@ -1,134 +1,55 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const storyController = require('../controllers/stories');
 
-// Create Story Schema and Model
-const storySchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true
-  },
-  description: {
-    type: String,
-    required: true
-  },
-  category: {
-    type: String,
-    required: true
-  },
-  impact: String,
-  helpType: [String],
-  helper: {
-    type: String,
-    default: 'Anonymous'
-  },
-  location: {
-    type: String,
-    default: 'Unknown'
-  },
-  image: String,
-  rating: {
-    type: Number,
-    default: 4.5
-  },
-  approved: {
-    type: Boolean,
-    default: true
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-const Story = mongoose.model('Story', storySchema);
-
-// GET /api/inspiring-stories - Fetch approved stories from MongoDB
-router.get('/inspiring-stories', async (req, res) => {
-  try {
-    console.log('Fetching stories from MongoDB...'); // Debug log
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(__dirname, '..', 'uploads', 'stories');
     
-    const stories = await Story.find({ approved: true })
-      .sort({ createdAt: -1 })
-      .limit(20);
-    
-    console.log(`Found ${stories.length} stories`); // Debug log
-    
-    // Transform to match frontend expected format
-    const formattedStories = stories.map(story => ({
-      id: story._id,
-      title: story.title,
-      description: story.description,
-      summary: story.description ? story.description.substring(0, 150) + '...' : '',
-      fullStory: story.description,
-      category: story.category,
-      impact: story.impact || 'Positive impact',
-      helpType: story.helpType || [],
-      helper: story.helper,
-      location: story.location,
-      image: getCategoryEmoji(story.category),
-      rating: story.rating || 4.5,
-      createdAt: story.createdAt
-    }));
-    
-    res.json({ data: formattedStories });
-  } catch (error) {
-    console.error('Error fetching stories:', error);
-    res.status(500).json({ error: 'Failed to fetch stories' });
-  }
-});
-
-// POST /api/stories/submit - Submit new story to MongoDB
-router.post('/stories/submit', async (req, res) => {
-  try {
-    const { title, description, category, impact, helpType } = req.body;
-    
-    if (!title || !description || !category) {
-      return res.status(400).json({ 
-        error: 'Title, description, and category are required' 
-      });
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+      console.log('✅ Created stories upload directory:', uploadPath);
     }
-
-    const newStory = new Story({
-      title,
-      description,
-      category,
-      impact,
-      helpType,
-      helper: 'Anonymous',
-      location: 'Unknown',
-      image: getCategoryEmoji(category),
-      rating: 4.5,
-      approved: true
-    });
-
-    const savedStory = await newStory.save();
-    console.log('Story saved to MongoDB:', savedStory.title);
     
-    res.status(201).json({
-      message: 'Story submitted successfully!',
-      story: savedStory
-    });
-
-  } catch (error) {
-    console.error('Error saving story:', error);
-    res.status(500).json({ error: 'Failed to submit story' });
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = 'story-' + uniqueSuffix + path.extname(file.originalname);
+    console.log('📁 Generated filename:', filename);
+    cb(null, filename);
   }
 });
 
-// Helper function to get emoji by category
-function getCategoryEmoji(category) {
-  const emojiMap = {
-    'Tech Support': '👩‍💻',
-    'Senior Care': '👴',
-    'Mental Health': '🧠',
-    'Community Building': '🏘️',
-    'Emergency Response': '🚨',
-    'Education': '📚',
-    'Home Repairs': '🔧',
-    'Transportation': '🚗'
-  };
-  return emojiMap[category] || '📖';
-}
+const fileFilter = (req, file, cb) => {
+  console.log('🔍 Checking file type:', file.mimetype);
+  
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed!'), false);
+  }
+};
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 1
+  }
+});
+
+// Routes
+router.get('/inspiring-stories', storyController.getInspiringStories);
+router.get('/stats', storyController.getStats);
+router.get('/', storyController.getAllStories);
+router.post('/submit', upload.single('image'), storyController.submitStory);
+router.post('/submit-story', upload.single('image'), storyController.submitStory);
+router.get('/:id', storyController.getStoryById);
 
 module.exports = router;

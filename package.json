@@ -2,7 +2,11 @@
   "dependencies": {
     "@date-io/date-fns": "^3.2.1",
     "@mui/x-date-pickers": "^8.10.2",
+    "@upstash/redis": "^1.36.0",
     "date-fns": "^4.1.0",
+    "express-rate-limit": "^8.2.1",
+    "ioredis": "^5.8.2",
+    "rate-limit-redis": "^4.3.1",
     "react-hook-form": "^7.62.0"
   }
 }

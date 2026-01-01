@@ -1,10 +1,12 @@
 import React from 'react';
+
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from 'react-router-dom';
+
 import { ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { RequestsProvider } from './components/requests/RequestContext';
@@ -18,17 +20,21 @@ import MyRequests from './components/requests/Myrequests';
 import HallOfFame from './components/hallOfFame/HallOfFame';
 import HomePage from './components/home/HomePage';
 import Leaderboard from './components/requests/LeaderBoard';
-// Fixed import path - make sure this matches your actual file location
 import DonationPage from './components/donation/Donation';
+import VerifyOtp from './components/auth/VerifyOtp';
 
-// Enhanced theme with modern design
+// REWARDS SYSTEM COMPONENTS
+import RewardsPage from './components/rewards/RewardsPage';
+import MyRedemptions from './components/rewards/MyRedemptions';
+
+// Enhanced Professional Theme
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#4f86ff',
-      light: '#7ba3ff',
-      dark: '#3b82f6',
+      main: '#3b82f6',
+      light: '#60a5fa',
+      dark: '#1d4ed8',
       contrastText: '#ffffff',
     },
     secondary: {
@@ -62,35 +68,68 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-    h1: { fontWeight: 700, fontSize: '2.5rem', lineHeight: 1.2 },
-    h2: { fontWeight: 700, fontSize: '2rem', lineHeight: 1.3 },
-    h3: { fontWeight: 600, fontSize: '1.75rem', lineHeight: 1.3 },
-    h4: { fontWeight: 600, fontSize: '1.5rem', lineHeight: 1.4 },
-    h5: { fontWeight: 600, fontSize: '1.25rem', lineHeight: 1.4 },
-    h6: { fontWeight: 600, fontSize: '1.125rem', lineHeight: 1.4 },
-    button: { textTransform: 'none', fontWeight: 600 },
+    h1: { 
+      fontWeight: 700, 
+      fontSize: '2.5rem', 
+      lineHeight: 1.2,
+      letterSpacing: '-0.025em'
+    },
+    h2: { 
+      fontWeight: 700, 
+      fontSize: '2rem', 
+      lineHeight: 1.3,
+      letterSpacing: '-0.025em'
+    },
+    h3: { 
+      fontWeight: 600, 
+      fontSize: '1.75rem', 
+      lineHeight: 1.3 
+    },
+    h4: { 
+      fontWeight: 600, 
+      fontSize: '1.5rem', 
+      lineHeight: 1.4 
+    },
+    h5: { 
+      fontWeight: 600, 
+      fontSize: '1.25rem', 
+      lineHeight: 1.4 
+    },
+    h6: { 
+      fontWeight: 600, 
+      fontSize: '1.125rem', 
+      lineHeight: 1.4 
+    },
+    button: { 
+      textTransform: 'none', 
+      fontWeight: 600,
+      letterSpacing: '0.025em'
+    },
   },
-  shape: { borderRadius: 12 },
+  shape: { 
+    borderRadius: 12 
+  },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
           borderRadius: 12,
-          padding: '10px 24px',
+          padding: '12px 24px',
           fontSize: '0.95rem',
           fontWeight: 600,
-          boxShadow:
-            '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+          textTransform: 'none',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+          transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            boxShadow:
-              '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
             transform: 'translateY(-1px)',
-            transition: 'all 0.2s ease-in-out',
           },
         },
         contained: {
-          background: '#4f86ff',
-          '&:hover': { background: '#3b82f6' },
+          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+          '&:hover': { 
+            background: 'linear-gradient(135deg, #2563eb 0%, #1e40af 100%)'
+          },
         },
       },
     },
@@ -98,20 +137,58 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 16,
-          boxShadow:
-            '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
           border: '1px solid rgba(226, 232, 240, 0.8)',
+          transition: 'all 0.3s ease-in-out',
           '&:hover': {
-            boxShadow:
-              '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+            boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             transform: 'translateY(-2px)',
-            transition: 'all 0.3s ease-in-out',
           },
+        },
+      },
+    },
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)',
+          borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
         },
       },
     },
   },
 });
+
+// Shared Layout Component for Protected Routes
+const AppLayout = ({ children }) => (
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+    }}
+  >
+    <Header />
+    <Box component="main" sx={{ flexGrow: 1 }}>
+      {children}
+    </Box>
+  </Box>
+);
+
+// Auth Layout Component
+const AuthLayout = ({ children }) => (
+  <Box
+    sx={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}
+  >
+    {children}
+  </Box>
+);
 
 function App() {
   return (
@@ -121,181 +198,134 @@ function App() {
         <RequestsProvider>
           <Router>
             <Routes>
-              {/* Public redirect to Home */}
+              {/* ================================
+                  PUBLIC ROUTES
+              ================================ */}
+              
+              {/* Root redirect */}
               <Route path="/" element={<Navigate to="/home" replace />} />
               
-              {/* Public Home */}
+              {/* Public Home Page */}
               <Route path="/home" element={<HomePage />} />
               
-              {/* Public Auth */}
+              {/* Authentication Routes */}
               <Route
                 path="/login"
                 element={
-                  <Box
-                    sx={{
-                      minHeight: '100vh',
-                      background:
-                        'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                    }}
-                  >
+                  <AuthLayout>
                     <Login />
-                  </Box>
+                  </AuthLayout>
                 }
               />
               <Route
                 path="/register"
                 element={
-                  <Box
-                    sx={{
-                      minHeight: '100vh',
-                      background:
-                        'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                    }}
-                  >
+                  <AuthLayout>
                     <Register />
-                  </Box>
+                  </AuthLayout>
                 }
               />
 
-              {/* Protected: Dashboard (Requests list) */}
+              {/* ================================
+                  PROTECTED ROUTES
+              ================================ */}
+
+              {/* Dashboard - Main Requests View */}
+              <Route path="/verify-otp" element={<VerifyOtp />} />
+
               <Route
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '100vh',
-                        background:
-                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                      }}
-                    >
-                      <Header />
-                      <Box component="main" sx={{ flexGrow: 1 }}>
-                        <RequestList />
-                      </Box>
-                    </Box>
+                    <AppLayout>
+                      <RequestList />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
 
-              {/* Protected: My Requests */}
-              <Route
-                path="/my-requests"
-                element={
-                  <ProtectedRoute>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '100vh',
-                        background:
-                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                      }}
-                    >
-                      <Header />
-                      <Box component="main" sx={{ flexGrow: 1 }}>
-                        <MyRequests />
-                      </Box>
-                    </Box>
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Protected: Donation Page */}
-              <Route
-                path="/donate"
-                element={
-                  <ProtectedRoute>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '100vh',
-                        background:
-                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                      }}
-                    >
-                      <Header />
-                      <Box component="main" sx={{ flexGrow: 1 }}>
-                        <DonationPage />
-                      </Box>
-                    </Box>
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Protected: Hall of Fame */}
-              <Route
-                path="/hall-of-fame"
-                element={
-                  <ProtectedRoute>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '100vh',
-                        background:
-                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                      }}
-                    >
-                      <Header />
-                      <Box component="main" sx={{ flexGrow: 1 }}>
-                        <HallOfFame />
-                      </Box>
-                    </Box>
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Protected: Leaderboard */}
-              <Route
-                path="/leaderboard"
-                element={
-                  <ProtectedRoute>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '100vh',
-                        background:
-                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                      }}
-                    >
-                      <Header />
-                      <Box component="main" sx={{ flexGrow: 1 }}>
-                        <Leaderboard />
-                      </Box>
-                    </Box>
-                  </ProtectedRoute>
-                }
-              />
-
-              {/* Protected: Create Request */}
+              {/* Request Management */}
               <Route
                 path="/create-request"
                 element={
                   <ProtectedRoute>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        minHeight: '100vh',
-                        background:
-                          'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-                      }}
-                    >
-                      <Header />
-                      <Box component="main" sx={{ flexGrow: 1 }}>
-                        <CreateRequest />
-                      </Box>
-                    </Box>
+                    <AppLayout>
+                      <CreateRequest />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/my-requests"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <MyRequests />
+                    </AppLayout>
                   </ProtectedRoute>
                 }
               />
 
-              {/* Fallback */}
+              {/* REWARDS SYSTEM - Professional Integration */}
+              <Route
+                path="/rewards"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <RewardsPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/my-redemptions"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <MyRedemptions />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Donation System */}
+              <Route
+                path="/donate"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <DonationPage />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Community Features */}
+              <Route
+                path="/hall-of-fame"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <HallOfFame />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              
+              <Route
+                path="/leaderboard"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Leaderboard />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Fallback Route */}
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           </Router>

@@ -17,7 +17,6 @@ export function AuthProvider({ children }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in when the app loads
     const token = localStorage.getItem('token');
     if (token) {
       getCurrentUser();
@@ -32,7 +31,6 @@ export function AuthProvider({ children }) {
       setUser(response.data.user);
       setIsAuthenticated(true);
     } catch (error) {
-      // Token might be expired or invalid
       localStorage.removeItem('token');
       setUser(null);
       setIsAuthenticated(false);
@@ -45,34 +43,34 @@ export function AuthProvider({ children }) {
     try {
       const response = await authAPI.login({ email, password });
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       setUser(user);
       setIsAuthenticated(true);
-      
+
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Login failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Login failed'
       };
     }
   };
 
+  // 🔐 REGISTER: only create user + send OTP, do NOT store token here
   const register = async (name, email, password) => {
     try {
       const response = await authAPI.register({ name, email, password });
-      const { token, user } = response.data;
-      
-      localStorage.setItem('token', token);
-      setUser(user);
-      setIsAuthenticated(true);
-      
-      return { success: true };
+      // backend returns: { success, message, user }
+      return {
+        success: true,
+        message: response.data.message,
+        user: response.data.user
+      };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data?.message || 'Registration failed' 
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Registration failed'
       };
     }
   };

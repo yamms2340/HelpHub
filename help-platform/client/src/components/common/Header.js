@@ -14,7 +14,6 @@ import {
   LinearProgress,
   Divider,
   ListItemIcon,
-  CircularProgress,
   Skeleton,
 } from '@mui/material';
 import {
@@ -26,6 +25,8 @@ import {
   Leaderboard as LeaderboardIcon,
   Home,
   ExitToApp,
+  CardGiftcard, // Added for rewards
+  Redeem, // Added for redemptions
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUserStats, useLeaderboard } from '../../hooks/useUserStats';
@@ -234,6 +235,40 @@ function NavButtons({ isActive, handleNavigation }) {
         }}
       >
         Help Requests
+      </Button>
+
+      {/* 🎁 NEW: Rewards Store */}
+      <Button
+        color="inherit"
+        onClick={() => handleNavigation('/rewards')}
+        startIcon={<CardGiftcard sx={{ fontSize: 20 }} />}
+        sx={{
+          ...common,
+          ...(isActive('/rewards') ? {
+            color: '#fff !important',
+            bgcolor: '#9c27b0 !important',
+            boxShadow: '0 2px 8px rgba(156,39,176,.3)',
+            '& .MuiSvgIcon-root': {
+              color: '#fff !important',
+            },
+          } : {
+            color: '#64748b',
+            bgcolor: 'transparent',
+            '& .MuiSvgIcon-root': {
+              color: '#9c27b0',
+            },
+          }),
+          '&:hover': {
+            bgcolor: isActive('/rewards') ? '#7b1fa2 !important' : '#f3e5f5 !important',
+            color: isActive('/rewards') ? '#fff !important' : '#7b1fa2 !important',
+            transform: 'translateY(-1px)',
+            '& .MuiSvgIcon-root': {
+              color: isActive('/rewards') ? '#fff !important' : '#7b1fa2 !important',
+            },
+          },
+        }}
+      >
+        Rewards
       </Button>
 
       {/* Leaderboard */}
@@ -556,6 +591,26 @@ function UserSection({
             <Groups sx={{ color: '#1976d2', fontSize: 20 }} />
           </ListItemIcon>
           Browse Requests
+        </MenuItem>
+
+        {/* 🎁 NEW: Rewards Menu Items */}
+        <MenuItem onClick={() => handleNavigation('/rewards')} sx={{ py: 2 }}>
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <CardGiftcard sx={{ color: '#9c27b0', fontSize: 20 }} />
+          </ListItemIcon>
+          <Box>
+            <Typography fontWeight={600}>Rewards Store</Typography>
+            <Typography variant="caption" color="#64748b">
+              Redeem your coins
+            </Typography>
+          </Box>
+        </MenuItem>
+
+        <MenuItem onClick={() => handleNavigation('/my-redemptions')} sx={{ py: 2 }}>
+          <ListItemIcon sx={{ minWidth: 40 }}>
+            <Redeem sx={{ color: '#9c27b0', fontSize: 20 }} />
+          </ListItemIcon>
+          My Redemptions
         </MenuItem>
 
         <MenuItem onClick={() => handleNavigation('/leaderboard')} sx={{ py: 2 }}>

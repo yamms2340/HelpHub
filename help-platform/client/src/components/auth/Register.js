@@ -89,24 +89,34 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    
+
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
       return;
     }
-    
+
     setLoading(true);
 
-    const result = await register(formData.name, formData.email, formData.password);
-    
-    if (result.success) {
-      navigate('/dashboard');
-    } else {
-      setError(result.error);
+    try {
+      console.log('📝 Registering user...');
+      const result = await register(formData.name, formData.email, formData.password);
+
+      if (result.success) {
+        console.log('✅ Registration successful, redirecting to OTP verification');
+        // Navigate to OTP verification page
+        navigate('/verify-otp', {
+          state: { email: formData.email }
+        });
+      } else {
+        setError(result.error || 'Failed to create account');
+      }
+    } catch (error) {
+      console.error('❌ Registration error:', error);
+      setError(error.response?.data?.message || 'Failed to create account. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
   return (
@@ -576,7 +586,7 @@ function Register() {
       </Container>
 
       {/* Custom animations */}
-      <style jsx>{`
+      <style jsx="true">{`
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
           50% { transform: translateY(-20px) rotate(5deg); }

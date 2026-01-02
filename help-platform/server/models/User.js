@@ -20,23 +20,47 @@ const userSchema = new mongoose.Schema({
     minlength: 6
   },
 
+  // ✅ ADDED: Profile fields for update functionality
+  phone: {
+    type: String,
+    default: ''
+  },
+
+  location: {
+    type: String,
+    default: ''
+  },
+
+  bio: {
+    type: String,
+    default: ''
+  },
+
+  avatar: {
+    type: String,
+    default: ''
+  },
+
   profilePicture: {
     type: String,
     default: ''
   },
-   role: {
+
+  role: {
     type: String,
-    enum: ['user', 'admin'],  // Only these 2 roles
-    default: 'user'           // New users get 'user' role
+    enum: ['user', 'admin'],
+    default: 'user'
   },
 
   // 🔐 OTP & email verification
   otp: {
     type: String
   },
+
   otpExpiresAt: {
     type: Date
   },
+
   isVerified: {
     type: Boolean,
     default: false
@@ -70,6 +94,16 @@ const userSchema = new mongoose.Schema({
   },
 
   weeklyPoints: {
+    type: Number,
+    default: 0
+  },
+
+  coins: {
+    type: Number,
+    default: 0
+  },
+
+  points: {
     type: Number,
     default: 0
   },
@@ -114,5 +148,6 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ totalPoints: -1 });
 userSchema.index({ monthlyPoints: -1 });
 userSchema.index({ weeklyPoints: -1 });
+userSchema.index({ email: 1 });
 
 module.exports = mongoose.model('User', userSchema);

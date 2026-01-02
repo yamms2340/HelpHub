@@ -16,7 +16,10 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ message: 'Token is not valid' });
     }
 
+    // ✅ FIX: Set both the user object AND userId for backward compatibility
     req.user = user;
+    req.user.userId = user._id; // Add this line
+    
     next();
   } catch (error) {
     res.status(401).json({ message: 'Token is not valid' });

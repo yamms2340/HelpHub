@@ -8,6 +8,9 @@ const fs = require('fs');
 // Load environment variables
 dotenv.config();
 
+// ✅ INITIALIZE CACHE SERVICE (NEW)
+const cacheService = require('./services/cache');
+
 const app = express();
 
 // Create uploads directory if it doesn't exist
@@ -76,7 +79,7 @@ app.get('/api/health', (req, res) => {
     message: 'HelpHub API is running with Image Upload Support!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    features: ['Auth', 'OTP', 'Points', 'Coins', 'Rewards', 'Campaigns', 'Donations', 'Impact Posts', 'Image Upload']
+    features: ['Auth', 'OTP', 'Points', 'Coins', 'Rewards', 'Campaigns', 'Donations', 'Impact Posts', 'Image Upload', 'Redis Cache']
   });
 });
 
@@ -85,7 +88,7 @@ app.get('/', (req, res) => {
   res.json({
     message: 'HelpHub Platform API is running! 🚀',
     version: '1.0.0',
-    features: ['Help Requests', 'Points & Coins System', 'Rewards Store', 'Impact Posts', 'Image Upload'],
+    features: ['Help Requests', 'Points & Coins System', 'Rewards Store', 'Impact Posts', 'Image Upload', 'Redis Cache'],
     timestamp: new Date().toISOString()
   });
 });
@@ -123,6 +126,59 @@ app.get('/debug/routes', (req, res) => {
     routes: routes.sort((a, b) => a.path.localeCompare(b.path)),
     timestamp: new Date().toISOString()
   });
+});
+
+// ✅ NEW: CACHE DEBUG ENDPOINTS
+app.get('/debug/cache/stats', async (req, res) => {
+  try {
+    const stats = await cacheService.getStats();
+    res.json({
+      success: true,
+      cache: stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get cache stats',
+      error: error.message
+    });
+  }
+});
+
+app.post('/debug/cache/clear', async (req, res) => {
+  try {
+    await cacheService.clearAll();
+    res.json({
+      success: true,
+      message: 'Cache cleared successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to clear cache',
+      error: error.message
+    });
+  }
+});
+
+app.delete('/debug/cache/:key', async (req, res) => {
+  try {
+    const { key } = req.params;
+    await cacheService.del(key);
+    res.json({
+      success: true,
+      message: `Cache key '${key}' deleted`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete cache key',
+      error: error.message
+    });
+  }
 });
 
 // ✅ MOUNT ALL ROUTES IN PRIORITY ORDER
@@ -306,6 +362,8 @@ app.use('*', (req, res) => {
     availableRoutes: [
       'GET /api/health',
       'GET /debug/routes',
+      'GET /debug/cache/stats',
+      'POST /debug/cache/clear',
       'POST /api/auth/register',
       'POST /api/auth/login',
       'POST /api/auth/verify-otp',
@@ -324,24 +382,48 @@ app.use('*', (req, res) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 HelpHub Server Running on Port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔗 Backend URL: http://localhost:${PORT}`);
-  console.log(`🎁 All Systems READY with Image Upload Support!`);
-  console.log(`📋 Test these endpoints:`);
-  console.log(`   GET  http://localhost:${PORT}/api/health`);
-  console.log(`   GET  http://localhost:${PORT}/debug/routes`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/register`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/login`);
-  console.log(`   GET  http://localhost:${PORT}/api/stories/inspiring-stories`);
-  console.log(`   POST http://localhost:${PORT}/api/stories/submit (FormData with image)`);
-  console.log(`   Static files: http://localhost:${PORT}/uploads/stories/`);
-  console.log(`✅ Image upload system ready!`);
-  console.log(`\n🔒 CORS enabled for:`);
-  allowedOrigins.forEach(origin => console.log(`   - ${origin}`));
-});
+// ✅ START SERVER ONLY IF NOT IN TEST MODE
+let server;
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 5000;
+  server = app.listen(PORT, () => {
+    console.log('\n============================================================');
+    console.log('🚀 HELPHUB SERVER STARTED');
+    console.log('============================================================');
+    console.log(`📍 Port: ${PORT}`);
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔗 API URL: http://localhost:${PORT}`);
+    console.log(`📊 MongoDB: ${mongoose.connection.name || 'Connecting...'}`);
+    console.log(`💾 Redis: ${cacheService.isConnected ? 'Connected' : 'Disabled'}`);
+    console.log('============================================================');
+    console.log('🎯 KEY ENDPOINTS:');
+    console.log(`   Health Check:    GET  http://localhost:${PORT}/api/health`);
+    console.log(`   All Routes:      GET  http://localhost:${PORT}/debug/routes`);
+    console.log(`   Cache Stats:     GET  http://localhost:${PORT}/debug/cache/stats`);
+    console.log(`   Clear Cache:     POST http://localhost:${PORT}/debug/cache/clear`);
+    console.log(`   Register:        POST http://localhost:${PORT}/api/auth/register`);
+    console.log(`   Login:           POST http://localhost:${PORT}/api/auth/login`);
+    console.log(`   Stories:         GET  http://localhost:${PORT}/api/stories/inspiring-stories`);
+    console.log(`   Impact Posts:    GET  http://localhost:${PORT}/api/impact-posts`);
+    console.log(`   Campaigns:       GET  http://localhost:${PORT}/api/campaigns`);
+    console.log(`   Leaderboard:     GET  http://localhost:${PORT}/api/leaderboard`);
+    console.log('============================================================');
+    console.log('🔒 CORS ENABLED FOR:');
+    allowedOrigins.forEach(origin => console.log(`   ✓ ${origin}`));
+    console.log('============================================================');
+    console.log('✅ ALL SYSTEMS READY!');
+    console.log('============================================================\n');
+  });
 
+  // ✅ START EMAIL WORKER (ONLY IN NON-TEST MODE)
+  try {
+    console.log('🚀 Starting email worker...');
+    require('./workers/emailWorker');
+  } catch (error) {
+    console.error('⚠️ Email worker failed to start:', error.message);
+  }
+}
+
+// Export both app and server
 module.exports = app;
+module.exports.server = server;

@@ -6,7 +6,14 @@ const InspiringStories = ({ stories, onStoryClick }) => {
   const safeStories = Array.isArray(stories) ? stories : [];
 
   const renderStoryImage = (story) => {
+    // ✅ Check if story has a custom uploaded image
     if (story.hasCustomImage && story.imageUrl) {
+      const imageUrl = story.imageUrl.startsWith('http') || story.imageUrl.startsWith('/uploads')
+        ? story.imageUrl 
+        : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${story.imageUrl}`;
+      
+      console.log('Rendering custom image:', imageUrl); // Debug log
+      
       return (
         <CardMedia
           component="img"
@@ -17,25 +24,30 @@ const InspiringStories = ({ stories, onStoryClick }) => {
             objectFit: 'cover',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
           }}
-          image={story.imageUrl.startsWith('http') ? story.imageUrl : `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}${story.imageUrl}`}
+          image={imageUrl}
           alt={story.title}
+          onError={(e) => {
+            console.error('Image load error for:', imageUrl);
+            e.target.style.display = 'none'; // Hide broken image
+            e.target.nextSibling.style.display = 'block'; // Show fallback
+          }}
         />
       );
-    } else {
-      // Fallback to emoji
-      return (
-        <Typography 
-          variant="h1" 
-          sx={{ 
-            mb: 2, 
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-            fontSize: '4rem'
-          }}
-        >
-          {story.image || '📖'}
-        </Typography>
-      );
     }
+    
+    // ✅ Fallback to category emoji
+    return (
+      <Typography 
+        variant="h1" 
+        sx={{ 
+          mb: 2, 
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+          fontSize: '4rem'
+        }}
+      >
+        {story.image || '📖'}
+      </Typography>
+    );
   };
 
   return (
@@ -102,6 +114,7 @@ const InspiringStories = ({ stories, onStoryClick }) => {
                             label={story.category || 'General'}
                             size="small"
                             sx={{
+                              mt: 1,
                               background: 'linear-gradient(135deg, #1976d2 0%, #2196f3 100%)',
                               color: 'white',
                               fontWeight: 500,
@@ -165,6 +178,10 @@ const InspiringStories = ({ stories, onStoryClick }) => {
                           <Button
                             variant="contained"
                             endIcon={<ReadMore />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onStoryClick(story);
+                            }}
                             sx={{
                               background: '#ffffff',
                               color: '#1976d2',

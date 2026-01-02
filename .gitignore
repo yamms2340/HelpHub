@@ -1,0 +1,8 @@
+# Environment files 
+.env 
+.env.test 
+.env.local 
+.env.production 
+node_modules/ 
+/build 
+/dist 

@@ -69,9 +69,10 @@ import {
 } from '@mui/icons-material';
 import { helpAPI, storiesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
-
+import { useAuth } from '../../contexts/AuthContext';
 function HallOfFame() {
   const { user, loading: authLoading } = useAuth();
+  
   const canPostStory = user?.role === 'admin';  // ✅ Fixed!
 console.log('🔍 USER:', user);               // ✅ Debug
 console.log('🔍 canPostStory:', user?.role === 'admin');  // ✅

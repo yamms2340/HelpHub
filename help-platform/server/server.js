@@ -4,16 +4,11 @@ const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const path = require('path');
 const fs = require('fs');
-const { connectRedis } = require('./config/redis');
-const { apiLimiter, authLimiter, otpLimiter, donationLimiter, uploadLimiter } = require('./middleware/rateLimiter');
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
-
-// Connect to Redis on startup
-connectRedis();
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -74,28 +69,28 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/helphub')
     process.exit(1);
   });
 
-// Health check endpoint (no rate limit)
+// Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
     success: true, 
-    message: 'HelpHub API is running with Redis Cache & Rate Limiting!',
+    message: 'HelpHub API is running with Image Upload Support!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    features: ['Auth', 'OTP', 'Redis Cache', 'Rate Limiting', 'Points', 'Coins', 'Rewards', 'Campaigns', 'Donations', 'Impact Posts', 'Image Upload']
+    features: ['Auth', 'OTP', 'Points', 'Coins', 'Rewards', 'Campaigns', 'Donations', 'Impact Posts', 'Image Upload']
   });
 });
 
-// Root endpoint (no rate limit)
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     message: 'HelpHub Platform API is running! 🚀',
-    version: '2.0.0',
-    features: ['Redis Caching', 'Rate Limiting', 'Help Requests', 'Points & Coins System', 'Rewards Store', 'Impact Posts', 'Image Upload'],
+    version: '1.0.0',
+    features: ['Help Requests', 'Points & Coins System', 'Rewards Store', 'Impact Posts', 'Image Upload'],
     timestamp: new Date().toISOString()
   });
 });
 
-// 🔍 DEBUG ENDPOINT: List all routes (no rate limit)
+// 🔍 DEBUG ENDPOINT: List all routes
 app.get('/debug/routes', (req, res) => {
   const routes = [];
   
@@ -130,20 +125,13 @@ app.get('/debug/routes', (req, res) => {
   });
 });
 
-// Apply general API rate limiting to all /api routes
-app.use('/api/', apiLimiter);
-console.log('✅ General API rate limiting enabled (60 req/min)');
-
 // ✅ MOUNT ALL ROUTES IN PRIORITY ORDER
 
-// 1. Auth Routes (with strict rate limiting)
+// 1. Auth Routes
 try {
   const authRoutes = require('./routes/auth');
-  app.use('/api/auth/register', authLimiter);
-  app.use('/api/auth/login', authLimiter);
-  app.use('/api/auth/verify-otp', otpLimiter);
   app.use('/api/auth', authRoutes);
-  console.log('✅ Auth routes loaded at /api/auth with rate limiting (5 req/15min)');
+  console.log('✅ Auth routes loaded at /api/auth');
 } catch (error) {
   console.log('⚠️ Auth routes not found:', error.message);
 }
@@ -157,15 +145,13 @@ try {
   console.log('⚠️ Request routes not found:', error.message);
 }
 
-// 3. Stories Routes (UPDATED WITH IMAGE SUPPORT + Upload Rate Limiting)
+// 3. Stories Routes (UPDATED WITH IMAGE SUPPORT)
 try {
   const storiesRoutes = require('./routes/stories');
-  app.use('/api/stories/submit', uploadLimiter);
-  app.use('/api/stories/submit-story', uploadLimiter);
   app.use('/api/stories', storiesRoutes);
-  console.log('✅ Stories routes loaded at /api/stories (with image upload support + rate limiting)');
+  console.log('✅ Stories routes loaded at /api/stories (with image upload support)');
   console.log('   GET  /api/stories/inspiring-stories');
-  console.log('   POST /api/stories/submit (supports image upload - 5 req/10min)');
+  console.log('   POST /api/stories/submit (supports image upload)');
   console.log('   GET  /api/stories/:id');
 } catch (error) {
   console.log('⚠️ Stories routes not found:', error.message);
@@ -183,9 +169,8 @@ try {
 // 5. Rewards Routes
 try {
   const rewardsRoutes = require('./routes/rewards');
-  app.use('/api/rewards/redeem', donationLimiter);
   app.use('/api/rewards', rewardsRoutes);
-  console.log('✅ Rewards routes loaded at /api/rewards (redemption rate limited)');
+  console.log('✅ Rewards routes loaded at /api/rewards');
 } catch (error) {
   console.error('❌ Rewards routes failed to load:', error.message);
 }
@@ -199,13 +184,11 @@ try {
   console.error('❌ Failed to load campaign routes:', error.message);
 }
 
-// 7. Donation Routes (with payment rate limiting)
+// 7. Donation Routes
 try {
   const donationRoutes = require('./routes/donations');
-  app.use('/api/donations/create-order', donationLimiter);
-  app.use('/api/donations/verify-payment', donationLimiter);
   app.use('/api/donations', donationRoutes);
-  console.log('✅ Donation routes loaded at /api/donations (payment rate limited - 10 req/5min)');
+  console.log('✅ Donation routes loaded at /api/donations');
 } catch (error) {
   console.error('❌ Failed to load donation routes:', error.message);
 }
@@ -347,7 +330,7 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 HelpHub Server Running on Port ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔗 Backend URL: http://localhost:${PORT}`);
-  console.log(`🎁 All Systems READY with Redis Cache & Rate Limiting!`);
+  console.log(`🎁 All Systems READY with Image Upload Support!`);
   console.log(`📋 Test these endpoints:`);
   console.log(`   GET  http://localhost:${PORT}/api/health`);
   console.log(`   GET  http://localhost:${PORT}/debug/routes`);
@@ -359,9 +342,6 @@ const server = app.listen(PORT, () => {
   console.log(`✅ Image upload system ready!`);
   console.log(`\n🔒 CORS enabled for:`);
   allowedOrigins.forEach(origin => console.log(`   - ${origin}`));
-  console.log(`\n⚡ Redis Features:`);
-  console.log(`   - Caching enabled for campaigns, leaderboard, impact posts`);
-  console.log(`   - Rate limiting: Auth (5/15min), Donations (10/5min), API (60/min)`);
 });
 
 module.exports = app;

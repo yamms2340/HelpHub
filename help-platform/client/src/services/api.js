@@ -114,7 +114,8 @@ export const rewardsAPI = {
       };
     }
   },
-
+  
+  
   // Get user's coins balance
   getUserCoins: async () => {
     try {
@@ -145,6 +146,9 @@ export const rewardsAPI = {
       throw error;
     }
   },
+
+  
+
 
   // Redeem a reward - ENHANCED WITH BETTER ERROR HANDLING
   redeemReward: async (rewardId, deliveryDetails = {}) => {
@@ -261,7 +265,10 @@ export const requestsAPI = {
   getRequestsByCategory: (category) => api.get(`/requests/category/${category}`),
   
   getRequestStats: () => api.get('/requests/stats'),
-  getUserRequestStats: (userId) => api.get(`/requests/stats/user/${userId}`)
+  getUserRequestStats: (userId) => api.get(`/requests/stats/user/${userId}`),
+  getMyRequests: () => api.get('/requests/my')
+  
+
 };
 
 /**

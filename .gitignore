@@ -1,8 +1,8 @@
-# Environment files 
+ÿþ# Environment files 
 .env 
 .env.test 
 .env.local 
 .env.production 
-node_modules/ 
+node_modules
 /build 
-/dist 
+/dist 

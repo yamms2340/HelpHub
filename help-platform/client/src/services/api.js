@@ -1,8 +1,9 @@
 import axios from 'axios';
 
 // ✅ Use environment variable for API URL (works in both dev and production)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
+const API_BASE_URL = process.env.REACT_APP_API_URL 
+  ? `${process.env.REACT_APP_API_URL}/api`  // Add /api to env variable
+  : 'http://localhost:5000/api';
 console.log('🌐 API Base URL:', API_BASE_URL);
 console.log('🔧 Environment:', process.env.NODE_ENV);
 

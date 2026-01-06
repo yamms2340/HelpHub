@@ -2,9 +2,9 @@ name: CI-CD
 
 on:
   push:
-    branches: [ jan2 ]
+    branches: [ main ]
   pull_request:
-    branches: [ jan2 ]
+    branches: [ main ]
 
 jobs:
   server:
@@ -33,6 +33,6 @@ jobs:
       # CD STEP — DEPLOY TO RENDER
       # ===============================
       - name: Deploy server to Render
-        if: github.event_name == 'push' && github.ref == 'refs/heads/jan2'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_SERVER }}"

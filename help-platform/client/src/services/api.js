@@ -2,26 +2,21 @@ import axios from 'axios';
 
 // ✅ AUTO-DETECT API URL BASED ON CURRENT ENVIRONMENT
 const getApiBaseUrl = () => {
-  // Check if we have an environment variable (build time)
   if (process.env.REACT_APP_API_URL) {
     console.log('🔧 Using REACT_APP_API_URL from environment');
-    return process.env.REACT_APP_API_URL;
+    const base = process.env.REACT_APP_API_URL;
+    return base.endsWith('/api') ? base : `${base}/api`;
   }
 
-  // Auto-detect based on window.location (runtime)
   const hostname = window.location.hostname;
-  
+
   if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    // Local development
     return 'http://localhost:5000/api';
-  } else if (hostname.includes('helphubplatformfrontend')) {
-    // Production frontend -> Production backend
-    return 'https://helphubplatform.onrender.com/api';
-  } else {
-    // Fallback to production backend
-    return 'https://helphubplatform.onrender.com/api';
   }
+
+  return 'https://helphubplatform.onrender.com/api';
 };
+
 
 const API_BASE_URL = getApiBaseUrl();
 

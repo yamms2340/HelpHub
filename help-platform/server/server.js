@@ -32,7 +32,8 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'https://helphub-services-xhmh.onrender.com',
-  'https://helphub-1-1ab2.onrender.com', // ✅ New frontend URL
+  'https://helphub-1-1ab2.onrender.com',
+  'https://helphubplatformfrontend.onrender.com', // ✅ New frontend URL
   process.env.FRONTEND_URL
 ].filter(Boolean); // Remove undefined values
 

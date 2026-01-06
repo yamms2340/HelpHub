@@ -1,7 +1,10 @@
 import axios from 'axios';
 
-// ✅ Use environment variable for API URL (works in both dev and production)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// ✅ FIXED: Use correct production backend URL
+const API_BASE_URL = process.env.REACT_APP_API_URL || 
+  (process.env.NODE_ENV === 'production' 
+    ? 'https://helphubplatform.onrender.com/api'  // ✅ CORRECTED - Added /api
+    : 'http://localhost:5000/api');
 
 console.log('🌐 API Base URL:', API_BASE_URL);
 console.log('🔧 Environment:', process.env.NODE_ENV);
@@ -26,6 +29,7 @@ api.interceptors.request.use(
     
     config.metadata = { startTime: new Date() };
     console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    console.log(`📍 Full URL: ${config.baseURL}${config.url}`); // ✅ Debug log
     
     return config;
   },
@@ -47,6 +51,7 @@ api.interceptors.response.use(
     const duration = error.config?.metadata ? 
       new Date() - error.config.metadata.startTime : 0;
     console.error(`❌ API Error: ${error.config?.url} (${duration}ms) - ${error.response?.status || 'Network Error'}`);
+    console.error(`📍 Failed URL: ${error.config?.baseURL}${error.config?.url}`); // ✅ Debug log
     
     if (error.response?.status === 401) {
       console.warn('🔒 Unauthorized - Clearing session');
@@ -85,19 +90,16 @@ export const authAPI = {
  * ✅ REWARDS API - ENHANCED WITH PROPER ERROR HANDLING
  */
 export const rewardsAPI = {
-  // Get all rewards with filters
   getAllRewards: async (params = {}) => {
     try {
       console.log('🎁 Fetching rewards with params:', params);
       const response = await api.get('/rewards', { params });
       console.log('📥 Rewards response:', response.data);
       
-      // Ensure we return the expected structure
       if (response.data && typeof response.data === 'object') {
         return response.data;
       }
       
-      // Fallback structure
       return {
         success: false,
         data: [],
@@ -105,8 +107,6 @@ export const rewardsAPI = {
       };
     } catch (error) {
       console.error('❌ Error fetching rewards:', error);
-      
-      // Return error in expected format
       return {
         success: false,
         data: [],
@@ -115,8 +115,6 @@ export const rewardsAPI = {
     }
   },
   
-  
-  // Get user's coins balance
   getUserCoins: async () => {
     try {
       console.log('🪙 Fetching user coins...');
@@ -126,7 +124,6 @@ export const rewardsAPI = {
     } catch (error) {
       console.error('❌ Error fetching coins:', error);
       
-      // Return mock data if API fails (for development)
       if (process.env.NODE_ENV === 'development') {
         console.warn('🔄 Using mock coins data for development');
         return {
@@ -147,10 +144,6 @@ export const rewardsAPI = {
     }
   },
 
-  
-
-
-  // Redeem a reward - ENHANCED WITH BETTER ERROR HANDLING
   redeemReward: async (rewardId, deliveryDetails = {}) => {
     try {
       console.log('🎁 Processing redemption for reward:', rewardId);
@@ -168,7 +161,6 @@ export const rewardsAPI = {
       const response = await api.post('/rewards/redeem', requestData);
       console.log('✅ Redemption response:', response.data);
 
-      // Ensure response has expected structure
       if (response.data && response.data.success) {
         return response.data;
       } else {
@@ -177,22 +169,17 @@ export const rewardsAPI = {
     } catch (error) {
       console.error('❌ Error redeeming reward:', error);
       
-      // Enhanced error handling with specific messages
       if (error.response) {
-        // Server responded with error status
         const serverError = error.response.data;
         throw new Error(serverError?.message || `Server error: ${error.response.status}`);
       } else if (error.request) {
-        // Request was made but no response received
         throw new Error('No response from server. Please check your connection.');
       } else {
-        // Something else happened
         throw new Error(error.message || 'An unexpected error occurred during redemption');
       }
     }
   },
 
-  // Get user's redemption history
   getUserRedemptions: async () => {
     try {
       console.log('📦 Fetching user redemptions...');
@@ -201,8 +188,6 @@ export const rewardsAPI = {
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching user redemptions:', error);
-      
-      // Return empty list if API fails
       return {
         success: true,
         data: [],
@@ -211,7 +196,6 @@ export const rewardsAPI = {
     }
   },
 
-  // Get reward categories
   getRewardCategories: async () => {
     try {
       console.log('📂 Fetching reward categories...');
@@ -220,8 +204,6 @@ export const rewardsAPI = {
       return response.data;
     } catch (error) {
       console.error('❌ Error fetching reward categories:', error);
-      
-      // Return default categories if API fails
       return {
         success: true,
         data: ['Gift Cards', 'Electronics', 'Books', 'Food & Drinks', 'Merchandise', 'Experiences'],
@@ -230,7 +212,6 @@ export const rewardsAPI = {
     }
   },
 
-  // Award coins for testing - ENHANCED
   awardCoins: async (pointsData) => {
     try {
       console.log('🎯 Awarding coins:', pointsData);
@@ -267,8 +248,6 @@ export const requestsAPI = {
   getRequestStats: () => api.get('/requests/stats'),
   getUserRequestStats: (userId) => api.get(`/requests/stats/user/${userId}`),
   getMyRequests: () => api.get('/requests/my')
-  
-
 };
 
 /**
@@ -282,7 +261,6 @@ export const impactPostsAPI = {
       
       console.log('📥 Impact posts raw response:', response.data);
       
-      // Handle different response formats
       if (response.data && response.data.success !== undefined) {
         return response.data;
       } else if (response.data && Array.isArray(response.data)) {
@@ -345,7 +323,7 @@ export const leaderboardAPI = {
 };
 
 /**
- * ✅ CAMPAIGNS API - USING AXIOS FOR CONSISTENCY
+ * ✅ CAMPAIGNS API
  */
 export const campaignAPI = {
   getAllCampaigns: async () => {
@@ -420,7 +398,6 @@ export const campaignAPI = {
     }
   },
 
-  // Campaign donation - CRITICAL FOR PROGRESS UPDATES
   donateToCampaign: async (campaignId, donationData) => {
     try {
       console.log('💰 Processing donation to campaign:', campaignId);
@@ -507,7 +484,7 @@ export const donationsAPI = {
 };
 
 /**
- * ✅ STORIES API - WITH IMAGE UPLOAD SUPPORT
+ * ✅ STORIES API
  */
 export const storiesAPI = {
   getAllStories: async (params = {}) => {
@@ -544,13 +521,11 @@ export const storiesAPI = {
     }
   },
   
-  // Submit story with image support using FormData
   submitStory: async (storyData) => {
     try {
       console.log('🔄 Submitting story with data type:', typeof storyData);
       console.log('📝 Story data preview:', storyData instanceof FormData ? 'FormData' : storyData);
       
-      // Create FormData if not already FormData
       let formData;
       if (storyData instanceof FormData) {
         formData = storyData;
@@ -559,7 +534,6 @@ export const storiesAPI = {
         console.log('📦 Converting object to FormData');
         formData = new FormData();
         
-        // Add all story fields to FormData
         Object.keys(storyData).forEach(key => {
           if (key === 'helpType' && Array.isArray(storyData[key])) {
             formData.append(key, JSON.stringify(storyData[key]));
@@ -569,7 +543,6 @@ export const storiesAPI = {
         });
       }
 
-      // Log FormData contents for debugging
       console.log('📋 FormData contents:');
       for (let [key, value] of formData.entries()) {
         if (value instanceof File) {
@@ -579,12 +552,10 @@ export const storiesAPI = {
         }
       }
 
-      // Make request with FormData
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/stories/submit`, {
         method: 'POST',
         headers: {
-          // Don't set Content-Type - browser will set it with boundary for FormData
           ...(token && { 'Authorization': `Bearer ${token}` })
         },
         body: formData
@@ -601,7 +572,6 @@ export const storiesAPI = {
     } catch (error) {
       console.error('❌ Error submitting story:', error);
       
-      // Enhanced error handling
       if (error.name === 'TypeError' && error.message.includes('fetch')) {
         throw new Error('Network error. Please check your connection.');
       } else if (error.message.includes('HTTP error')) {
@@ -727,7 +697,6 @@ export const apiUtils = {
     }
   },
 
-  // Check API health
   checkHealth: async () => {
     try {
       const response = await api.get('/health');
@@ -743,11 +712,5 @@ export const apiUtils = {
   }
 };
 
-// Default export
 export default api;
-
-// Named exports
-export {
-  api,
-  API_BASE_URL
-};
+export { api, API_BASE_URL };

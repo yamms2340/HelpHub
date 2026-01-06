@@ -78,6 +78,58 @@ router.get('/', async (req, res) => {
   }
 });
 
+// ==================== GET MY REQUESTS (does not includes completed)====================
+router.get('/my', auth, async (req, res) => {
+  try {
+    console.log(`👤 GET /api/requests/my - User: ${req.user.id}`);
+
+    const cacheKey = `user:${req.user.id}:requests`;
+
+    const cached = await cacheService.get(cacheKey);
+    if (cached) {
+      console.log('✅ My requests served from cache');
+      return res.json(cached);
+    }
+
+    // ✅ FULL DEBUG LOGS
+    const requests = await HelpRequest.find({
+  requester: req.user.id,
+  // status: { $ne: 'Completed' }
+})
+
+      .populate('requester', 'name email')
+      .populate('acceptedBy', 'name email totalPoints')
+      .sort({ createdAt: -1 });
+
+    // 🔥 PRINT FULL DETAILS TO TERMINAL
+    console.log('🔍 === FULL REQUEST DEBUG ===');
+    console.log('CURRENT USER ID:', req.user.id);
+    console.log('FETCHED COUNT:', requests.length);
+    console.log('REQUESTS:', JSON.stringify(requests, null, 2));
+    
+    requests.forEach((req, index) => {
+      console.log(`\n📋 REQUEST ${index + 1}:`);
+      console.log('  - _id:', req._id);
+      console.log('  - title:', req.title);
+      console.log('  - requester.id:', req.requester?._id);
+      console.log('  - requester.email:', req.requester?.email);
+      console.log('  - requester.name:', req.requester?.name);
+      console.log('  - acceptedBy.id:', req.acceptedBy?._id);
+      console.log('  - acceptedBy.name:', req.acceptedBy?.name);
+      console.log('  - status:', req.status);
+    });
+    console.log('🔍 =====================');
+
+    await cacheService.set(cacheKey, requests, 180);
+
+    res.json(requests);
+  } catch (error) {
+    console.error('❌ Get my requests error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+
 // ==================== OFFER HELP ====================
 router.put('/:id/offer-help', auth, async (req, res) => {
   try {

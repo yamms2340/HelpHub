@@ -1,16 +1,12 @@
 import axios from 'axios';
 
-// ✅ AUTO-DETECT API URL BASED ON CURRENT ENVIRONMENT
 const getApiBaseUrl = () => {
   if (process.env.REACT_APP_API_URL) {
-    console.log('🔧 Using REACT_APP_API_URL from environment');
-    const base = process.env.REACT_APP_API_URL;
+    const base = process.env.REACT_APP_API_URL.trim();
     return base.endsWith('/api') ? base : `${base}/api`;
   }
 
-  const hostname = window.location.hostname;
-
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (window.location.hostname === 'localhost') {
     return 'http://localhost:5000/api';
   }
 

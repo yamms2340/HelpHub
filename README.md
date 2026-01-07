@@ -18,6 +18,26 @@ A full-stack MERN application connecting people who need help with those who wan
 
 HelpHub is a community-driven platform where users can create help requests, offer assistance to others, earn points for helping, and track their contributions through a leaderboard system.
 
+## 🌐 Live Demo
+Frontend: https://helphubplatformfrontend.onrender.com
+Backend API: https://helphubplatform.onrender.com
+
+## 🚀 Deployment
+- **Frontend:** Deployed on Render (React build)  
+  👉https://helphubplatformfrontend.onrender.com
+
+- **Backend:** Deployed on Render (Node.js + Express)  
+  👉//helphubplatform.onrender.com
+
+- **Database:** MongoDB Atlas  
+  👉 https://www.mongodb.com/atlas
+
+- **Caching:** Redis (enabled for read-heavy APIs)  
+  👉 https://redis.io
+
+- **CI/CD:** Auto-deploy on push to `main` branch via Render GitHub integration  
+  👉 https://render.com/docs/deploys
+
 ## ✨ Features
 
 - **Help Requests System** - Create, browse, and manage help requests with categories and status tracking

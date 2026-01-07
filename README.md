@@ -59,9 +59,7 @@ Backend API: https://helphubplatform.onrender.com
 
 - **Password Hashing:** User passwords are securely hashed using `bcrypt` before storage.
 - **OTP-based Email Verification:** New users must verify their email via a time-bound 6-digit OTP before account activation.
-- **OTP Expiry & Validation:** OTPs expire after 10 minutes and are invalidated immediately after successful verification.
 - **JWT Authentication:** Secure, stateless authentication using JSON Web Tokens with protected routes enforced via middleware.
-- **Access Control:** Unverified users are blocked from login until OTP verification is completed.
 - **Sensitive Data Protection:** Passwords, OTPs, and expiry fields are excluded from API responses.
 - **Cache Security:** User data cached in Redis is scoped by user ID and invalidated on profile updates and logout.
 - **Environment-based Secrets:** JWT secrets, database credentials, and service keys are managed via environment variables.

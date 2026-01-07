@@ -129,90 +129,129 @@ REACT_APP_API_URL=http://localhost:5000/api
 
 ## 📡 API Endpoints
 
-### System
-- GET /api/health – API health check
+**Base URL:** `http://localhost:5000/api` (dev) / `https://helphubplatform.onrender.com/api` (prod)
 
-### Authentication
-- POST /api/auth/register – Register new user
-- POST /api/auth/login – Login user
-- POST /api/auth/send-otp – Send OTP
-- POST /api/auth/verify-otp – Verify OTP
-- GET /api/auth/me – Get current user
-- POST /api/auth/refresh – Refresh token
-- POST /api/auth/forgot-password – Request password reset
-- POST /api/auth/reset-password – Reset password
+<details>
+<summary>🛠️ System</summary>
 
-### Requests
-- GET /api/requests – Get all help requests (cached)
-- GET /api/requests/my – Get logged-in user requests (cached)
-- GET /api/requests/:id – Get request by ID
-- POST /api/requests – Create request
-- PUT /api/requests/:id – Update request
-- DELETE /api/requests/:id – Delete request
-- PUT /api/requests/:id/offer-help – Offer help
-- PUT /api/requests/:id/confirm – Confirm completion
-- PUT /api/requests/:id/cancel – Cancel request
-- GET /api/requests/search – Search requests
-- GET /api/requests/category/:category – Filter by category
-- GET /api/requests/user/:userId – Requests by user
-- GET /api/requests/stats – Request statistics
-- GET /api/requests/stats/user/:userId – User request stats
+- `GET /health` — API status
+- `GET /debug/routes` — List all routes
+- `GET /debug/cache/stats` — Redis cache stats
 
-### Rewards
-- GET /api/rewards – Get all rewards
-- GET /api/rewards/coins – Get user coins
-- POST /api/rewards/redeem – Redeem reward
-- GET /api/rewards/redemptions – Redemption history
-- GET /api/rewards/categories – Reward categories
-- POST /api/rewards/award-coins – Award coins
+</details>
 
-### Leaderboard
-- GET /api/leaderboard – Global leaderboard (cached)
-- GET /api/leaderboard/user/:id – User stats
-- GET /api/leaderboard/user/:id/rank – User rank
-- GET /api/leaderboard/stats/overview – Overview stats
-- POST /api/leaderboard/award-points – Award points
-- GET /api/leaderboard/user/:id/points-history – Points history
+<details>
+<summary>🔐 Authentication (OTP Flow)</summary>
 
-### Campaigns
-- GET /api/campaigns – Get all campaigns
-- GET /api/campaigns/:id – Get campaign by ID
-- POST /api/campaigns – Create campaign
-- PUT /api/campaigns/:id – Update campaign
-- DELETE /api/campaigns/:id – Delete campaign
-- POST /api/campaigns/:id/donate – Donate to campaign
-- GET /api/campaigns/stats – Campaign statistics
-- GET /api/campaigns/:id/donations – Campaign donations
+**Flow:** `register` → sends OTP → `verify-otp` → `login`
 
-### Donations
-- POST /api/donations/create-order – Create Razorpay order
-- POST /api/donations/verify-payment – Verify payment
-- GET /api/donations – All donations
-- GET /api/donations/user – User donations
-- GET /api/donations/test-razorpay – Razorpay test
+- `POST /auth/register` — `{name, email, password}` → sends OTP
+- `POST /auth/verify-otp` — `{email, otp}` → JWT token
+- `POST /auth/login` — `{email, password}` → JWT token
+- `GET /auth/me` — Current user (cached)
+- `PUT /auth/update` — Update profile
+- `POST /auth/logout` — Clear cache
+- `POST /auth/resend-otp` — `{email}` → new OTP
 
-### Impact Posts
-- GET /api/impact-posts – Get all posts
-- GET /api/impact-posts/:id – Get post by ID
-- POST /api/impact-posts – Create post
-- PUT /api/impact-posts/:id – Update post
-- DELETE /api/impact-posts/:id – Delete post
-- POST /api/impact-posts/:id/like – Like post
-- DELETE /api/impact-posts/:id/like – Unlike post
+</details>
 
-### Stories
-- GET /api/stories – Get all stories
-- GET /api/stories/:id – Get story by ID
-- POST /api/stories/submit – Submit story (multipart/form-data)
-- GET /api/stories/search – Search stories
-- GET /api/stories/stats – Story stats
-- GET /api/stories/inspiring-stories – Inspiring stories
+<details>
+<summary>📋 Requests</summary>
 
-### Help / Community
-- GET /api/help/hall-of-fame – Hall of Fame
-- GET /api/help/history/:userId – User help history
-- GET /api/help/stats – Help statistics
-- GET /api/help/inspiring-stories – Inspiring stories
+- `GET /requests` — All requests (cached)
+- `GET /requests/my` — User requests (cached)
+- `GET /requests/:id` — Single request
+- `POST /requests` — Create request
+- `PUT /requests/:id` — Update request
+- `DELETE /requests/:id` — Delete request
+- `PUT /requests/:id/offer-help` — Offer help
+- `PUT /requests/:id/confirm` — Confirm completion
+- `PUT /requests/:id/cancel` — Cancel request
+- `GET /requests/search?q=term` — Search requests
+- `GET /requests/category/:category` — Filter by category
+- `GET /requests/user/:userId` — User requests
+- `GET /requests/stats` — Stats
+- `GET /requests/stats/user/:userId` — User stats
+
+</details>
+
+<details>
+<summary>🎁 Rewards</summary>
+
+- `GET /rewards` — All rewards
+- `GET /rewards/coins` — User coins
+- `POST /rewards/redeem` — `{rewardId, deliveryDetails}`
+- `GET /rewards/redemptions` — User history
+- `GET /rewards/categories` — Categories
+- `POST /rewards/award-coins` — Admin award
+
+</details>
+
+<details>
+<summary>🏆 Leaderboard</summary>
+
+- `GET /leaderboard` — Global (cached)
+- `GET /leaderboard?timeframe=all&limit=10` — Filtered
+- `GET /leaderboard/user/:id` — User stats
+- `GET /leaderboard/user/:id/rank?timeframe=all` — User rank
+- `GET /leaderboard/stats/overview` — Overview
+- `POST /leaderboard/award-points` — Award points
+- `GET /leaderboard/user/:id/points-history?limit=20` — History
+
+</details>
+
+<details>
+<summary>💰 Campaigns & Donations</summary>
+
+**Campaigns:**
+- `GET /campaigns` — All campaigns
+- `GET /campaigns/:id` — Single campaign
+- `POST /campaigns` — Create
+- `PUT /campaigns/:id` — Update
+- `DELETE /campaigns/:id` — Delete
+- `POST /campaigns/:id/donate` — Donate
+- `GET /campaigns/stats` — Stats
+
+**Donations:**
+- `POST /donations/create-order` — Razorpay order
+- `POST /donations/verify-payment` — Verify payment
+- `GET /donations` — All donations
+- `GET /donations/user` — User donations
+
+</details>
+
+<details>
+<summary>📝 Content (Posts & Stories)</summary>
+
+**Impact Posts:**
+- `GET /impact-posts` — All posts
+- `POST /impact-posts` — Create post
+- `GET /impact-posts/:id` — Single post
+- `PUT /impact-posts/:id` — Update
+- `DELETE /impact-posts/:id` — Delete
+- `POST /impact-posts/:id/like` — Like
+- `DELETE /impact-posts/:id/like` — Unlike
+
+**Stories (Image Upload):**
+- `GET /stories` — All stories
+- `POST /stories/submit` — `multipart/form-data`
+- `GET /stories/:id` — Single story
+- `GET /stories/inspiring-stories?limit=10` — Featured
+- `GET /stories/search?q=term` — Search
+- `GET /stories/stats` — Stats
+
+</details>
+
+<details>
+<summary>👥 Help / Community</summary>
+
+- `GET /help/hall-of-fame` — Top helpers
+- `GET /help/history/:userId?limit=20` — User history
+- `GET /help/stats` — Platform stats
+- `GET /help/inspiring-stories?limit=10` — Stories
+
+</details>
+
 
 ## 📁 Project Structure
 

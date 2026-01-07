@@ -10,7 +10,6 @@
 ![Redis](https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white)
 ![Material-UI](https://img.shields.io/badge/Material--UI-0081CB?style=for-the-badge&logo=mui&logoColor=white)
 
-A full-stack MERN application connecting people who need help with those who want to help.
 
 </div>
 
@@ -21,7 +20,6 @@ HelpHub is a community-driven platform where users can create help requests, off
 ## 🌐 Live Demo
 Frontend: https://helphubplatformfrontend.onrender.com<br>
 Backend API: https://helphubplatform.onrender.com
-
 
 ## 🚀 Deployment
 - **Frontend:** Deployed on Render (React build)  
@@ -45,15 +43,9 @@ Backend API: https://helphubplatform.onrender.com
 - **My Requests Dashboard** - View and manage your personal help requests
 - **Points & Leaderboard** - Earn points for helping others and compete on the global leaderboard
 - **User Authentication** - Secure JWT-based authentication with OTP verification
+- **Secure Payments** — Razorpay integration for safe and reliable campaign donations
 - **Responsive Design** - Mobile-first UI built with Material-UI
 - **Redis Caching** - Optimized performance with Redis cache for frequently accessed data
-
-## 🛠️ Tech Stack
-
-**Frontend:** React.js, Material-UI, Axios, React Router  
-**Backend:** Node.js, Express.js, MongoDB, Mongoose, Redis  
-**Authentication:** JWT, OTP Email Verification  
-**Caching:** Redis for optimized API performance
 
 ## 🔒 Security
 
@@ -63,7 +55,6 @@ Backend API: https://helphubplatform.onrender.com
 - **Sensitive Data Protection:** Passwords, OTPs, and expiry fields are excluded from API responses.
 - **Cache Security:** User data cached in Redis is scoped by user ID and invalidated on profile updates and logout.
 - **Environment-based Secrets:** JWT secrets, database credentials, and service keys are managed via environment variables.
-
 
 ## ⚡ Performance
 
@@ -76,44 +67,44 @@ Backend API: https://helphubplatform.onrender.com
 
 ## 🚀 Installation
 
-### Prerequisites
+## Prerequisites
 - Node.js (v16+)
 - MongoDB
 - Redis
 
-### Clone the repository
+## Clone the repository
 git clone https://github.com/yamms2340/HelpHub
 cd helphub
 
-### Backend Setup
+## Backend Setup
 cd backend
 npm install
 npm run dev
 
 Backend runs at: http://localhost:5000
 
-### Frontend Setup
+## Frontend Setup
 cd frontend
 npm install
 npm start
 
 Frontend runs at: http://localhost:3000
 
-### Redis Setup
-# Install Redis
+## Redis Setup
+## Install Redis
 sudo apt-get install redis-server
 
-# Start Redis
+## Start Redis
 redis-server
 
-# Verify Redis is running
+## Verify Redis is running
 redis-cli ping
 
 Expected output: PONG
 
 ## 🔐 Environment Variables
 
-### Backend .env
+## Backend .env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/helphub
 JWT_SECRET=your_jwt_secret
@@ -122,7 +113,7 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_ENABLED=true
 
-### Frontend .env
+## Frontend .env
 REACT_APP_API_URL=http://localhost:5000/api
 
 ## 📡 API Endpoints

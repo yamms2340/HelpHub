@@ -19,15 +19,16 @@ A full-stack MERN application connecting people who need help with those who wan
 HelpHub is a community-driven platform where users can create help requests, offer assistance to others, earn points for helping, and track their contributions through a leaderboard system.
 
 ## 🌐 Live Demo
-Frontend: https://helphubplatformfrontend.onrender.com
+Frontend: https://helphubplatformfrontend.onrender.com<br>
 Backend API: https://helphubplatform.onrender.com
+
 
 ## 🚀 Deployment
 - **Frontend:** Deployed on Render (React build)  
   👉https://helphubplatformfrontend.onrender.com
 
 - **Backend:** Deployed on Render (Node.js + Express)  
-  👉//helphubplatform.onrender.com
+  👉 https://helphubplatform.onrender.com
 
 - **Database:** MongoDB Atlas  
   👉 https://www.mongodb.com/atlas
@@ -53,6 +54,18 @@ Backend API: https://helphubplatform.onrender.com
 **Backend:** Node.js, Express.js, MongoDB, Mongoose, Redis  
 **Authentication:** JWT, OTP Email Verification  
 **Caching:** Redis for optimized API performance
+
+## 🔒 Security
+
+- **Password Hashing:** User passwords are securely hashed using `bcrypt` before storage.
+- **OTP-based Email Verification:** New users must verify their email via a time-bound 6-digit OTP before account activation.
+- **OTP Expiry & Validation:** OTPs expire after 10 minutes and are invalidated immediately after successful verification.
+- **JWT Authentication:** Secure, stateless authentication using JSON Web Tokens with protected routes enforced via middleware.
+- **Access Control:** Unverified users are blocked from login until OTP verification is completed.
+- **Sensitive Data Protection:** Passwords, OTPs, and expiry fields are excluded from API responses.
+- **Cache Security:** User data cached in Redis is scoped by user ID and invalidated on profile updates and logout.
+- **Environment-based Secrets:** JWT secrets, database credentials, and service keys are managed via environment variables.
+
 
 ## ⚡ Performance
 
